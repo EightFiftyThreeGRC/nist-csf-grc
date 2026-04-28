@@ -77,6 +77,147 @@ function openCISOReview(fam) {
   document.body.appendChild(overlay);
 }
 
+/** Open the org-level ISP in a read-only overlay. Works from any tab / any role. */
+function viewISPModal() {
+  var isp = state.infoSecPolicy;
+  var ispTitle = ((isp && isp.title) ? String(isp.title).trim() : '') || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+  var existingOverlay = document.getElementById('ispViewOverlay');
+  if (existingOverlay) existingOverlay.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'ispViewOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;';
+
+  var bodyHTML = '';
+  if (!isp || !isp.title) {
+    bodyHTML = '<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:24px 28px;">The ' + escapeHTML(ispTitle) + ' has not been finalized yet.</div>';
+  } else {
+    // Sections
+    var hasSections = false;
+    var sectionsHTML = '';
+    (isp.sections||[]).forEach(function(sec) {
+      var content = '';
+      if (sec.type === 'purpose')    content = isp.purpose||sec.content||'';
+      else if (sec.type === 'scope')      content = isp.scope||sec.content||'';
+      else if (sec.type === 'policy')     content = isp.policy||sec.content||'';
+      else if (sec.type === 'compliance') content = isp.compliance||sec.content||'';
+      else content = sec.content||'';
+      if (!content) return;
+      hasSections = true;
+      sectionsHTML += '<div style="margin-bottom:20px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">' + escapeHTML(sec.title||sec.type) + '</div>'
+        + '<div style="font-size:13px;color:var(--navy);line-height:1.7;white-space:pre-wrap;">' + escapeHTML(content) + '</div>'
+        + '</div>';
+    });
+    if (!hasSections) {
+      [['Purpose', isp.purpose||''], ['Scope', isp.scope||''], ['Policy Statement', isp.policy||''], ['Compliance', isp.compliance||'']].forEach(function(pair) {
+        if (!pair[1]) return;
+        hasSections = true;
+        sectionsHTML += '<div style="margin-bottom:20px;">'
+          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">' + pair[0] + '</div>'
+          + '<div style="font-size:13px;color:var(--navy);line-height:1.7;white-space:pre-wrap;">' + escapeHTML(pair[1]) + '</div>'
+          + '</div>';
+      });
+    }
+    if (!hasSections) {
+      sectionsHTML = '<div style="font-size:13px;color:var(--text-muted);font-style:italic;">No content has been added to this policy yet.</div>';
+    }
+    // Roles & responsibilities
+    var rolesHTML = '';
+    if ((isp.roles||[]).length) {
+      rolesHTML += '<div style="margin-top:8px;margin-bottom:20px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Roles & Responsibilities</div>';
+      (isp.roles||[]).forEach(function(r) {
+        if (!r.name) return;
+        rolesHTML += '<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">'
+          + '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;">' + escapeHTML(r.name) + '</div>'
+          + '<ul style="margin:4px 0 0 16px;padding:0;font-size:13px;color:#374151;line-height:1.6;">'
+          + (r.responsibilities||[]).map(function(res){ return '<li>' + escapeHTML(res) + '</li>'; }).join('')
+          + '</ul></div>';
+      });
+      rolesHTML += '</div>';
+    }
+    var requirementsHTML = '';
+    if ((isp.requirements || []).length) {
+      requirementsHTML = '<div style="margin-top:8px;margin-bottom:20px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Policy Requirements</div>'
+        + (isp.requirements || []).map(function(r) {
+          var reqText = stripRequirementNistRef((r && (r.text || r.requirement)) || '');
+          return '<div style="border-left:3px solid var(--teal);padding:10px 12px;background:#f8fafc;border-radius:0 6px 6px 0;margin-bottom:8px;">'
+            + '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">' + escapeHTML((r && r.id) || '') + '</div>'
+            + '<div style="font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;">' + escapeHTML(reqText || '') + '</div>'
+            + '</div>';
+        }).join('')
+        + '</div>';
+    }
+    var documentsHTML = '';
+    if ((isp.documents || []).length) {
+      documentsHTML = '<div style="margin-top:8px;margin-bottom:20px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Referenced Documents</div>'
+        + (isp.documents || []).map(function(d) {
+          if (!d || !d.title) return '';
+          return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+            + '<span style="font-size:13px;color:var(--teal);">🔗</span>'
+            + '<div><div style="font-size:13px;font-weight:700;color:var(--navy);">' + escapeHTML(d.title) + '</div>'
+            + (d.desc ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' + escapeHTML(d.desc) + '</div>' : '')
+            + (d.url ? '<div style="font-size:12px;margin-top:2px;"><a href="' + escapeHTML(d.url) + '" target="_blank" style="color:var(--teal);text-decoration:none;">' + escapeHTML(d.url) + '</a></div>' : '')
+            + '</div></div>';
+        }).join('')
+        + '</div>';
+    }
+    var revisionHTML = '';
+    if ((isp.revisionHistory || []).length) {
+      revisionHTML = '<div style="margin-top:8px;margin-bottom:20px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Revision History</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+        + '<thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Version</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Date</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Author</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Changes</th></tr></thead><tbody>'
+        + (isp.revisionHistory || []).slice().reverse().map(function(r) {
+          return '<tr style="border-bottom:1px solid var(--border);">'
+            + '<td style="padding:6px 8px;font-family:monospace;font-weight:700;color:var(--teal);">v' + escapeHTML((r && r.version) || '') + '</td>'
+            + '<td style="padding:6px 8px;color:var(--text-muted);">' + escapeHTML((r && r.date) || '') + '</td>'
+            + '<td style="padding:6px 8px;">' + escapeHTML((r && r.author) || '') + '</td>'
+            + '<td style="padding:6px 8px;color:#374151;">' + escapeHTML((r && r.changes) || '') + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table></div>';
+    }
+    var status = (state.policyStatus || {}).ISP || {};
+    var reviewLogRows = [];
+    if (status.submittedAt || status.submittedTo) reviewLogRows.push({ e:'Submitted for approval', d: status.submittedAt || '', a: state.programOwner || 'Program Owner', n: '' });
+    if (status.status === 'Approved') reviewLogRows.push({ e:'Approved', d: status.approvedDate || '', a: status.approvedBy || 'Approver', n: status.notes || '' });
+    if (status.status === 'Returned') reviewLogRows.push({ e:'Returned for revision', d: status.returnedDate || '', a: status.returnedBy || status.submittedTo || 'Approver', n: status.notes || '' });
+    var reviewLogHTML = '<div style="margin-top:8px;">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Review & Approval Log</div>'
+      + (reviewLogRows.length
+        ? '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Event</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Date</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">By</th><th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-size:10px;text-transform:uppercase;">Notes</th></tr></thead><tbody>'
+          + reviewLogRows.map(function(r) {
+            return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;font-weight:600;color:var(--navy);">' + escapeHTML(r.e) + '</td><td style="padding:6px 8px;color:var(--text-muted);">' + escapeHTML(r.d || '—') + '</td><td style="padding:6px 8px;">' + escapeHTML(r.a || '—') + '</td><td style="padding:6px 8px;color:#374151;">' + escapeHTML(r.n || '—') + '</td></tr>';
+          }).join('')
+          + '</tbody></table>'
+        : '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">No review/approval activity has been recorded yet.</div>')
+      + '</div>';
+    bodyHTML = '<div style="padding:24px 28px;max-height:60vh;overflow-y:auto;">' + sectionsHTML + rolesHTML + requirementsHTML + documentsHTML + revisionHTML + reviewLogHTML + '</div>';
+  }
+
+  var rc = (state.policyStatus||{}).ISP || {};
+  var statusLabel = rc.status || 'Draft';
+  var statusColor = statusLabel === 'Approved' ? '#0d9488' : statusLabel === 'Under Review' ? '#6366f1' : '#6b7280';
+
+  overlay.innerHTML = '<div style="background:white;border-radius:16px;width:820px;max-width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">'
+    + '<div style="background:var(--navy);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;">'
+    + '<div><div style="font-size:20px;font-weight:800;color:white;">' + escapeHTML(ispTitle) + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Tier 1 · Owned by ' + escapeHTML(state.programOwner||'CISO') + '</div></div>'
+    + '<div style="display:flex;align-items:center;gap:12px;">'
+    + '<span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,0.15);color:white;">' + escapeHTML(statusLabel) + '</span>'
+    + '<button onclick="document.getElementById(\'ispViewOverlay\').remove()" style="background:rgba(255,255,255,0.12);border:none;color:white;font-size:18px;cursor:pointer;border-radius:8px;padding:6px 12px;line-height:1;">✕</button>'
+    + '</div></div>'
+    + bodyHTML
+    + '</div>';
+
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function cisoApprovePolicy(fam) {
   if (!state.policyStatus) state.policyStatus = {};
   const notes = document.getElementById('cisoReviewNotes')?.value.trim() || '';
@@ -115,9 +256,10 @@ function cisoReturnPolicy(fam) {
     returnedBy: retBy,
     notes: notes,
     submittedAt: prevR.submittedAt || '',
-    submittedTo: prevR.submittedTo || '',
-    submittedToRole: prevR.submittedToRole || '',
-    submittedToEmail: prevR.submittedToEmail || ''
+    // Route back to the current domain owner so this never gets stranded in an old approver queue.
+    submittedTo: ((state.domainOwners || {})[fam] || {}).name || prevR.submittedTo || '',
+    submittedToRole: ((state.domainOwners || {})[fam] || {}).role || prevR.submittedToRole || '',
+    submittedToEmail: ((state.domainOwners || {})[fam] || {}).email || prevR.submittedToEmail || ''
   };
   if (!state.domainPolicies) state.domainPolicies = {};
   if (!state.domainPolicies[fam]) state.domainPolicies[fam] = {};
@@ -141,7 +283,15 @@ function renderProgramDashboard(controls, families) {
 
   // ── Policy stats ──
   const polApproved   = policyFams.filter(f => (state.policyStatus[f]||{}).status === 'Approved').length;
-  const polInReview   = policyFams.filter(f => (state.policyStatus[f]||{}).status === 'Under Review');
+  const polInReview = policyFams.filter(function(f) {
+    var ps = (state.policyStatus[f] || {});
+    if (ps.status === 'Under Review') return true;
+    if (ps.status !== 'Returned') return false;
+    // Returned items explicitly routed back to CISO/program owner should show in CISO queue for reassignment.
+    var routedTo = String(ps.submittedTo || '').trim().toLowerCase();
+    var cisoName = String(state.programOwner || '').trim().toLowerCase();
+    return !routedTo || (cisoName && routedTo === cisoName);
+  });
   const polDraft      = policyFams.filter(f => (state.policyStatus[f]||{}).status === 'Draft').length;
   const polReturned   = policyFams.filter(f => (state.policyStatus[f]||{}).status === 'Returned').length;
   const polNotStarted = policyFams.filter(f => !['Approved','Under Review','Draft','Returned'].includes((state.policyStatus[f]||{}).status)).length;
@@ -231,18 +381,27 @@ function renderProgramDashboard(controls, families) {
   // ── Awaiting-approval inbox rows ──
   const awaitingHTML = polInReview.map(fam => {
     const o = state.domainOwners[fam] || {};
+    const p = state.policyStatus[fam] || {};
     const title = getPolicyMergedTitle(fam);
     const allFams = getPolicyAllFamilies(fam);
     const badges = allFams.map(f => '<span class="family-badge" style="font-size:10px;padding:1px 5px;">' + f + '</span>').join(' ');
+    const isReturnedToCiso = p.status === 'Returned';
+    const returnNotes = isReturnedToCiso ? String(p.notes || '').trim() : '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">'
       + '<div style="display:flex;gap:10px;align-items:center;">'
       + '<span style="font-size:16px;flex-shrink:0;">📄</span>'
       + '<div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' + badges + '</div>'
       + '<div style="font-size:13px;font-weight:600;color:var(--navy);">' + escapeHTML(title) + '</div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Submitted by ' + escapeHTML(o.name||fam) + '</div>'
-      + '<div style="font-size:11px;color:#6366f1;margin-top:4px;font-weight:600;">With: ' + escapeHTML(getPolicyPendingReviewerDisplay(fam)) + '</div></div>'
+      + (isReturnedToCiso
+          ? '<div style="font-size:11px;color:#b45309;margin-top:4px;font-weight:700;">Returned for reassignment by domain owner</div>'
+            + (returnNotes ? '<div style="font-size:11px;color:#9a3412;margin-top:4px;line-height:1.4;"><strong>Notes:</strong> ' + escapeHTML(returnNotes) + '</div>' : '')
+          : '<div style="font-size:11px;color:#6366f1;margin-top:4px;font-weight:600;">With: ' + escapeHTML(getPolicyPendingReviewerDisplay(fam)) + '</div>')
       + '</div>'
-      + '<button class="btn btn-secondary btn-sm" onclick="openCISOReview(\'' + fam + '\')">Review →</button>'
+      + '</div>'
+      + (isReturnedToCiso
+          ? '<button class="btn btn-secondary btn-sm" onclick="openReturnedPolicyReassignment(\'' + fam + '\')">Reassign →</button>'
+          : '<button class="btn btn-secondary btn-sm" onclick="openCISOReview(\'' + fam + '\')">Review →</button>')
       + '</div>';
   }).join('');
 
@@ -255,13 +414,17 @@ function renderProgramDashboard(controls, families) {
 
   return `
     <!-- ╔══ Phase 1 Complete banner ══╗ -->
+    ${state._reportsPhase1BannerHidden ? '' : `
     <div style="border:1px solid #86efac;border-radius:10px;background:linear-gradient(135deg,#f0fdf4,#e8fdf3);overflow:hidden;margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #86efac;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="background:#166534;color:white;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:0.6px;white-space:nowrap;">PHASE 1 · COMPLETE</span>
           <span style="font-size:13px;font-weight:700;color:#166534;">Establish Program Governance</span>
         </div>
-        <span style="font-size:11px;color:#166534;opacity:0.75;">✓ All steps complete</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:#166534;opacity:0.75;">✓ All steps complete</span>
+          <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="setReportsPhase1BannerHidden(true)">Hide</button>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;">
         <div style="width:22px;height:22px;border-radius:50%;background:#166534;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -272,9 +435,12 @@ function renderProgramDashboard(controls, families) {
           <div style="font-size:11px;color:#15803d;margin-top:3px;">Your governance program foundation is in place — ${baseline}${privSuffix} baseline · ${authCount}${pmSuffix} controls across ${policyFams.length} families · Cyber Program Owner: <strong>${escapeHTML(state.programOwner||'—')}</strong></div>
         </div>
       </div>
-    </div>
+    </div>`}
 
     ${deselectBaselineDash ? '<div class="callout-deselected-baseline" style="border:1px solid #f59e0b;background:#fffbeb;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:12px;color:#92400e;line-height:1.5;"><strong>Baseline scope note:</strong> ' + deselectBaselineDash + ' control(s) are formally <em>de-selected</em> from the active baseline. They remain in the catalog for audit traceability — open the Control Library and filter <strong>De-selected (baseline)</strong> to review them.</div>' : ''}
+
+    ${typeof renderBaselineElevationReportsSummaryHtml === 'function' ? renderBaselineElevationReportsSummaryHtml() : ''}
+    ${typeof renderBaselineElevationCisoCardsHtml === 'function' ? renderBaselineElevationCisoCardsHtml() : ''}
 
     <!-- ╔══ Executive Summary header ══╗ -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -402,35 +568,6 @@ function renderProgramDashboard(controls, families) {
       </button>
     </div>
 
-    <!-- ╔══ Action items (only when there's something to do) ══╗ -->
-    ${(function(){
-      var items = [];
-      if (polReturned) items.push({icon:'↩',color:'#ef4444',bg:'#fef2f2',border:'rgba(220,38,38,0.3)',label:polReturned+' polic'+(polReturned===1?'y':'ies')+' returned — needs reassignment',action:'showTab(\'policy\')'});
-      if (polInReview.length) {
-        var prNames = [];
-        polInReview.forEach(function(f) {
-          var w = getPolicyPendingReviewerDisplay(f);
-          if (w && prNames.indexOf(w) === -1) prNames.push(w);
-        });
-        var prWho = prNames.length ? ' — with ' + prNames.map(function(n) { return escapeHTML(n); }).join(', ') : '';
-        items.push({icon:'👁',color:'#6366f1',bg:'rgba(99,102,241,0.04)',border:'rgba(99,102,241,0.2)',label:polInReview.length+' polic'+(polInReview.length===1?'y':'ies')+' pending review' + prWho,action:'showTab(\'reports\')'});
-      }
-      var unowned = policyFams.filter(function(f){ var o=state.domainOwners[f]||{}; return !o.name||o.name===(DOMAIN_SUGGESTED_ROLES[f]||''); }).length;
-      if (unowned) items.push({icon:'👤',color:'#f59e0b',bg:'#fffbeb',border:'rgba(245,158,11,0.3)',label:unowned+' domain'+(unowned===1?'':'s')+' still need an owner assigned',action:'goToDomainOwnersFromDashboard()'});
-      if (!items.length) return '';
-      return '<div style="margin-bottom:24px;display:flex;flex-direction:column;gap:8px;">'
-        + items.map(function(it){
-          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid '+it.border+';border-radius:10px;background:'+it.bg+';">'
-            + '<div style="display:flex;align-items:center;gap:10px;">'
-            + '<span style="font-size:16px;">'+it.icon+'</span>'
-            + '<span style="font-size:13px;font-weight:600;color:'+it.color+';">'+it.label+'</span>'
-            + '</div>'
-            + '<button class="btn btn-sm" style="background:'+it.color+';color:white;border:none;white-space:nowrap;" onclick="'+it.action+'">View →</button>'
-            + '</div>';
-        }).join('')
-        + '</div>';
-    })()}
-
     <!-- ── Divider before detailed reporting ── -->
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
@@ -438,6 +575,31 @@ function renderProgramDashboard(controls, families) {
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>
   `;
+}
+
+function openReturnedPolicyReassignment(fam) {
+  var user = state.currentUserId ? (state.users || []).find(function(u){ return u.id === state.currentUserId; }) : null;
+  var canReassign = !user || user.role === 'ciso' || user.role === 'admin';
+  if (!canReassign) {
+    showToast('Switch to CISO/Admin mode to reassign returned policies.', true);
+    if (typeof showRolePicker === 'function') showRolePicker();
+    return;
+  }
+  var hintOwner = ((state.domainOwners || {})[fam] || {}).name || '';
+  var promptMsg = 'Reassign owner for ' + fam + ' policy' + (hintOwner ? ' (current: ' + hintOwner + ')' : '') + ':\nEnter full name';
+  var nextOwner = window.prompt(promptMsg, hintOwner);
+  if (nextOwner == null) return;
+  nextOwner = String(nextOwner || '').trim();
+  if (!nextOwner) {
+    showToast('Please enter a new owner name.', true);
+    return;
+  }
+  if (typeof reassignReturnedPolicyByName === 'function') {
+    var ok = reassignReturnedPolicyByName(fam, nextOwner);
+    if (ok) renderReports();
+    return;
+  }
+  showToast('Reassignment helper is unavailable. Open Program Setup Step 5 to reassign.', true);
 }
 
 function getScopedFamilies() {
@@ -462,6 +624,46 @@ function userSeesProgramExecutiveDashboard(user) {
 
 
 // ─── ASSET OWNER REPORTS VIEW ────────────────────────────────────────────────
+// Callout when reviewer returned an SSP/SPSP (signoff.aoReturnedAt + not Submitted/Approved).
+function renderAssetOwnerSspReturnedCallout(user, sspLabel) {
+  if (typeof signoffIsReturnedForRevision !== 'function') return '';
+  var myAssetIds = (user.assets || []).map(String);
+  var uname = (user.name || '').trim().toLowerCase();
+  var rows = [];
+  (state.assets || []).forEach(function(a) {
+    if (!myAssetIds.includes(String(a.id))) return;
+    var sig = (state.sspSignoffs || {})[a.id] || {};
+    if (!signoffIsReturnedForRevision(sig)) return;
+    rows.push({ name: a.name || 'Unnamed', isProcess: false, sidJson: JSON.stringify(String(a.id)), sig: sig });
+  });
+  (state.processes || []).forEach(function(p) {
+    var mine = myAssetIds.includes(String(p.id)) || (p.owner || '').trim().toLowerCase() === uname;
+    if (!mine) return;
+    var sig = (state.sspSignoffs || {})[p.id] || {};
+    if (!signoffIsReturnedForRevision(sig)) return;
+    rows.push({ name: p.name || 'Unnamed', isProcess: true, sidJson: JSON.stringify(String(p.id)), sig: sig });
+  });
+  if (!rows.length) return '';
+  var body = rows.map(function(r) {
+    var notes = String(r.sig.aoReturnNotes || '').trim();
+    var by = _esc(String(r.sig.aoReturnedBy || '').trim() || 'Reviewer');
+    var on = _esc(r.sig.aoReturnedAt || '');
+    var openFn = r.isProcess ? 'openProcessSspFromLibrary' : 'openAssetWizardFromLibrary';
+    return '<div style="border-bottom:1px solid rgba(0,0,0,0.06);padding:12px 0;">'
+      + '<div style="font-weight:700;color:var(--navy);">' + _esc(r.name) + ' <span style="font-size:11px;font-weight:600;color:#c2410c;text-transform:uppercase;">' + (r.isProcess ? 'Process' : 'Asset') + ' · returned</span></div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Returned by ' + by + (on ? ' · ' + on : '') + '</div>'
+      + '<div style="margin-top:8px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#78350f;line-height:1.45;"><strong>Reviewer notes</strong> — '
+      + (notes ? _esc(notes) : '<span style="font-style:italic;color:var(--text-muted);">None provided.</span>') + '</div>'
+      + '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;font-size:11px;" onclick=\'' + openFn + '(' + r.sidJson + ')\'>Open ' + _esc(sspLabel) + ' to revise →</button>'
+      + '</div>';
+  }).join('');
+  return '<div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:920px;">'
+    + '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">' + _esc(sspLabel) + ' returned for your revision</div>'
+    + '<div style="font-size:12px;color:#b45309;margin-bottom:12px;line-height:1.45;">Your reviewer sent these packages back. Address the notes, then sign and submit again from Step 4.</div>'
+    + body
+    + '</div>';
+}
+
 // Full replacement for the reports tab when logged in as an asset-owner.
 function renderAssetOwnerReport(user) {
   var myAssetIds = (user.assets || []).map(String);
@@ -477,14 +679,17 @@ function renderAssetOwnerReport(user) {
   var assetRows = myAssets.map(function(a) {
     var controls = getAssetSSPControls(a);
     var attests  = (state.sspAttestations || {})[a.id] || {};
-    var signoff  = (state.sspSignoffs    || {})[a.id]  || {};
+    var signRaw  = (state.sspSignoffs    || {})[a.id]  || {};
     var done     = controls.filter(function(c){ return attests[c.id] && attests[c.id].status; }).length;
     var pct      = controls.length ? Math.round(done / controls.length * 100) : 0;
-    var status   = signoff.status === 'Approved'  ? 'Approved'
-                 : signoff.status === 'Submitted' ? 'Submitted'
+    var isRet    = typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(signRaw);
+    var status   = signRaw.status === 'Approved'  ? 'Approved'
+                 : signRaw.status === 'Submitted' ? 'Submitted'
+                 : isRet ? 'Returned for revision'
                  : done > 0 ? 'In Progress' : 'Not Started';
     var col      = status === 'Approved'  ? 'var(--green)'
-                 : status === 'Submitted' ? 'var(--blue)'
+                 : signRaw.status === 'Submitted' ? 'var(--blue)'
+                 : isRet ? '#c2410c'
                  : status === 'In Progress' ? 'var(--amber)' : 'var(--slate)';
 
     totalControls += controls.length;
@@ -501,6 +706,8 @@ function renderAssetOwnerReport(user) {
   // ── Personal header card ──────────────────────────────────────────────────
   var roleMeta = ROLE_META['asset-owner'] || {};
   var html = '';
+
+  html += renderAssetOwnerSspReturnedCallout(user, sspLabel);
 
   html += '<div style="background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:1px solid #93c5fd;border-radius:12px;padding:20px;margin-bottom:20px;">'
     + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">'
@@ -580,14 +787,36 @@ function shouldShowISPApprovalCallout(user) {
 function renderISPApprovalCallout(user) {
   if (!shouldShowISPApprovalCallout(user)) return '';
   var p = (state.policyStatus || {}).ISP || {};
-  var title = (state.infoSecPolicy && state.infoSecPolicy.title) || 'Information Security Policy';
+  var title = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '') || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
   return '<div style="margin-bottom:20px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.06);border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">'
     + '<div><div style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:0.5px;">Action required</div>'
-    + '<div style="font-size:15px;font-weight:700;color:var(--navy);margin-top:4px;">Information Security Policy is awaiting your approval</div>'
+    + '<div style="font-size:15px;font-weight:700;color:var(--navy);margin-top:4px;">' + escapeHTML(title) + ' is awaiting your approval</div>'
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + escapeHTML(title)
     + (p.submittedAt ? ' · Routed for review on ' + escapeHTML(p.submittedAt) : '') + '</div></div>'
     + '<button type="button" class="btn btn-primary btn-sm" onclick="showTab(\'policy\');goToCISOPolicyEditor();">Review & approve →</button>'
     + '</div>';
+}
+
+function renderProgramReadinessPanelHtml() {
+  return '';
+}
+
+function setReportsProgramReadinessHidden(hidden) {
+  state._reportsProgramReadinessHidden = !!hidden;
+  markDirty();
+  renderReports();
+}
+
+function setReportsMySummaryHidden(hidden) {
+  state._reportsMySummaryHidden = !!hidden;
+  markDirty();
+  renderReports();
+}
+
+function setReportsPhase1BannerHidden(hidden) {
+  state._reportsPhase1BannerHidden = !!hidden;
+  markDirty();
+  renderReports();
 }
 
 function renderMyDashboard(controls, families) {
@@ -611,21 +840,29 @@ function renderMyDashboard(controls, families) {
     if (co.dueDate && co.dueDate < new Date().toISOString().slice(0,10)) overdue++;
   });
 
-  // Pending review count (for ISSM)
+  // Pending review count (ISSM/CISO: control queue; AO: SSP packages assigned to this reviewer)
   var pendingReview = 0;
-  if (user.role === 'issm' || user.role === 'ciso') {
+  if (user.role === 'ao') {
+    pendingReview = (state.controlReviewQueue||[]).filter(function(r) { return sspQueueRowMatchesAo(r, user); }).length;
+  } else if (user.role === 'issm' || user.role === 'ciso') {
     pendingReview = (state.controlReviewQueue||[]).filter(function(r) {
+      if (r.type === 'ssp') return false;
       if (user.role !== 'issm') return true;
       var fam = (r.controlId||'').replace(/-.*/, '');
       return (user.families||[]).includes(fam);
     }).length;
   }
 
+  if (state._reportsMySummaryHidden) return '';
+
   return '<div style="background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:1px solid #93c5fd;border-radius:12px;padding:20px;margin-bottom:20px;">'
-    + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px;">'
+    + '<div style="display:flex;align-items:center;gap:12px;">'
     + '<span style="font-size:24px;">' + (roleMeta.icon||'\uD83D\uDC64') + '</span>'
     + '<div><div style="font-size:16px;font-weight:800;color:#1e3a5f;">' + escapeHTML(user.name) + '</div>'
     + '<div style="font-size:12px;color:#2563eb;">' + escapeHTML(roleMeta.label||user.role) + (myFamilies.length ? ' \u2014 ' + myFamilies.join(', ') : '') + '</div></div></div>'
+    + '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="setReportsMySummaryHidden(true)">Hide</button>'
+    + '</div>'
     + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">'
     + '<div style="background:white;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#166534;">' + myPct + '%</div><div style="font-size:11px;color:var(--text-muted);">My Coverage</div></div>'
     + '<div style="background:white;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--navy);">' + myImpl + '<span style="font-size:13px;font-weight:400;color:var(--text-muted);">/' + myTotal + '</span></div><div style="font-size:11px;color:var(--text-muted);">Implemented</div></div>'
@@ -668,7 +905,8 @@ function approveISP() {
   }
   try { addAuditEntry('policy', 'ISP', 'ISP approved by ' + approverName); } catch(e) {}
   markDirty();
-  showToast('\u2705 Information Security Policy approved.');
+  var approvedTitle = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '') || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+  showToast('\u2705 ' + approvedTitle + ' approved.');
   goToCISOPolicyEditor();
 }
 
@@ -682,14 +920,197 @@ function returnISPToEditor() {
     returnedDate: new Date().toISOString().slice(0,10),
     notes: notes,
     submittedAt: prev.submittedAt || '',
-    submittedTo: prev.submittedTo || '',
-    submittedToRole: prev.submittedToRole || '',
-    submittedToEmail: prev.submittedToEmail || ''
+    // Always route returned ISP work back to the CISO/program owner editor queue.
+    submittedTo: (state.programOwner || '').trim() || prev.submittedTo || '',
+    submittedToRole: (state.programOwnerTitle || '').trim() || prev.submittedToRole || '',
+    submittedToEmail: (state.programOwnerEmail || '').trim() || prev.submittedToEmail || ''
   };
   try { addAuditEntry('policy', 'ISP', 'ISP returned with comments: ' + notes); } catch(e) {}
   markDirty();
   showToast('\u21A9 ISP returned to editor with comments.');
   goToCISOPolicyEditor();
+}
+
+function renderReturnedWorkCallout(user) {
+  var cards = [];
+  var ispStatus = ((state.policyStatus || {}).ISP || {}).status || '';
+  var isCisoViewer = !user || user.role === 'ciso' || (user && state.programOwner && String(user.name || '').trim().toLowerCase() === String(state.programOwner || '').trim().toLowerCase());
+  if (ispStatus === 'Returned' && isCisoViewer) {
+    cards.push(
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid rgba(220,38,38,0.25);border-radius:10px;padding:12px 14px;">'
+      + '<div><div style="font-size:13px;font-weight:700;color:#991b1b;">ISP returned for revision</div>'
+      + '<div style="font-size:12px;color:#7f1d1d;">' + escapeHTML((((state.infoSecPolicy || {}).title || '').trim()) || 'Information Security Policy') + ' is back in your queue.</div></div>'
+      + '<button class="btn btn-secondary btn-sm" onclick="showTab(\'ciso\');goToStep(\'ciso\',3);">Open ISP editor</button>'
+      + '</div>'
+    );
+  }
+
+  if (user && user.families && user.families.length && (user.role === 'issm' || user.role === 'custodian')) {
+    var returnedFams = user.families.filter(function(f) {
+      return ((state.policyStatus || {})[f] || {}).status === 'Returned';
+    });
+    if (returnedFams.length) {
+      cards.push(
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:12px 14px;">'
+        + '<div><div style="font-size:13px;font-weight:700;color:#92400e;">Domain policies returned</div>'
+        + '<div style="font-size:12px;color:#78350f;">' + returnedFams.length + ' assigned polic' + (returnedFams.length === 1 ? 'y is' : 'ies are') + ' waiting for your revision.</div></div>'
+        + '<button class="btn btn-secondary btn-sm" onclick="goToPoliciesHome()">Open domain policies</button>'
+        + '</div>'
+      );
+    }
+  }
+
+  if (user && user.role === 'control-owner') {
+    var evidenceReq = (state.controlReviewQueue || []).filter(function(r) {
+      if (!r || !r.controlId || r.status !== 'Evidence Requested') return false;
+      var owner = (state.controlOwners || {})[r.controlId] || {};
+      var nm = String(user.name || '').trim().toLowerCase();
+      return (String(r.submittedBy || '').trim().toLowerCase() === nm) || (String(owner.name || '').trim().toLowerCase() === nm);
+    });
+    if (evidenceReq.length) {
+      cards.push(
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid rgba(2,132,199,0.28);border-radius:10px;padding:12px 14px;">'
+        + '<div><div style="font-size:13px;font-weight:700;color:#0c4a6e;">Evidence requested on controls</div>'
+        + '<div style="font-size:12px;color:#155e75;">' + evidenceReq.length + ' control submission' + (evidenceReq.length === 1 ? '' : 's') + ' need updated evidence.</div></div>'
+        + '<button class="btn btn-secondary btn-sm" onclick="showTab(\'control\');goToStep(\'control\',4);">Open control submissions</button>'
+        + '</div>'
+      );
+    }
+  }
+
+  if (!cards.length) return '';
+  return '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:18px;">'
+    + '<div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">Action required</div>'
+    + cards.join('<div style="height:8px;"></div>')
+    + '</div>';
+}
+
+// ── AO: SSP / Process SSP approval queue (controlReviewQueue type 'ssp') ─────
+function sspQueueRowMatchesAo(r, user) {
+  if (!r || r.type !== 'ssp' || !user) return false;
+  var st = String(r.status || 'Pending');
+  if (st !== 'Pending' && st !== '') return false;
+  if (String(r.reviewerUserId || '') === String(user.id || '')) return true;
+  if (String(r.reviewerRole || '').toLowerCase() === 'ao' && (r.reviewerName || '').trim() && (user.name || '').trim()) {
+    if (String(r.reviewerName).trim().toLowerCase() === String(user.name).trim().toLowerCase()) return true;
+  }
+  return false;
+}
+
+function aoOpenQueuedSsp(scopeId, isProcess) {
+  // Read-only package view for reviewers (not the asset-owner editable wizard).
+  if (typeof openSspReadOnlyFromQueue === 'function') openSspReadOnlyFromQueue(scopeId, isProcess, 'reports');
+}
+
+function aoRemoveSspQueueRow(scopeId, isProcess) {
+  var sid = String(scopeId);
+  state.controlReviewQueue = (state.controlReviewQueue || []).filter(function(r) {
+    if (!r || r.type !== 'ssp') return true;
+    if (String(r.assetId) !== sid) return true;
+    if (!!r.isProcessSsp !== !!isProcess) return true;
+    return false;
+  });
+}
+
+function aoApproveQueuedSsp(scopeId, isProcess) {
+  var sid = String(scopeId);
+  var u = state.currentUserId ? (state.users || []).find(function(x) { return x.id === state.currentUserId; }) : null;
+  var label = isProcess ? 'Process SSP' : (state.privacyOverlay ? 'SPSP' : 'SSP');
+  if (!confirm('Approve this ' + label + ' for authorization?')) return;
+  if (!state.sspSignoffs) state.sspSignoffs = {};
+  var prev = state.sspSignoffs[sid] || {};
+  state.sspSignoffs[sid] = Object.assign({}, prev, {
+    status: 'Approved',
+    approvedBy: u ? u.name : 'AO',
+    approvedDate: new Date().toISOString().slice(0, 10)
+  });
+  aoRemoveSspQueueRow(sid, isProcess);
+  try {
+    addAuditEntry(isProcess ? 'process' : 'asset', sid, label + ' approved by AO (' + (u ? u.name : 'AO') + ')');
+  } catch (e) {}
+  markDirty();
+  if (typeof updateNotificationBadges === 'function') updateNotificationBadges();
+  showToast('\u2705 ' + label + ' approved.');
+  renderReports();
+}
+
+function aoReturnQueuedSsp(scopeId, isProcess) {
+  var sid = String(scopeId);
+  var label = isProcess ? 'Process SSP' : (state.privacyOverlay ? 'SPSP' : 'SSP');
+  var notes = '';
+  try {
+    notes = window.prompt('Optional notes to the owner (e.g. what to fix before resubmitting):', '') || '';
+  } catch (e) {}
+  var u = state.currentUserId ? (state.users || []).find(function(x) { return x.id === state.currentUserId; }) : null;
+  var returnedBy = u ? (u.name || '').trim() : '';
+  if (!state.sspSignoffs) state.sspSignoffs = {};
+  var prev = state.sspSignoffs[sid] || {};
+  var next = Object.assign({}, prev);
+  delete next.status;
+  delete next.signedBy;
+  delete next.signedDate;
+  next.aoReturnNotes = notes.trim();
+  next.aoReturnedAt = new Date().toISOString().slice(0, 10);
+  next.aoReturnedBy = returnedBy || (isProcess ? 'Process SSP reviewer' : 'SSP reviewer');
+  state.sspSignoffs[sid] = next;
+  aoRemoveSspQueueRow(sid, isProcess);
+  try {
+    addAuditEntry(isProcess ? 'process' : 'asset', sid, label + ' returned to owner by AO' + (notes.trim() ? ': ' + notes.trim() : ''));
+  } catch (e) {}
+  markDirty();
+  if (typeof updateNotificationBadges === 'function') updateNotificationBadges();
+  showToast(label + ' returned to the owner for revision.');
+  renderReports();
+}
+
+function renderAoSspApprovalQueueHtml(user) {
+  if (!user || user.role !== 'ao') return '';
+  var items = (state.controlReviewQueue || []).filter(function(r) { return sspQueueRowMatchesAo(r, user); });
+  var sspLabel = state.privacyOverlay ? 'SPSP' : 'SSP';
+  if (!items.length) {
+    return '<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #c4b5fd;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:920px;">'
+      + '<div style="font-size:13px;font-weight:800;color:#5b21b6;margin-bottom:6px;">ATO / ' + sspLabel + ' approval queue</div>'
+      + '<div style="font-size:12px;color:#6b21a8;line-height:1.55;">No packages are waiting on you as the designated reviewer. When an owner submits a ' + sspLabel + ' and selects you as reviewer, it appears here.</div></div>';
+  }
+  var rows = items.map(function(r) {
+    var isProc = !!r.isProcessSsp;
+    if (!isProc) {
+      var sid = String(r.assetId);
+      var hasAsset = (state.assets || []).some(function(a) { return String(a.id) === sid; });
+      var hasProc = (state.processes || []).some(function(p) { return String(p.id) === sid; });
+      if (hasProc && !hasAsset) isProc = true;
+    }
+    var sidJson = JSON.stringify(String(r.assetId));
+    var name = escapeHTML(r.assetName || 'Package');
+    var by = escapeHTML(r.submittedBy || '\u2014');
+    var dt = escapeHTML(r.date || '');
+    var rev = escapeHTML((r.reviewerName || '').trim() || '\u2014');
+    return '<tr style="border-bottom:1px solid rgba(0,0,0,0.06);">'
+      + '<td style="padding:10px 12px;font-size:12px;font-weight:700;color:#6d28d9;">' + (isProc ? 'Process' : 'Asset') + '</td>'
+      + '<td style="padding:10px 12px;font-size:13px;font-weight:700;color:var(--navy);">' + name + '</td>'
+      + '<td style="padding:10px 12px;font-size:12px;color:#475569;">' + by + '</td>'
+      + '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + dt + '</td>'
+      + '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + rev + '</td>'
+      + '<td style="padding:10px 12px;text-align:right;white-space:nowrap;">'
+      + '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;margin-right:6px;" onclick=\'aoOpenQueuedSsp(' + sidJson + ',' + (isProc ? 'true' : 'false') + ')\'>Open</button>'
+      + '<button type="button" class="btn btn-sm" style="font-size:11px;margin-right:6px;background:#16a34a;color:white;border:none;" onclick=\'aoApproveQueuedSsp(' + sidJson + ',' + (isProc ? 'true' : 'false') + ')\'>Approve</button>'
+      + '<button type="button" class="btn btn-sm" style="font-size:11px;background:#f59e0b;color:white;border:none;" onclick=\'aoReturnQueuedSsp(' + sidJson + ',' + (isProc ? 'true' : 'false') + ')\'>Return</button>'
+      + '</td></tr>';
+  }).join('');
+  return '<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #c4b5fd;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:100%;">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">'
+    + '<div><div style="font-size:14px;font-weight:800;color:#5b21b6;">ATO / ' + sspLabel + ' approval queue</div>'
+    + '<div style="font-size:12px;color:#6b21a8;margin-top:4px;line-height:1.45;">Packages submitted for your review as designated ' + sspLabel + ' reviewer.</div></div>'
+    + '<span style="font-size:12px;font-weight:700;background:white;border:1px solid #c4b5fd;border-radius:20px;padding:4px 12px;color:#5b21b6;">' + items.length + ' pending</span></div>'
+    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;border:1px solid #e9d5ff;">'
+    + '<thead><tr style="background:#f5f3ff;">'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Type</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">System / process</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Signed by</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Submitted</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Reviewer</th>'
+    + '<th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;color:#6b21b6;">Actions</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
 // ── Approver-role dashboard ────────────────────────────────────────────────
@@ -721,13 +1142,13 @@ function renderApproverDashboard(user) {
     html += '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:32px;text-align:center;">'
       + '<div style="font-size:32px;margin-bottom:12px;">\uD83D\uDCCB</div>'
       + '<div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;">No policy awaiting approval</div>'
-      + '<div style="font-size:13px;color:var(--text-muted);">The CISO has not yet submitted the Information Security Policy for review.</div>'
+      + '<div style="font-size:13px;color:var(--text-muted);">The CISO has not yet submitted the ' + escapeHTML((typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy')) + ' for review.</div>'
       + '</div>';
   } else {
     html += '<div style="background:white;border:1px solid ' + (ispSt==='Under Review'?'rgba(99,102,241,0.3)':'var(--border)') + ';border-radius:10px;padding:20px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
       + '<div><span style="font-family:monospace;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:4px;margin-right:8px;">ISP</span>'
-      + '<span style="font-size:15px;font-weight:700;color:var(--navy);">' + escapeHTML(isp.title||'Information Security Policy') + '</span></div>'
+      + '<span style="font-size:15px;font-weight:700;color:var(--navy);">' + escapeHTML((isp.title || '').trim() || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy')) + '</span></div>'
       + stChip
       + '</div>';
 
@@ -735,7 +1156,7 @@ function renderApproverDashboard(user) {
       html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Submitted by ' + escapeHTML(state.programOwner||'CISO') + (rc.submittedDate ? ' on ' + rc.submittedDate : '') + '</div>';
     }
 
-    html += '<button class="btn btn-secondary btn-sm" style="margin-bottom:16px;" onclick="goToCISOPolicyEditor()">📋 View Full Policy →</button>';
+    html += '<button class="btn btn-secondary btn-sm" style="margin-bottom:16px;" onclick="showTab(\'policy\');goToCISOPolicyEditor();">📋 View Full Policy →</button>';
 
     if (ispSt === 'Under Review') {
       html += '<div style="border-top:1px solid var(--border);padding-top:16px;">'
@@ -767,6 +1188,8 @@ function renderReports() {
 
   // Always use scoped data for non-admin roles — no toggle needed
   var user = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
+  var printBtn = document.getElementById('reportsPrintBtn');
+  if (printBtn) printBtn.style.display = (user && user.role === 'approver') ? 'none' : '';
   var isScoped = !!user && user.role !== 'admin';
   var showMyView = isScoped; // always scoped for non-admin, always full for admin
 
@@ -831,8 +1254,24 @@ function renderReports() {
   }
 
   var showProgramExecDashboard = !user || userSeesProgramExecutiveDashboard(user);
+  var readinessRestore = state._reportsProgramReadinessHidden
+    ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsProgramReadinessHidden(false)">Show Program Readiness</button></div>'
+    : '';
+  var mySummaryRestore = state._reportsMySummaryHidden
+    ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsMySummaryHidden(false)">Show My Summary</button></div>'
+    : '';
+  var phase1Restore = state._reportsPhase1BannerHidden
+    ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsPhase1BannerHidden(false)">Show Phase 1 Banner</button></div>'
+    : '';
   body.innerHTML = `
     ${postSetupCallout}
+    ${readinessRestore}
+    ${mySummaryRestore}
+    ${phase1Restore}
+    ${renderProgramReadinessPanelHtml()}
+    ${typeof renderAuthorizationStatusPanelHtml === 'function' ? renderAuthorizationStatusPanelHtml() : ''}
+    ${renderReturnedWorkCallout(user)}
+    ${user && user.role === 'ao' ? renderAoSspApprovalQueueHtml(user) : ''}
     ${isScoped && showMyView ? renderMyDashboard(controls, families) : ''}
     ${renderISPApprovalCallout(user)}
     ${showProgramExecDashboard ? renderProgramDashboard(controls, families) : ''}
@@ -1123,7 +1562,9 @@ function renderReviewQueuePanel() {
   var existing = document.getElementById('reviewQueuePanel');
   if (existing) existing.remove();
 
-  var queue = (state.controlReviewQueue || []);
+  var queue = (state.controlReviewQueue || []).filter(function(r) {
+    return r.type !== 'baseline-elevation' && r.type !== 'ssp';
+  });
   // Scope queue to current user's families if ISSM
   var user = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
   if (user && user.role === 'issm' && user.families && user.families.length) {
@@ -1145,23 +1586,34 @@ function renderReviewQueuePanel() {
     var cs = (state.controlStatus||{})[r.controlId] || {};
     var owner = (state.controlOwners||{})[r.controlId] || {};
     var submitted = r.submittedAt ? new Date(r.submittedAt).toLocaleDateString() : '';
-    var statusColor = cs.status === 'Implemented' ? '#16a34a' : cs.status === 'In Progress' ? '#f59e0b' : '#6b7280';
+    var rowNotes = String(r.notes || '').trim();
+    var queueStatus = String(r.status || '').trim();
+    var isReturnForReassignment = queueStatus === 'Returned to Policy Owner' || r.type === 'control-return' || !!cs.returnedToPolicyOwner;
+    var statusLabel = isReturnForReassignment ? 'Returned for reassignment' : (queueStatus || cs.status || 'Unknown');
+    var statusColor = isReturnForReassignment
+      ? '#b45309'
+      : (statusLabel === 'Implemented' ? '#16a34a' : statusLabel === 'In Progress' ? '#f59e0b' : '#6b7280');
+    var actionHtml = isReturnForReassignment
+      ? '<button class="btn btn-sm" style="background:#2563eb;color:white;border:none;font-size:11px;padding:3px 8px;margin-right:4px;" onclick="openControlReassignmentFromQueue(\'' + r.controlId + '\')">Review / Reassign</button>'
+        + '<button class="btn btn-sm" style="background:white;color:#334155;border:1px solid var(--border);font-size:11px;padding:3px 8px;" onclick="reviewQueueAction(\'' + r.controlId + '\',\'resolve-return\')">Mark Reviewed</button>'
+      : '<button class="btn btn-sm" style="background:#16a34a;color:white;border:none;font-size:11px;padding:3px 8px;margin-right:4px;" onclick="reviewQueueAction(\'' + r.controlId + '\',\'approve\')">Approve</button>'
+        + '<button class="btn btn-sm" style="background:#f59e0b;color:white;border:none;font-size:11px;padding:3px 8px;" onclick="reviewQueueAction(\'' + r.controlId + '\',\'return\')">Request Evidence</button>';
     return '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);">'
       + '<td style="padding:8px 10px;font-family:monospace;font-weight:700;font-size:12px;">' + escapeHTML(r.controlId) + '</td>'
       + '<td style="padding:8px 10px;font-size:12px;">' + escapeHTML(ctrl ? ctrl.n : '') + '</td>'
-      + '<td style="padding:8px 10px;font-size:12px;">' + escapeHTML(r.submittedBy || owner.name || '') + '</td>'
-      + '<td style="padding:8px 10px;font-size:12px;color:' + statusColor + ';font-weight:600;">' + escapeHTML(cs.status || 'Unknown') + '</td>'
+      + '<td style="padding:8px 10px;font-size:12px;">'
+      + escapeHTML(r.submittedBy || owner.name || '')
+      + (rowNotes ? '<div style="font-size:11px;color:#475569;margin-top:3px;line-height:1.35;"><strong>Notes:</strong> ' + escapeHTML(rowNotes) + '</div>' : '')
+      + '</td>'
+      + '<td style="padding:8px 10px;font-size:12px;color:' + statusColor + ';font-weight:600;">' + escapeHTML(statusLabel) + '</td>'
       + '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">' + submitted + '</td>'
-      + '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">'
-      + '<button class="btn btn-sm" style="background:#16a34a;color:white;border:none;font-size:11px;padding:3px 8px;margin-right:4px;" onclick="reviewQueueAction(\'' + r.controlId + '\',\'approve\')">Approve</button>'
-      + '<button class="btn btn-sm" style="background:#f59e0b;color:white;border:none;font-size:11px;padding:3px 8px;" onclick="reviewQueueAction(\'' + r.controlId + '\',\'return\')">Request Evidence</button>'
-      + '</td></tr>';
+      + '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">' + actionHtml + '</td></tr>';
   }).join('');
 
   panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
     + '<div style="display:flex;align-items:center;gap:10px;">'
     + '<span style="font-size:18px;">\uD83D\uDCCB</span>'
-    + '<div><div style="font-weight:700;font-size:14px;color:var(--navy);">Attestation Review Queue</div>'
+    + '<div><div style="font-weight:700;font-size:14px;color:var(--navy);">Control Review Queue</div>'
     + '<div style="font-size:12px;color:var(--text-muted);">' + queue.length + ' control' + (queue.length===1?'':'s') + ' awaiting your review</div></div></div>'
     + '<button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="approveAllReviewQueue()">Approve All</button>'
     + '</div>'
@@ -1191,16 +1643,47 @@ function reviewQueueAction(controlId, action) {
     if (item) item.status = 'Evidence Requested';
     addAuditEntry('control', controlId, 'Additional evidence requested');
     showToast('\u26A0\uFE0F Evidence request sent for ' + controlId);
+  } else if (action === 'resolve-return') {
+    state.controlReviewQueue = (state.controlReviewQueue||[]).filter(function(r) {
+      return !(r && r.controlId === controlId && (r.type === 'control-return' || r.status === 'Returned to Policy Owner'));
+    });
+    addAuditEntry('control', controlId, 'Returned-control reassignment request reviewed');
+    showToast('\u2705 Return request reviewed for ' + controlId);
   }
+  markDirty();
   renderReviewQueuePanel();
+}
+
+function openControlReassignmentFromQueue(controlId) {
+  var fam = String(controlId || '').split('-')[0] || '';
+  showTab('policy');
+  if (typeof enterPolicyWizard === 'function' && fam) {
+    enterPolicyWizard(fam);
+    goToStep('policy', 4);
+    setTimeout(function() {
+      var q = document.getElementById('ctrlOwnerSearch');
+      if (q) q.value = controlId;
+      if (typeof filterCtrlOwnerTable === 'function') filterCtrlOwnerTable();
+    }, 0);
+  } else if (typeof goToPoliciesHome === 'function') {
+    goToPoliciesHome();
+  }
 }
 
 function approveAllReviewQueue() {
   var queue = state.controlReviewQueue || [];
-  if (!queue.length) return;
-  if (!confirm('Approve all ' + queue.length + ' pending attestations?')) return;
-  queue.forEach(function(r) { addAuditEntry('control', r.controlId, 'Attestation approved (bulk)'); });
-  state.controlReviewQueue = [];
+  var attestationOnly = queue.filter(function(r) {
+    return r.type !== 'baseline-elevation' && r.controlId;
+  });
+  if (!attestationOnly.length) return;
+  if (!confirm('Approve all ' + attestationOnly.length + ' pending attestations?')) return;
+  attestationOnly.forEach(function(r) {
+    addAuditEntry('control', r.controlId, 'Attestation approved (bulk)');
+  });
+  state.controlReviewQueue = queue.filter(function(r) {
+    return attestationOnly.indexOf(r) === -1;
+  });
+  markDirty();
   showToast('\u2705 All attestations approved');
   renderReviewQueuePanel();
 }

@@ -2,27 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>
+  /* GitHub Pages project URLs are /repo/; without a trailing slash, relative css/js resolve to the wrong path. */
+  (function () {
+    try {
+      var p = String(location.pathname || '/');
+      if (/\/index\.html?$/i.test(p)) {
+        p = p.replace(/\/index\.html?$/i, '/');
+      } else if (p !== '/' && !p.endsWith('/')) {
+        p += '/';
+      }
+      var b = document.createElement('base');
+      b.href = p;
+      document.head.insertBefore(b, document.head.firstChild);
+    } catch (e) {}
+  })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Larsen Cyber GRC Wizard — NIST SP 800-53 Rev. 5 program management">
-  <title>Larsen Cyber GRC Wizard</title>
+  <meta name="description" content="EightFiftyThree GRC — NIST SP 800-53 Rev. 5 program management">
+  <title>EightFiftyThree GRC</title>
 
     <link rel="stylesheet" href="css/app.css">
 
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" role="navigation" aria-label="Primary">
   <div class="sidebar-logo">
-    <div class="brand">LARSEN</div>
-    <div class="app-name">GRC Program Manager</div>
-    <div class="app-sub">NIST 800-53 Rev. 5</div>
+    <div class="brand">EightFiftyThree</div>
+    <div class="app-name">GRC</div>
+    <div class="app-sub">Cyber GRC</div>
   </div>
 
-  <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.1);">
-    <button type="button" id="profileBtn" onclick="showRolePicker()" title="Sign in as a registered user or stay in admin mode"
-      style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:white;font-size:13px;font-weight:600;cursor:pointer;">
-      🔑 Admin
+  <div class="profile-btn-wrap">
+    <button type="button" id="profileBtn" onclick="showRolePicker()" title="Switch role or impersonate another user profile" aria-label="Switch role or impersonate another user profile" class="profile-btn">
+      <span class="profile-btn-line">
+        <span>🔑</span>
+        <span>Admin mode</span>
+      </span>
+      <span class="profile-btn-sub">Switch role / impersonate</span>
     </button>
   </div>
 
@@ -43,9 +64,6 @@
     </div>
     <div class="sidebar-item" onclick="goToAssetWorkspace()" id="nav-asset">
       <span class="icon">🖥️</span> Assets &amp; SSP
-    </div>
-    <div class="sidebar-item" onclick="showTab('tester')" id="nav-tester">
-      <span class="icon">🔍</span> Control testing
     </div>
   </div>
 
@@ -82,38 +100,26 @@
   <div class="sidebar-section" style="margin-top:auto; border-bottom:none; padding:16px;">
     <div style="color:rgba(255,255,255,0.3); font-size:11px; line-height:1.6;">
       NIST SP 800-53 Rev. 5<br>
-      © Larsen Cyber GRC Wizard
+      © EightFiftyThree GRC
     </div>
   </div>
 </nav>
 
 <!-- Save / export / import (left of reset) — survives refresh via localStorage + file backup -->
-<div id="app-persist-toolbar" style="position:fixed; top:14px; right:200px; z-index:1100; display:flex; align-items:center; gap:8px; flex-wrap:wrap; max-width:calc(100vw - 280px); justify-content:flex-end;">
-  <span id="saveIndicator" style="font-size:11px; font-weight:600; color:var(--text-muted); padding:4px 10px; background:white; border:1px solid #e2e8f0; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">✓ Saved</span>
-  <button type="button" class="btn btn-secondary" onclick="saveToStorage()" title="Write current program to this browser (auto-saves after edits)" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">💾 Save now</button>
-  <button type="button" class="btn btn-secondary" onclick="exportProgramJson()" title="Download all program data as JSON" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">⬇ Export</button>
-  <button type="button" class="btn btn-secondary" onclick="document.getElementById('importProgramInput').click()" title="Restore from a previously exported JSON file" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">⬆ Import</button>
-  <input type="file" id="importProgramInput" accept="application/json,.json" style="display:none;" onchange="importProgramFromFile(event)">
-  <button type="button" class="btn btn-secondary" onclick="renderSnapshotsModal()" title="Save, load, or restore demo program snapshots" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">📸 Snapshots</button>
+<div id="app-persist-toolbar" role="toolbar" aria-label="Program persistence">
+  <span id="saveIndicator" role="status" aria-live="polite">✓ Saved</span>
+  <button type="button" class="btn btn-secondary persist-btn" onclick="saveToStorage()" title="Write current program to this browser (auto-saves after edits)" aria-label="Save program to this browser">💾 Save now</button>
+  <button type="button" class="btn btn-secondary persist-btn" onclick="exportProgramJson()" title="Download all program data as JSON" aria-label="Export program as JSON">⬇ Export</button>
+  <button type="button" class="btn btn-secondary persist-btn" onclick="document.getElementById('importProgramInput').click()" title="Restore from a previously exported JSON file" aria-label="Import program JSON file">⬆ Import</button>
+  <input type="file" id="importProgramInput" accept="application/json,.json" style="display:none;" onchange="importProgramFromFile(event)" aria-hidden="true">
+  <button type="button" class="btn btn-secondary persist-btn" onclick="renderSnapshotsModal()" title="Save, load, or restore demo program snapshots" aria-label="Open snapshots modal">📸 Snapshots</button>
 </div>
 
 <!-- RESET BUTTON (top-right corner) -->
-<button id="resetBtn" onclick="confirmReset()"
-  title="Reset all programme data"
-  style="position:fixed; top:14px; right:20px; z-index:1100;
-    display:flex; align-items:center; gap:6px;
-    background:white; color:#64748b;
-    border:1px solid #e2e8f0; border-radius:20px;
-    padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer;
-    transition:all 0.2s; letter-spacing:0.3px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.08);"
-  onmouseenter="this.style.background='#fef2f2'; this.style.color='#dc2626'; this.style.borderColor='#fca5a5';"
-  onmouseleave="this.style.background='white'; this.style.color='#64748b'; this.style.borderColor='#e2e8f0';">
-  ↺ Reset
-</button>
+<button id="resetBtn" type="button" onclick="confirmReset()" title="Reset all program data" aria-label="Reset all program data">↺ Reset</button>
 
 <!-- MAIN CONTENT -->
-<main class="main">
+<main class="main" id="main-content" role="main" aria-label="Main content">
 
   <!-- ============================================================ -->
   <!-- CISO TAB -->
@@ -407,12 +413,12 @@
     <div id="asset-workspace-panel">
       <div class="page-header">
         <div class="role-badge">🖥️ Asset Owner / Control Performer</div>
-        <h1>Asset Inventory &amp; Control Performance</h1>
-        <p>Register assets, map applicable controls, and attest to control performance.</p>
+        <h1>System Security Plan (SSP) — Asset Owner</h1>
+        <p>Register systems, document categorization, boundary, interconnections, and control attestations for a defensible SSP.</p>
       </div>
       <div class="wizard-container">
         <div class="step-nav">
-          <div class="step-nav-title">Asset Workflow</div>
+          <div class="step-nav-title">SSP Workflow</div>
           <div class="step-item active" onclick="goToStep('asset',1)" id="asset-step-item-1">
             <div class="step-circle active" id="asset-circle-1">1</div>
             <div class="step-info"><div class="step-num">Step 1</div><div class="step-name">Asset Inventory</div></div>
@@ -420,12 +426,17 @@
           <div class="step-connector" id="asset-conn-1"></div>
           <div class="step-item" onclick="goToStep('asset',2)" id="asset-step-item-2">
             <div class="step-circle pending" id="asset-circle-2">2</div>
-            <div class="step-info"><div class="step-num">Step 2</div><div class="step-name">Control Mapping</div></div>
+            <div class="step-info"><div class="step-num">Step 2</div><div class="step-name">Attestations</div></div>
           </div>
           <div class="step-connector" id="asset-conn-2"></div>
           <div class="step-item" onclick="goToStep('asset',3)" id="asset-step-item-3">
             <div class="step-circle pending" id="asset-circle-3">3</div>
-            <div class="step-info"><div class="step-num">Step 3</div><div class="step-name">Attestation</div></div>
+            <div class="step-info"><div class="step-num">Step 3</div><div class="step-name">Interconnections</div></div>
+          </div>
+          <div class="step-connector" id="asset-conn-3"></div>
+          <div class="step-item" onclick="goToStep('asset',4)" id="asset-step-item-4">
+            <div class="step-circle pending" id="asset-circle-4">4</div>
+            <div class="step-info"><div class="step-num">Step 4</div><div class="step-name">Review &amp; Sign-Off</div></div>
           </div>
         </div>
         <div class="wizard-content">
@@ -433,21 +444,31 @@
             <div class="wizard-step-body" id="asset-step-1-body"></div>
             <div class="wizard-step-footer">
               <span></span>
-              <button class="btn btn-primary" onclick="goToStep('asset',2)">Control Mapping →</button>
+              <button class="btn btn-primary" onclick="goToStep('asset',2)">Attestations →</button>
             </div>
           </div>
           <div class="wizard-step" id="asset-step-2">
             <div class="wizard-step-body" id="asset-step-2-body"></div>
             <div class="wizard-step-footer">
+              <span id="asset-step-2-count" style="font-size:12px;color:var(--text-muted);align-self:center;"></span>
+              <div style="display:flex;gap:8px;align-items:center;">
               <button class="btn btn-secondary" onclick="goToStep('asset',1)">← Back</button>
-              <button class="btn btn-primary" onclick="goToStep('asset',3)">Attest →</button>
+              <button class="btn btn-primary" onclick="goToStep('asset',3)">Interconnections →</button>
+              </div>
             </div>
           </div>
           <div class="wizard-step" id="asset-step-3">
             <div class="wizard-step-body" id="asset-step-3-body"></div>
             <div class="wizard-step-footer">
               <button class="btn btn-secondary" onclick="goToStep('asset',2)">← Back</button>
-              <button class="btn btn-navy" id="asset-submit-btn" onclick="submitSSP()">✓ Submit Attestation</button>
+              <button class="btn btn-primary" onclick="goToStep('asset',4)">Review &amp; Sign-Off →</button>
+            </div>
+          </div>
+          <div class="wizard-step" id="asset-step-4">
+            <div class="wizard-step-body" id="asset-step-4-body"></div>
+            <div class="wizard-step-footer">
+              <button class="btn btn-secondary" onclick="goToStep('asset',3)">← Back</button>
+              <button class="btn btn-navy" id="asset-submit-btn" onclick="submitSSP()">✓ Sign &amp; Submit SSP</button>
             </div>
           </div>
         </div>
@@ -458,67 +479,10 @@
   <!-- ============================================================ -->
   <!-- CONTROL TESTER TAB -->
   <!-- ============================================================ -->
-  <div class="tab-panel" id="tab-tester">
-    <div class="page-header">
-      <div class="role-badge">🔍 Control Tester</div>
-      <h1>Control Testing</h1>
-      <p>Plan and execute control tests, record results, and document findings.</p>
-    </div>
-    <div class="wizard-container">
-      <div class="step-nav">
-        <div class="step-nav-title">Testing Workflow</div>
-        <div class="step-item active" onclick="goToStep('tester',1)" id="tester-step-item-1">
-          <div class="step-circle active" id="tester-circle-1">1</div>
-          <div class="step-info"><div class="step-num">Step 1</div><div class="step-name">Testing Scope</div></div>
-        </div>
-        <div class="step-connector" id="tester-conn-1"></div>
-        <div class="step-item" onclick="goToStep('tester',2)" id="tester-step-item-2">
-          <div class="step-circle pending" id="tester-circle-2">2</div>
-          <div class="step-info"><div class="step-num">Step 2</div><div class="step-name">Test Procedures</div></div>
-        </div>
-        <div class="step-connector" id="tester-conn-2"></div>
-        <div class="step-item" onclick="goToStep('tester',3)" id="tester-step-item-3">
-          <div class="step-circle pending" id="tester-circle-3">3</div>
-          <div class="step-info"><div class="step-num">Step 3</div><div class="step-name">Test Results</div></div>
-        </div>
-        <div class="step-connector" id="tester-conn-3"></div>
-        <div class="step-item" onclick="goToStep('tester',4)" id="tester-step-item-4">
-          <div class="step-circle pending" id="tester-circle-4">4</div>
-          <div class="step-info"><div class="step-num">Step 4</div><div class="step-name">Findings</div></div>
-        </div>
-      </div>
-      <div class="wizard-content">
-        <div class="wizard-step active" id="tester-step-1">
-          <div class="wizard-step-body" id="tester-step-1-body"></div>
-          <div class="wizard-step-footer">
-            <span></span>
-            <button class="btn btn-primary" onclick="goToStep('tester',2)">View Procedures →</button>
-          </div>
-        </div>
-        <div class="wizard-step" id="tester-step-2">
-          <div class="wizard-step-body" id="tester-step-2-body"></div>
-          <div class="wizard-step-footer">
-            <button class="btn btn-secondary" onclick="goToStep('tester',1)">← Back</button>
-            <button class="btn btn-primary" onclick="goToStep('tester',3)">Record Results →</button>
-          </div>
-        </div>
-        <div class="wizard-step" id="tester-step-3">
-          <div class="wizard-step-body" id="tester-step-3-body"></div>
-          <div class="wizard-step-footer">
-            <button class="btn btn-secondary" onclick="goToStep('tester',2)">← Back</button>
-            <button class="btn btn-primary" onclick="saveTestResults()">Save &amp; View Findings →</button>
-          </div>
-        </div>
-        <div class="wizard-step" id="tester-step-4">
-          <div class="wizard-step-body" id="tester-step-4-body"></div>
-          <div class="wizard-step-footer">
-            <button class="btn btn-secondary" onclick="goToStep('tester',3)">← Back</button>
-            <button class="btn btn-navy" onclick="finalizeTestReport()">✓ Finalize Test Report</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Control Assessment + Authorization workspaces removed (2026-04-27).
+       Authorization data (state.authBoundaries, state.assessmentPlans,
+       state.atoDecisions) is preserved; AOs can still record decisions via
+       openAtoDecisionModal() launched from the Reports dashboard. -->
 
   <!-- ============================================================ -->
   <!-- REPORTS TAB -->
@@ -530,7 +494,7 @@
         <h1>Program Status Dashboard</h1>
         <p>Overview of your NIST 800-53 program posture, policy status, and control coverage.</p>
       </div>
-      <button class="btn btn-navy" onclick="printReport()" style="margin-top:8px;">🖨️ Print Report</button>
+      <button id="reportsPrintBtn" class="btn btn-navy" onclick="printReport()" style="margin-top:8px;">🖨️ Print Report</button>
     </div>
     <div style="padding:24px 32px;" id="reports-body"></div>
   </div>
@@ -550,20 +514,20 @@
 </main>
 
 <!-- ROLE PICKER OVERLAY -->
-<div id="rolePickerOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,0.72);z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;">
-  <div style="width:min(980px,94vw);max-height:90vh;overflow:auto;background:linear-gradient(180deg,#1e293b,#0f172a);border:1px solid rgba(148,163,184,0.28);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,0.45);padding:22px 22px 18px;">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;">
+<div id="rolePickerOverlay" role="dialog" aria-modal="true" aria-labelledby="rolePickerTitle">
+  <div class="role-picker-card">
+    <div class="role-picker-header">
       <div>
-        <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,0.92);">Select Profile</div>
-        <div style="font-size:22px;font-weight:800;color:white;line-height:1.2;margin-top:2px;">Who are you working as?</div>
-        <div id="rolePickerSubtitle" style="font-size:13px;color:rgba(226,232,240,0.75);margin-top:6px;">Choose a profile to enter the right workspace.</div>
+        <div class="role-picker-eyebrow">Select Profile</div>
+        <div class="role-picker-title" id="rolePickerTitle">Who are you working as?</div>
+        <div id="rolePickerSubtitle" class="role-picker-subtitle">Choose a profile to enter the right workspace.</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="selectUserProfile('admin')" style="white-space:nowrap;">🔑 Admin mode</button>
+      <div class="role-picker-actions">
+        <button type="button" class="btn btn-secondary btn-sm role-picker-action-btn" onclick="selectUserProfile('admin')">🔑 Admin mode</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('rolePickerOverlay').style.display='none'">Close</button>
       </div>
     </div>
-    <div id="rolePickerProfiles" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;"></div>
+    <div id="rolePickerProfiles" class="role-picker-profiles"></div>
   </div>
 </div>
 
@@ -573,7 +537,8 @@
 <script src="js/policies.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/assets.js"></script>
-<script src="js/testing.js"></script>
+<script src="js/baseline-elevation.js"></script>
+<script src="js/authorization.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/app.js"></script>

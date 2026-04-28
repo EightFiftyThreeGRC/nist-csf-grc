@@ -559,7 +559,7 @@ function resetApp() {
 // Tab IDs, showTab, role-view routing, CISO wizard shell
 // (step dispatch, toast, cisoFinish, sidebar badges).
 // ============================================================
-const TAB_IDS = ['ciso','policy','control','asset','tester','reports','users'];
+const TAB_IDS = ['ciso','policy','control','asset','reports','users'];
 
 
 function showProgramOverviewTab() {
@@ -568,6 +568,18 @@ function showProgramOverviewTab() {
     return;
   }
   showTab('reports');
+}
+
+/** Tab IDs for a role slug (built-in ROLE_TABS or custom program role tabsTemplate). */
+function getRoleTabs(role) {
+  if (!role) return ['reports'];
+  if (typeof ROLE_TABS !== 'undefined' && ROLE_TABS[role]) return ROLE_TABS[role].slice();
+  var custom = (state.customProgramRoles || []).find(function(x) { return x && x.slug === role; });
+  if (custom) {
+    if (String(custom.tabsTemplate || 'assessor') === 'reports-only') return ['reports'];
+    return (typeof ROLE_TABS !== 'undefined' && ROLE_TABS.assessor) ? ROLE_TABS.assessor.slice() : ['reports'];
+  }
+  return ['reports'];
 }
 
 /** Merged nav tab IDs for a logged-in person (all records with same name). Omits CISO setup tab after program setup is complete. */
@@ -581,7 +593,7 @@ function getPersonVisibleTabIds(user) {
   allRecords.forEach(function(rec) {
     var recRoles = (rec.roles && rec.roles.length) ? rec.roles : [rec.role];
     recRoles.forEach(function(r) {
-      var tabs = ROLE_TABS[r] || ['reports'];
+      var tabs = getRoleTabs(r);
       tabs.forEach(function(t) {
         if (visible.indexOf(t) === -1) visible.push(t);
       });
@@ -590,7 +602,7 @@ function getPersonVisibleTabIds(user) {
   if (!visible.length) {
     var roles = (user.roles && user.roles.length) ? user.roles : [user.role];
     roles.forEach(function(r) {
-      var tabs = ROLE_TABS[r] || ['reports'];
+      var tabs = getRoleTabs(r);
       tabs.forEach(function(t) {
         if (visible.indexOf(t) === -1) visible.push(t);
       });
@@ -598,6 +610,16 @@ function getPersonVisibleTabIds(user) {
   }
   if (state.cisoComplete) {
     visible = visible.filter(function(t) { return t !== 'ciso'; });
+  }
+  // If this person is assigned as a control owner for any control, they need the
+  // control implementation workspace — regardless of their primary role (e.g. CISO
+  // who also owns PM controls).
+  if (visible.indexOf('control') === -1) {
+    var userNameKey = (user.name || '').trim().toLowerCase();
+    var isControlOwner = Object.values(state.controlOwners || {}).some(function(co) {
+      return co && (co.name || '').trim().toLowerCase() === userNameKey;
+    });
+    if (isControlOwner) visible.push('control');
   }
   return visible.length ? visible : ['reports'];
 }
@@ -623,12 +645,19 @@ function goToDomainOwnersFromDashboard() {
 }
 
 function showTab(tabId) {
+  if (tabId !== 'asset' && state._sspReviewerReadOnly) {
+    state._sspReviewerReadOnly = false;
+    state._sspReadOnlyExitTab = null;
+    state._selectedAssetId = null;
+    state._selectedProcessId = null;
+    if (typeof _restoreAssetWizardLayoutAfterReadOnly === 'function') _restoreAssetWizardLayoutAfterReadOnly();
+  }
   if (state.currentUserId && state.users) {
     var cu = state.users.find(function(u) { return u.id === state.currentUserId; });
     if (cu) {
       var vis = getPersonVisibleTabIds(cu);
       var allowLibraryTab =
-        (tabId === 'policy' && state._policyLibraryMode) ||
+        (tabId === 'policy' && (state._policyLibraryMode || state._policyDocView || !!state._policyDomain)) ||
         (tabId === 'control' && state._controlLibraryMode) ||
         (tabId === 'asset' && (state._assetTypeLibraryMode || state._assetLibraryMode));
       if (vis.length && vis.indexOf(tabId) === -1 && !allowLibraryTab) {
@@ -654,7 +683,6 @@ function showTab(tabId) {
   if (tabId === 'policy')   renderPolicyTab();
   if (tabId === 'control')  renderControlTab();
   if (tabId === 'asset')    renderAssetTab();
-  if (tabId === 'tester')     renderTesterTab();
   if (tabId === 'reports')    renderReports();
   if (tabId === 'users')    renderUsersTab();
   updateNotificationBadges();
@@ -682,13 +710,14 @@ function enhanceKeyboardAccessibility() {
 
 
 
-const currentStep = { ciso:1, policy:1, control:1, asset:1, tester:1 };
+const currentStep = { ciso:1, policy:1, control:1, asset:1 };
 
 function goToStep(tabId, step) {
-  const maxSteps = { ciso:5, policy:4, control:4, asset:3, tester:4 };
+  const maxSteps = { ciso:5, policy:4, control:4, asset:4 };
   const max = maxSteps[tabId] || 4;
   if (step < 1 || step > max) return;
   if (tabId === 'asset') {
+    if (state._sspReviewerReadOnly) step = 1;
     var hasAsset = !!(state._selectedAssetId && (state.assets || []).find(function(a){ return String(a.id) === String(state._selectedAssetId); }));
     var hasProc = !!(state._selectedProcessId && (state.processes || []).find(function(p){ return String(p.id) === String(state._selectedProcessId); }));
     if (!hasAsset && !hasProc) step = 1;
@@ -725,7 +754,6 @@ function goToStep(tabId, step) {
   if (tabId==='policy') { renderPolicyWizardChrome(step); renderPolicyStep(step); }
   if (tabId==='control') renderControlStep(step);
   if (tabId==='asset') { renderAssetWizardChrome(); renderAssetStep(step); }
-  if (tabId==='tester') renderTesterStep(step);
 }
 
 

@@ -1003,4 +1003,49 @@ const NIST_CONTROL_TEXT = {
   'SR-11(1)': 'Employ anti-counterfeiting measures and/or methods as part of the incoming inspection process for [Assignment: organization-defined systems or system components].',
   'SR-11(2)': 'Report counterfeit system components to [Selection (one or more): source of counterfeit component; [Assignment: organization-defined external reporting organizations]; [Assignment: organization-defined personnel or roles]].',
 
+  // ============================================================
+  // PT — PII PROCESSING AND TRANSPARENCY (NIST SP 800-53 Rev 5)
+  // ============================================================
+  'PT-1': 'a. Develop, document, and disseminate to [Assignment: organization-defined personnel or roles]:\n1. [Selection (one or more): Organization-level; Mission/business process-level; System-level] personally identifiable information processing and transparency policy that:\n(a) Addresses purpose, scope, roles, responsibilities, management commitment, coordination among organizational entities, and compliance; and\n(b) Is consistent with applicable laws, executive orders, directives, regulations, policies, standards, and guidelines; and\n2. Procedures to facilitate the implementation of the policy and associated privacy controls;\nb. Designate an [Assignment: organization-defined official] to manage the development, documentation, and dissemination of the policy and procedures; and\nc. Review and update the current policy and procedures [Assignment: organization-defined frequency] and following [Assignment: organization-defined events].',
+
+  'PT-2': 'a. Determine and document the [Assignment: organization-defined authority] that permits the [Assignment: organization-defined processing] of personally identifiable information; and\nb. Restrict the [Assignment: organization-defined processing] of personally identifiable information to only that which is authorized.',
+
+  'PT-2(1)': 'Restrict the processing of information containing Social Security numbers to [Assignment: organization-defined authorized processing].',
+
+  'PT-2(2)': 'Restrict the processing of information for which the laws of the United States require the protection of First Amendment rights to [Assignment: organization-defined authorized processing].',
+
+  'PT-3': 'a. Identify and document the [Assignment: organization-defined purpose(s)] for processing personally identifiable information;\nb. Review and update documentation of purpose(s) [Assignment: organization-defined frequency]; and\nc. Review and update documentation of purpose(s) whenever there is a change in laws, regulations, or organizational policies affecting processing.',
+
+  'PT-3(1)': 'Associate [Assignment: organization-defined elements of personally identifiable information] with [Assignment: organization-defined data tags] to facilitate processing purposes.',
+
+  'PT-3(2)': 'Review and update personally identifiable information processing purposes [Assignment: organization-defined frequency] and whenever there is a change in personally identifiable information processing.',
+
+  'PT-4': 'Implement a process for individuals to consent to the processing of their personally identifiable information prior to its collection, use, storage, maintenance, sharing, or disposal and to revoke consent.',
+
+  'PT-4(1)': 'Implement a process for individuals to authorize the disclosure of personally identifiable information to third parties for subsequent use.',
+
+  'PT-4(2)': 'Implement a process for individuals to consent to the use of personally identifiable information for internal purposes only.',
+
+  'PT-4(3)': 'Implement a process for individuals to revoke consent to the processing of personally identifiable information.',
+
+  'PT-5': 'Provide notice to individuals about the processing of personally identifiable information that:\na. Is available to individuals upon first interacting with an organization, and subsequently at [Assignment: organization-defined frequency];\nb. Is clear and easy-to-understand, expressing information about personally identifiable information processing in plain language;\nc. Identifies the authority that authorizes the processing of personally identifiable information;\nd. Identifies the purposes for which personally identifiable information is to be processed; and\ne. Includes [Assignment: organization-defined information].',
+
+  'PT-5(1)': 'Present notice of personally identifiable information processing to individuals at a time and location where the individual provides personally identifiable information or in conjunction with a data action, or [Assignment: organization-defined frequency].',
+
+  'PT-5(2)': 'Include Privacy Act statements on forms that collect information that will be maintained in a Privacy Act system of records, or provide Privacy Act statements on separate forms that can be retained by individuals.',
+
+  'PT-6': 'For systems that process information that will be maintained in a Privacy Act system of records:\n1. Draft system of records notices in accordance with OMB guidance and submit new and significantly modified system of records notices to the OMB and appropriate congressional committees for advance review;\n2. Publish system of records notices in the Federal Register; and\n3. Keep system of records notices accurate, up-to-date, and scoped in accordance with policy.',
+
+  'PT-6(1)': 'Review all routine uses published in the system of records notice at [Assignment: organization-defined frequency] to ensure continued accuracy, and to ensure that routine uses continue to be compatible with the purpose for which the information was collected.',
+
+  'PT-6(2)': 'Review all Privacy Act exemptions claimed for the system of records at [Assignment: organization-defined frequency] to ensure they remain appropriate and necessary in accordance with law, that they have been promulgated as regulations, and that they are accurately described in the system of records notice.',
+
+  'PT-7': 'a. Identify and document the specific categories of personally identifiable information that are processed; and\nb. Review and update documentation of specific categories of personally identifiable information [Assignment: organization-defined frequency].',
+
+  'PT-7(1)': 'Restrict the processing of Social Security numbers to [Assignment: organization-defined processing].',
+
+  'PT-7(2)': 'Restrict the processing of information for which the laws of the United States require the protection of First Amendment rights to [Assignment: organization-defined processing].',
+
+  'PT-8': 'When a computer matching program involves personally identifiable information, obtain approval from the Data Integrity Board (or equivalent) prior to conducting the matching program.',
+
 };

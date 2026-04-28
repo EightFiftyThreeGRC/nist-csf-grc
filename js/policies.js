@@ -94,6 +94,15 @@ function getISPStatus() {
   return 'Not Started';
 }
 
+function getEffectivePolicyDeadline(fam) {
+  var policyDeadline = (state.policyDeadlines || {})[fam];
+  if (policyDeadline) return policyDeadline;
+  var domainDeadline = (state.domainDeadlines || {})[fam];
+  if (domainDeadline) return domainDeadline;
+  if (typeof deadlineFromPriority === 'function') return deadlineFromPriority(fam) || '';
+  return '';
+}
+
 // Who a policy is routed to while status is "Under Review" (plain text — escape at HTML boundaries).
 function getPolicyPendingReviewerDisplay(policyKey) {
   if (!policyKey) return '';
@@ -234,7 +243,7 @@ function renderCustodianWorkspace(user) {
     var slaves = slavesOf[fam] || [];
     var allBadges = [fam].concat(slaves).map(function(f){ return '<span class="family-badge" style="font-size:11px;padding:2px 6px;">' + f + '</span>'; }).join(' ');
     var status = (state.policyStatus[fam]||{}).status || 'Not Started';
-    var deadline = state.policyDeadlines[fam] || '';
+    var deadline = getEffectivePolicyDeadline(fam);
     var dp = (state.domainPolicies||{})[fam];
     var version = dp ? (dp.version || '1.0') : '—';
     var reviewCycle = dp ? (dp.reviewCycle || 'Annual') : 'Annual';
@@ -432,7 +441,7 @@ function renderISSMWorkspace(user) {
     var slaves = slavesOf[fam] || [];
     var allBadges = [fam].concat(slaves).map(function(f){ return '<span class="family-badge" style="font-size:11px;padding:2px 6px;">' + f + '</span>'; }).join(' ');
     var status = (state.policyStatus[fam]||{}).status || 'Not Started';
-    var deadline = state.policyDeadlines[fam] || '';
+    var deadline = getEffectivePolicyDeadline(fam);
     var dp = (state.domainPolicies||{})[fam];
     var selected = (state.policySelectedControls||{})[fam] || [];
     var ctrlCount = allControls.filter(function(c){ return c.f === fam || slaves.includes(c.f); }).length;
@@ -467,6 +476,7 @@ function renderISSMWorkspace(user) {
 
     var title = getPolicyMergedTitle(fam);
     var btnLabel = status === 'Not Started' ? 'Start Policy →' : status === 'Approved' ? 'View Policy →' : 'Continue Editing →';
+    var returnNotes = status === 'Returned' ? String(((state.policyStatus || {})[fam] || {}).notes || '').trim() : '';
 
     // Owner assignment progress bar
     var ownerBar = '<div style="margin-top:8px;margin-bottom:12px;">'
@@ -489,6 +499,9 @@ function renderISSMWorkspace(user) {
         : '')
       + '<div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:4px;">' + _esc(title) + '</div>'
       + '<div style="font-size:12px;margin-bottom:4px;line-height:1.5;">' + deadlineHTML + '</div>'
+      + (returnNotes
+        ? '<div style="margin:6px 0 8px 0;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;font-size:11px;line-height:1.45;color:#9a3412;"><strong>Return notes:</strong> ' + _esc(returnNotes) + '</div>'
+        : '')
       + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + selected.length + ' controls selected · ' + ctrlCount + ' in baseline</div>'
       + '<div style="font-size:11px;display:flex;align-items:center;">' + reviewStatusDot(fam) + '<span style="color:' + getReviewStatus(fam).color + ';">' + getReviewStatus(fam).label + '</span></div>'
       + ownerBar
@@ -498,6 +511,9 @@ function renderISSMWorkspace(user) {
 
   // Header
   var html = '<div style="max-width:780px;">';
+  if (typeof renderPolicyElevationBlockingHtml === 'function') {
+    html += renderPolicyElevationBlockingHtml();
+  }
   html += '<div style="margin-bottom:24px;">'
     + '<div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:4px;">Your Policy Domains</div>'
     + '<div style="font-size:13px;color:var(--text-muted);line-height:1.5;">You own ' + assignedFams.length + ' domain ' + (assignedFams.length === 1 ? 'policy' : 'policies') + '. Select controls, draft your policy, assign control owners, then submit to the CISO for approval.</div>'
@@ -902,7 +918,9 @@ function renderPolicyList() {
         + '</div>'
     : '';
 
+  var policyElevBlock = (typeof renderPolicyElevationBlockingHtml === 'function' ? renderPolicyElevationBlockingHtml() : '');
   body.innerHTML = '<div style="max-width:900px;">'
+    + policyElevBlock
     + librarySection
     + (isAdmin ? rolePickerHTML + cardsSection : '')
     + '</div>';
@@ -951,6 +969,242 @@ function buildRequirementControlBadgeHtml(controlIds, maxVisible) {
   return shown;
 }
 
+function _policyEscapeXml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function _policyCrc32(bytes) {
+  if (!_policyCrc32._table) {
+    var tbl = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      tbl[i] = c >>> 0;
+    }
+    _policyCrc32._table = tbl;
+  }
+  var crc = 0xFFFFFFFF;
+  for (var k = 0; k < bytes.length; k++) crc = _policyCrc32._table[(crc ^ bytes[k]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function _policyZipStored(files) {
+  var te = new TextEncoder();
+  var localParts = [];
+  var centralParts = [];
+  var offset = 0;
+
+  function pushU16(arr, n) { arr.push(n & 0xFF, (n >>> 8) & 0xFF); }
+  function pushU32(arr, n) { arr.push(n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF); }
+
+  files.forEach(function(f) {
+    var nameBytes = te.encode(f.name);
+    var dataBytes = te.encode(f.content);
+    var crc = _policyCrc32(dataBytes);
+    var local = [];
+    pushU32(local, 0x04034b50);
+    pushU16(local, 20);
+    pushU16(local, 0);
+    pushU16(local, 0);
+    pushU16(local, 0);
+    pushU16(local, 0);
+    pushU32(local, crc);
+    pushU32(local, dataBytes.length);
+    pushU32(local, dataBytes.length);
+    pushU16(local, nameBytes.length);
+    pushU16(local, 0);
+    localParts.push(new Uint8Array(local), nameBytes, dataBytes);
+
+    var central = [];
+    pushU32(central, 0x02014b50);
+    pushU16(central, 20);
+    pushU16(central, 20);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU32(central, crc);
+    pushU32(central, dataBytes.length);
+    pushU32(central, dataBytes.length);
+    pushU16(central, nameBytes.length);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU16(central, 0);
+    pushU32(central, 0);
+    pushU32(central, offset);
+    centralParts.push(new Uint8Array(central), nameBytes);
+
+    offset += local.length + nameBytes.length + dataBytes.length;
+  });
+
+  var centralSize = 0;
+  centralParts.forEach(function(p) { centralSize += p.length; });
+  var end = [];
+  pushU32(end, 0x06054b50);
+  pushU16(end, 0);
+  pushU16(end, 0);
+  pushU16(end, files.length);
+  pushU16(end, files.length);
+  pushU32(end, centralSize);
+  pushU32(end, offset);
+  pushU16(end, 0);
+  var endArr = new Uint8Array(end);
+
+  var total = offset + centralSize + endArr.length;
+  var out = new Uint8Array(total);
+  var ptr = 0;
+  localParts.concat(centralParts).concat([endArr]).forEach(function(p) {
+    out.set(p, ptr);
+    ptr += p.length;
+  });
+  return out;
+}
+
+function _policyBuildDocxFromLines(title, lines) {
+  var allLines = [title || 'Policy'].concat(lines || []);
+  var bodyXml = allLines.map(function(line) {
+    if (!line) return '<w:p/>';
+    return '<w:p><w:r><w:t xml:space="preserve">' + _policyEscapeXml(line) + '</w:t></w:r></w:p>';
+  }).join('');
+  var documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"'
+    + ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+    + ' xmlns:o="urn:schemas-microsoft-com:office:office"'
+    + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+    + ' xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"'
+    + ' xmlns:v="urn:schemas-microsoft-com:vml"'
+    + ' xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"'
+    + ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'
+    + ' xmlns:w10="urn:schemas-microsoft-com:office:word"'
+    + ' xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    + ' xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"'
+    + ' xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"'
+    + ' xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"'
+    + ' xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"'
+    + ' xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"'
+    + ' mc:Ignorable="w14 wp14"><w:body>' + bodyXml
+    + '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>'
+    + '</w:body></w:document>';
+  var relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+    + '</Relationships>';
+  var contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    + '<Default Extension="xml" ContentType="application/xml"/>'
+    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    + '</Types>';
+  return _policyZipStored([
+    { name: '[Content_Types].xml', content: contentTypesXml },
+    { name: '_rels/.rels', content: relsXml },
+    { name: 'word/document.xml', content: documentXml }
+  ]);
+}
+
+function _policyFileSafeName(name) {
+  return String(name || 'Policy').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function _buildISPExportPayload() {
+  var isp = state.infoSecPolicy || {};
+  var title = (isp.title || 'Information Security Policy').trim();
+  var sections = [];
+  (isp.sections || []).forEach(function(sec) {
+    var txt = (sec && sec.content) ? String(sec.content).trim() : '';
+    if (txt) sections.push({ heading: sec.title || sec.type || 'Section', content: txt });
+  });
+  if ((isp.roles || []).length) {
+    var rolesText = (isp.roles || []).map(function(r) {
+      var rs = (r.responsibilities || []).map(function(x) { return '- ' + x; }).join('\n');
+      return (r.name || 'Role') + (rs ? '\n' + rs : '');
+    }).join('\n\n');
+    sections.push({ heading: 'Roles & Responsibilities', content: rolesText });
+  }
+  if ((isp.requirements || []).length) {
+    sections.push({ heading: 'Policy Requirements', content: (isp.requirements || []).map(function(r) { return (r.id || 'REQ') + ': ' + stripRequirementNistRef(r.text || r.requirement || ''); }).join('\n\n') });
+  }
+  if ((isp.documents || []).length) {
+    sections.push({ heading: 'Referenced Documents', content: (isp.documents || []).map(function(d) { return (d.title || 'Document') + (d.url ? ' — ' + d.url : '') + (d.desc ? '\n' + d.desc : ''); }).join('\n\n') });
+  }
+  if ((isp.revisionHistory || []).length) {
+    sections.push({ heading: 'Revision History', content: (isp.revisionHistory || []).map(function(r) { return 'v' + (r.version || '') + ' | ' + (r.date || '') + ' | ' + (r.author || '') + ' | ' + (r.changes || ''); }).join('\n') });
+  }
+  return { title: title, sections: sections };
+}
+
+function _buildDomainExportPayload(fam) {
+  var dp = ((state.domainPolicies || {})[fam]) || {};
+  var title = (dp.title || getPolicyMergedTitle(fam) || (fam + ' Policy')).trim();
+  var sections = [];
+  if (dp.purpose) sections.push({ heading: 'Purpose', content: String(dp.purpose) });
+  if (dp.scope) sections.push({ heading: 'Scope', content: String(dp.scope) });
+  if ((dp.roles || []).length) {
+    sections.push({ heading: 'Roles & Responsibilities', content: (dp.roles || []).map(function(r) {
+      var rs = (r.responsibilities || []).map(function(x) { return '- ' + x; }).join('\n');
+      return (r.name || 'Role') + (rs ? '\n' + rs : '');
+    }).join('\n\n') });
+  }
+  if ((dp.requirements || []).length) {
+    sections.push({ heading: 'Policy Requirements', content: (dp.requirements || []).map(function(r) { return (r.id || 'REQ') + ': ' + stripRequirementNistRef(r.text || r.requirement || ''); }).join('\n\n') });
+  }
+  if ((dp.references || []).length) {
+    sections.push({ heading: 'References', content: (dp.references || []).map(function(r) { return (r.title || 'Reference') + (r.url ? ' — ' + r.url : '') + (r.description ? '\n' + r.description : ''); }).join('\n\n') });
+  }
+  if ((dp.revisionHistory || []).length) {
+    sections.push({ heading: 'Revision History', content: (dp.revisionHistory || []).map(function(r) { return 'v' + (r.version || '') + ' | ' + (r.date || '') + ' | ' + (r.author || '') + ' | ' + (r.changes || ''); }).join('\n') });
+  }
+  return { title: title, sections: sections };
+}
+
+function _renderPolicyExportHtml(payload) {
+  var rows = (payload.sections || []).map(function(s) {
+    return '<section style="margin-bottom:20px;"><h2 style="font-size:14pt;margin:0 0 8px 0;color:#0f172a;">' + escapeHTML(s.heading || '') + '</h2>'
+      + '<div style="font-size:11pt;line-height:1.55;white-space:pre-wrap;color:#111827;">' + escapeHTML(s.content || '') + '</div></section>';
+  }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + escapeHTML(payload.title || 'Policy') + '</title></head>'
+    + '<body style="font-family:Calibri,Arial,sans-serif;padding:24px;"><h1 style="font-size:20pt;margin:0 0 16px 0;">' + escapeHTML(payload.title || 'Policy') + '</h1>' + rows + '</body></html>';
+}
+
+function _buildPolicyPayload(kind, fam) {
+  return kind === 'isp' ? _buildISPExportPayload() : _buildDomainExportPayload(fam);
+}
+
+function printPolicyDocument(kind, fam) {
+  var payload = _buildPolicyPayload(kind, fam);
+  var w = window.open('', '_blank');
+  if (!w) { showToast('Popup blocked — allow popups to print.', true); return; }
+  w.document.open();
+  w.document.write(_renderPolicyExportHtml(payload));
+  w.document.close();
+  setTimeout(function() { try { w.focus(); w.print(); } catch (e) {} }, 150);
+}
+
+function exportPolicyDocumentDocx(kind, fam) {
+  var payload = _buildPolicyPayload(kind, fam);
+  var lines = [];
+  (payload.sections || []).forEach(function(s) {
+    lines.push((s.heading || '').toUpperCase());
+    lines.push(s.content || '');
+    lines.push('');
+  });
+  var bytes = _policyBuildDocxFromLines(payload.title, lines);
+  var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = _policyFileSafeName(payload.title) + '.docx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+}
+
 function renderPolicyDocViewer(fam) {
   var listPanel = document.getElementById('policy-list-panel');
   var wizPanel  = document.getElementById('policy-wizard-panel');
@@ -980,6 +1234,8 @@ function renderPolicyDocViewer(fam) {
   html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">'
     + '<button onclick="state._policyDocView=false;renderPolicyList();" style="background:none;border:none;color:var(--teal);font-size:13px;font-weight:600;cursor:pointer;padding:0;">← Policy Library</button>'
     + '<div style="display:flex;gap:8px;align-items:center;">'
+    + '<button class="btn btn-secondary btn-sm" onclick="printPolicyDocument(\'domain\',\''+fam+'\')">🖨️ Print / Save PDF</button>'
+    + '<button class="btn btn-secondary btn-sm" onclick="exportPolicyDocumentDocx(\'domain\',\''+fam+'\')">⬇ Export Word (.docx)</button>'
     + (canEdit ? '<button class="btn btn-secondary btn-sm" onclick="state._policyDocView=false;enterPolicyWizard(\''+fam+'\');">✏️ Edit Policy</button>' : '')
     + '</div>'
     + '</div>';
@@ -1284,7 +1540,7 @@ function renderPolicyStep1() {
   }
   const owner = state.domainOwners[fam] || {};
   const custodian = getCustodian(fam);
-  const deadline = state.policyDeadlines[fam] || '';
+  const deadline = getEffectivePolicyDeadline(fam);
   const status = (state.policyStatus[fam]||{}).status || 'Not Started';
   const mergedTitle = getPolicyMergedTitle(fam);
   // Auto-fill custodian fields with logged-in custodian's info if empty
@@ -1466,6 +1722,10 @@ function confirmReturnToCISO(fam) {
   state.policyStatus[fam].status = 'Returned';
   state.policyStatus[fam].returnedAt = new Date().toLocaleDateString();
   state.policyStatus[fam].returnedBy = previousOwner;
+  // Explicitly route the returned policy back to CISO/program owner so it appears in their reassignment queue.
+  state.policyStatus[fam].submittedTo = (state.programOwner || '').trim() || (state.programOwnerTitle || 'Program Owner');
+  state.policyStatus[fam].submittedToRole = (state.programOwnerTitle || '').trim() || 'Program Owner';
+  state.policyStatus[fam].submittedToEmail = (state.programOwnerEmail || '').trim() || '';
   // If this owner had a filter set, clear it since their assignment is gone
   if (state._policyOwnerFilter) {
     // Re-check if the owner still has other domains; if not, clear filter
@@ -1540,6 +1800,7 @@ function renderPolicyStep2() {
     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px;">Quick Select</div>
     <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="selectAllDomainControls('${fam}','baseline')">\u21A9 Reset to ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} Baseline</button>
     <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="selectAllDomainControls('${fam}','none')">\u2610 Clear All</button>
+    <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="addControlsFromOtherFamilies('${fam}')">+ Add control(s) from other families</button>
     <div style="border-top:1px solid var(--border); padding-top:12px;">
       <div style="font-size:13px; font-weight:700; color:var(--navy);" id="policy-step-2-count-side">${selected.length} <span style="font-weight:400; font-size:12px; color:var(--text-muted);">selected</span></div>
       <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${baselineControls.length} required by ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} baseline</div>
@@ -1628,6 +1889,53 @@ function renderPolicyStep2() {
     </div>` : ''}
   `;
   setTimeout(filterDomainControls, 0);
+}
+
+function addControlsFromOtherFamilies(fam) {
+  if (!fam) return;
+  var allFams = getPolicyAllFamilies(fam);
+  var candidateControls = getActiveControls().filter(function(c) {
+    return allFams.indexOf(c.f) === -1;
+  });
+  if (!candidateControls.length) {
+    showToast('No controls from other families are available in the current baseline scope.', true);
+    return;
+  }
+  var preview = candidateControls.slice(0, 40).map(function(c) { return c.id + ' (' + c.f + ')'; }).join(', ');
+  var extra = candidateControls.length > 40 ? '\n... and ' + (candidateControls.length - 40) + ' more.' : '';
+  var input = prompt(
+    'Add controls from other families.\n\nEnter one or more control IDs, comma-separated (e.g., AC-2, IA-5, SC-7).\n\nAvailable examples:\n'
+    + preview + extra
+  );
+  if (!input) return;
+  var requested = input.split(',').map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+  if (!requested.length) return;
+  if (!state.policySelectedControls) state.policySelectedControls = {};
+  if (!state.policySelectedControls[fam]) state.policySelectedControls[fam] = [];
+  var selected = state.policySelectedControls[fam];
+  var candidateIdSet = {};
+  candidateControls.forEach(function(c) { candidateIdSet[c.id] = true; });
+  var added = 0;
+  var invalid = [];
+  requested.forEach(function(raw) {
+    var canonical = typeof resolveCatalogControlId === 'function' ? resolveCatalogControlId(raw) : String(raw || '').toUpperCase();
+    if (!canonical || !candidateIdSet[canonical]) {
+      invalid.push(raw);
+      return;
+    }
+    if (selected.indexOf(canonical) === -1) {
+      selected.push(canonical);
+      added++;
+    }
+  });
+  if (added > 0) autoPopulateControlOwnersFromDomain(fam);
+  markDirty();
+  renderPolicyStep2();
+  if (invalid.length) {
+    showToast('Added ' + added + ' control(s). Some IDs were not eligible here: ' + invalid.join(', '), true);
+  } else {
+    showToast('Added ' + added + ' control(s) from other families.');
+  }
 }
 
 function switchPolicyDomain(fam) {
@@ -2268,7 +2576,7 @@ function goToCISOPolicyEditor() {
       logRows.push({
         event: 'Submitted for approval',
         date: ispStatusLog.submittedAt || '',
-        actor: ispStatusLog.submittedTo || ispRcLog.approvedBy || 'Program Owner',
+        actor: state.programOwner || 'Program Owner',
         notes: ''
       });
     }
@@ -2291,7 +2599,7 @@ function goToCISOPolicyEditor() {
       logRows.push({
         event: 'Review cycle updated',
         date: ispRcLog.lastReviewed || '',
-        actor: ispRcLog.approvedBy || 'Policy custodian',
+        actor: state.programOwner || ispRcLog.approvedBy || 'Program Owner',
         notes: (ispRcLog.nextReviewDue ? ('Next review due: ' + ispRcLog.nextReviewDue) : '')
       });
     }
@@ -2332,6 +2640,8 @@ function goToCISOPolicyEditor() {
     }
     ispHTML += '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:flex-start;">';
     ispHTML += '<button class="btn btn-secondary btn-sm" onclick="renderPolicyTab()">← Back to Policies</button>';
+    ispHTML += '<button class="btn btn-secondary btn-sm" onclick="printPolicyDocument(\'isp\')">🖨️ Print / Save PDF</button>';
+    ispHTML += '<button class="btn btn-secondary btn-sm" onclick="exportPolicyDocumentDocx(\'isp\')">⬇ Export Word (.docx)</button>';
     if (!state.currentUserId) {
       ispHTML += '<button class="btn btn-primary btn-sm" onclick="openISPSuggestionModal()">📝 Propose Change</button>';
     }
@@ -3102,8 +3412,13 @@ function dpDrop(e, fam, targetIdx) {
   renderPolicyStep3();
 }
 
-function exportDomainPolicyPDF(fam) { showToast('PDF export coming soon.'); }
-function exportDomainPolicyWord(fam) { showToast('Word export coming soon.'); }
+function exportDomainPolicyPDF(fam) {
+  printPolicyDocument('domain', fam);
+}
+
+function exportDomainPolicyWord(fam) {
+  exportPolicyDocumentDocx('domain', fam);
+}
 
 // ============================================================
 // POLICY STEP 4: ASSIGN CONTROL OWNERS (was Step 3)
@@ -3172,6 +3487,7 @@ function renderPolicyStep4() {
           </div>
           <button class="btn btn-primary btn-sm" style="width:100%; margin-bottom:6px;" onclick="batchAssignControlOwners('${fam}', false)">Apply to Unassigned</button>
           <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="batchAssignControlOwners('${fam}', true)">Overwrite All</button>
+          <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="clearDomainControlOwners('${fam}')">Clear all assignments</button>
           <button type="button" class="btn btn-secondary btn-sm" style="width:100%;" onclick="openBulkAssignControlModal('${fam}')">Bulk assign (picker)…</button>
         </div>
 
@@ -3253,6 +3569,28 @@ function step4QuickFill(idx) {
   const n = document.getElementById('batchOwnerName'); if (n) n.value = p.name||'';
   const r = document.getElementById('batchOwnerRole'); if (r) r.value = p.role||'';
   const e = document.getElementById('batchOwnerEmail'); if (e) e.value = p.email||'';
+}
+
+function clearDomainControlOwners(fam) {
+  var selected = ((state.policySelectedControls || {})[fam]) || [];
+  if (!selected.length) {
+    showToast('No controls in scope to clear.', true);
+    return;
+  }
+  var assignedNow = selected.filter(function(cid) { return !!((state.controlOwners || {})[cid] || {}).name; }).length;
+  if (!assignedNow) {
+    showToast('No control owner assignments to clear.', true);
+    return;
+  }
+  if (!confirm('Clear owner assignments for ' + assignedNow + ' control(s) in this domain?')) return;
+  if (!state.controlOwners) state.controlOwners = {};
+  selected.forEach(function(cid) {
+    if (state.controlOwners[cid]) delete state.controlOwners[cid];
+  });
+  addAuditEntry('policy', fam, 'Cleared control owner assignments for ' + assignedNow + ' control(s) in ' + fam + '.');
+  markDirty();
+  renderPolicyStep4();
+  showToast('Cleared ' + assignedNow + ' control owner assignment' + (assignedNow === 1 ? '' : 's') + '.');
 }
 
 // Fill a single control-owner row from a user chosen in that row's dropdown

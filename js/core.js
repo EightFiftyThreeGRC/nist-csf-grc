@@ -1023,13 +1023,34 @@ const CONTROLS = [
   {id:'SR-11(2)', f:'SR', n:'Configuration Control for Component Service and Repair', bl:['L','M','H']},
   {id:'SR-11(3)', f:'SR', n:'Anti-counterfeit Scanning', bl:[]},
   {id:'SR-12', f:'SR', n:'Component Disposal', bl:['L','M','H']},
+  // PT — PII Processing and Transparency (NIST SP 800-53 Rev 5; privacy baseline per SP 800-53B)
+  {id:'PT-1', f:'PT', n:'Policy and Procedures', bl:['P']},
+  {id:'PT-2', f:'PT', n:'Authority To Collect, Use, Maintain, And Disseminate Personally Identifiable Information', bl:['P']},
+  {id:'PT-2(1)', f:'PT', n:'Social Security Numbers', bl:[]},
+  {id:'PT-2(2)', f:'PT', n:'First Amendment Information', bl:[]},
+  {id:'PT-3', f:'PT', n:'Personally Identifiable Information Processing Purposes', bl:['P']},
+  {id:'PT-3(1)', f:'PT', n:'Data Tags', bl:[]},
+  {id:'PT-3(2)', f:'PT', n:'Update And Data Tagging', bl:[]},
+  {id:'PT-4', f:'PT', n:'Consent', bl:['P']},
+  {id:'PT-4(1)', f:'PT', n:'Neighboring Organization User Consent', bl:[]},
+  {id:'PT-4(2)', f:'PT', n:'Privacy Of Information Requiring Special Protection', bl:[]},
+  {id:'PT-4(3)', f:'PT', n:'Revocation', bl:[]},
+  {id:'PT-5', f:'PT', n:'Privacy Notice', bl:['P']},
+  {id:'PT-5(1)', f:'PT', n:'First Amendment Information', bl:[]},
+  {id:'PT-5(2)', f:'PT', n:'Privacy Act Statements', bl:['P']},
+  {id:'PT-6', f:'PT', n:'System Of Records Notice', bl:['P']},
+  {id:'PT-6(1)', f:'PT', n:'Routine Uses', bl:['P']},
+  {id:'PT-6(2)', f:'PT', n:'Exemption Rules', bl:['P']},
+  {id:'PT-7', f:'PT', n:'Specific Categories Of Personally Identifiable Information', bl:['P']},
+  {id:'PT-7(1)', f:'PT', n:'Social Security Numbers', bl:['P']},
+  {id:'PT-7(2)', f:'PT', n:'First Amendment Information', bl:['P']},
+  {id:'PT-8', f:'PT', n:'Computer Matching Requirements', bl:['P']},
 ];
 
 const BASELINE_COUNTS = {
   L: 149,   // Low-impact baseline
   M: 287,   // Moderate-impact baseline
   H: 370,   // High-impact baseline
-  P: 83,    // Privacy baseline (excl. PT family)
   PM: 37,   // Program Management — counted separately
 };
 
@@ -1052,16 +1073,28 @@ const DOMAIN_SUGGESTED_ROLES = {
 };
 
 const ROLE_TABS = {
-  'ciso':          ['ciso','policy','reports'],
-  'issm':          ['policy','reports'],
+  // The Control Assessment + Authorization workspaces were removed (2026-04-27).
+  // AOs still record decisions through openAtoDecisionModal() launched from the
+  // Reports dashboard. Asssessors no longer have a dedicated workspace —
+  // assessment data persists in state but is not edited via UI.
+  'ciso':          ['ciso','policy','asset','reports'],
+  'issm':          ['policy','asset','reports'],
   'control-owner': ['control','reports'],
   'asset-owner':   ['asset','reports'],
   'custodian':     ['policy','reports'],
-  'assessor':      ['tester','reports'],
-  'ao':            ['tester','reports','users'],
+  'assessor':      ['reports'],
+  'ao':            ['asset','reports','users'],
   // ISP / Tier 1 approver: control catalog + reports; Tier 1 ISP is opened from sidebar "Policies" or the reports queue (no Domain policies / ISSM wizard tab)
-  'approver':      ['control','reports'],
+  'approver':      ['control','asset','reports'],
 };
+
+// Default program-owner title (CISO wizard Step 1). Privacy overlay implies combined security + privacy leadership.
+const DEFAULT_PROGRAM_OWNER_TITLE = 'Chief Information Security Officer';
+const DEFAULT_PROGRAM_OWNER_TITLE_WITH_PRIVACY = 'Chief Information Security Officer / Chief Privacy Officer';
+
+function getDefaultProgramOwnerTitle() {
+  return (state && state.privacyOverlay) ? DEFAULT_PROGRAM_OWNER_TITLE_WITH_PRIVACY : DEFAULT_PROGRAM_OWNER_TITLE;
+}
 
 // ============================================================
 // APP STATE
@@ -1078,7 +1111,6 @@ const state = {
   programOwnerTitle: 'Chief Information Security Officer',  // title/role
   programOwnerEmail: '',    // program owner email
   cisoIsISSM: false,        // true = CISO wears both hats (common in small teams)
-  strictFismaMode: false,   // true = FISMA-aligned Step 1 checks (org, owner, title, email, baseline)
   pmControls: {},           // { 'PM-1': true, ... }
   domainOwners: {},         // { 'AC': { name, email, role }, ... }
   policyDeadlines: {},      // { 'AC': '2026-06-01', ... }
@@ -1087,7 +1119,9 @@ const state = {
   controlOwnerAttested: false,   // true = control owner has checked attestation
   _ctrlEvidenceFilter: 'all',    // 'all' | 'missing' | 'has'
   controlTestResults: {},   // { 'AC-1': { result, date, tester, findings } }
-  authBoundaries: [],       // [{ id, name, description, assetTypes, assetIds, aoUserId, assessorUserIds, atoStatus, atoGrantedDate, atoExpiresDate, conditions }]
+  authBoundaries: [],       // [{ id, name, description, assetTypes, assetIds, processIds, aoUserId, assessorUserIds, atoStatus, atoGrantedDate, atoExpiresDate, conditions }]
+  /** User-defined roles (slug on user.role); tabsTemplate: 'assessor' | 'reports-only' */
+  customProgramRoles: [],
   assessmentPlans: {},      // { [boundaryId]: { scopeMode, inScopeControlIds[], controlPlans{} } }
   atoDecisions: {},         // { [boundaryId]: { boundaryId, decision, decidedByUserId, decidedAt, conditions[], expiresAt, residualRiskNarrative, signature } }
   _atoLibraryFilter: { families: [], assetTypes: [], assetIds: [], statuses: [], search: '' },
@@ -1097,7 +1131,7 @@ const state = {
   processes: [],            // [{ id, name, category, description, owner }]
   attestations: {},         // legacy — superseded by sspAttestations
   sspAttestations: {},      // { assetId|procId: { controlId: { status, explanation, date } } }
-  sspSignoffs: {},          // { assetId|procId: { signedBy, signedDate, status:'Submitted'|'Approved' } }
+  sspSignoffs: {},          // { assetId|procId: { signedBy, signedDate, status, reviewerUserId, reviewerName, reviewerEmail, reviewerRole } }
   customAssetTypes: [],     // user-defined asset types added by control owners
   customAssetTypeGroups: {}, // { 'OT Device':'Infrastructure', ... }
   customAssetTypeHeaders: [], // user-defined group headers shown in asset coverage
@@ -1123,6 +1157,8 @@ const state = {
   _controlLibraryColFilters: {},  // { control:'', name:'', owner:'', impl:'', asset:'', compliance:'', lifecycle:'' }
   _assetLibraryMode: false,    // true = show global asset library, false = asset workspace
   _assetTypeLibraryMode: false, // true = show asset type library, false = asset workspace
+  _sspReviewerReadOnly: false,  // true = AO/ISSM viewing submitted SSP in read-only package view (not owner wizard)
+  _sspReadOnlyExitTab: null,     // 'reports' | 'library' — where Back returns after read-only SSP view
   assetTypeRequests: [],        // [{id, action, typeName, reason, requestedBy, requestedAt, status, reviewedBy, reviewedAt, reviewReason}]
   policyCustodians: {},          // { 'AC': { name, role, email } }
   users: [],                     // [{ id, name, email, role, families[], controls[], note }]
@@ -1151,30 +1187,38 @@ const state = {
   _changeLogUserFilter: '',      // field-change tab filter (substring on user id)
   _changeLogDateFilter: '',      // field-change tab filter (substring on ISO date)
   _undoStack: [],                // scoped structural undo (max 20)
+  _reportsProgramReadinessHidden: false, // true = collapse Program Readiness panel in Reports
+  _reportsMySummaryHidden: false, // true = collapse "My dashboard" summary card in Reports
+  _reportsPhase1BannerHidden: false, // true = collapse Phase 1 completion banner in Reports
 };
 const STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
 const STATE_ALLOWED_KEYS = Object.keys(STATE_DEFAULTS);
-const STORAGE_KEY = 'larsen-grc-v1';
-const SNAPSHOTS_KEY = 'larsen-grc-snapshots';
-// One-time migration from the legacy "hawthorn-*" keys. Runs at script parse time
-// and only if the new keys are empty. Old keys are removed after copy so they never
-// reappear on subsequent loads.
+const STORAGE_KEY = 'eightfiftythree-grc-v1';
+const SNAPSHOTS_KEY = 'eightfiftythree-grc-snapshots';
+// One-time migration from legacy storage keys. Runs at script parse time and
+// only copies forward if the new keys are empty. Legacy keys are removed after
+// copy so they never reappear on subsequent loads. Two prior brand names are
+// covered: the original "hawthorn-*" prefix and the interim "larsen-*" prefix.
 (function migrateLegacyStorageKeys() {
   try {
-    var LEGACY_STATE = 'hawthorn-grc-v1';
-    var LEGACY_TS = 'hawthorn-grc-v1-ts';
-    var LEGACY_SNAPS = 'hawthorn-grc-snapshots';
-    if (!localStorage.getItem(STORAGE_KEY) && localStorage.getItem(LEGACY_STATE)) {
-      localStorage.setItem(STORAGE_KEY, localStorage.getItem(LEGACY_STATE));
-      var ts = localStorage.getItem(LEGACY_TS);
-      if (ts) localStorage.setItem(STORAGE_KEY + '-ts', ts);
+    var LEGACY_PREFIXES = ['larsen-grc', 'hawthorn-grc'];
+    for (var i = 0; i < LEGACY_PREFIXES.length; i++) {
+      var pfx = LEGACY_PREFIXES[i];
+      var LEGACY_STATE = pfx + '-v1';
+      var LEGACY_TS = pfx + '-v1-ts';
+      var LEGACY_SNAPS = pfx + '-snapshots';
+      if (!localStorage.getItem(STORAGE_KEY) && localStorage.getItem(LEGACY_STATE)) {
+        localStorage.setItem(STORAGE_KEY, localStorage.getItem(LEGACY_STATE));
+        var ts = localStorage.getItem(LEGACY_TS);
+        if (ts) localStorage.setItem(STORAGE_KEY + '-ts', ts);
+      }
+      if (!localStorage.getItem(SNAPSHOTS_KEY) && localStorage.getItem(LEGACY_SNAPS)) {
+        localStorage.setItem(SNAPSHOTS_KEY, localStorage.getItem(LEGACY_SNAPS));
+      }
+      localStorage.removeItem(LEGACY_STATE);
+      localStorage.removeItem(LEGACY_TS);
+      localStorage.removeItem(LEGACY_SNAPS);
     }
-    if (!localStorage.getItem(SNAPSHOTS_KEY) && localStorage.getItem(LEGACY_SNAPS)) {
-      localStorage.setItem(SNAPSHOTS_KEY, localStorage.getItem(LEGACY_SNAPS));
-    }
-    localStorage.removeItem(LEGACY_STATE);
-    localStorage.removeItem(LEGACY_TS);
-    localStorage.removeItem(LEGACY_SNAPS);
   } catch (e) { /* storage unavailable (private mode) — safe to ignore */ }
 })();
 
@@ -1254,6 +1298,7 @@ function migrateAtoStateShape() {
     if (!b || typeof b !== 'object') return null;
     if (!Array.isArray(b.assetTypes)) b.assetTypes = [];
     if (!Array.isArray(b.assetIds)) b.assetIds = [];
+    if (!Array.isArray(b.processIds)) b.processIds = [];
     if (!Array.isArray(b.assessorUserIds)) b.assessorUserIds = [];
     if (!Array.isArray(b.conditions)) b.conditions = [];
     if (!b.atoStatus) b.atoStatus = 'not-started';
@@ -1261,6 +1306,18 @@ function migrateAtoStateShape() {
     if (b.atoExpiresDate == null) b.atoExpiresDate = '';
     return b;
   }).filter(Boolean);
+  migrateCustomProgramRoles();
+}
+
+function migrateCustomProgramRoles() {
+  if (!Array.isArray(state.customProgramRoles)) state.customProgramRoles = [];
+  state.customProgramRoles = state.customProgramRoles.filter(function(x) {
+    return x && typeof x === 'object' && String(x.slug || '').trim() && String(x.label || '').trim();
+  }).map(function(x) {
+    var tpl = String(x.tabsTemplate || 'assessor').toLowerCase();
+    if (tpl !== 'reports-only') tpl = 'assessor';
+    return { slug: String(x.slug).trim(), label: String(x.label).trim(), tabsTemplate: tpl };
+  });
 }
 
 function seedXmplAtoDemoDataIfMissing() {
@@ -1269,7 +1326,9 @@ function seedXmplAtoDemoDataIfMissing() {
   if ((state.authBoundaries || []).length) return;
   var firstAsset = (state.assets || [])[0] || null;
   var firstAo = (state.users || []).find(function(u) { return u.role === 'ao' || u.role === 'approver'; });
-  var firstAssessor = (state.users || []).find(function(u) { return u.role === 'assessor' || u.role === 'issm'; });
+  var firstAssessor = null;
+  if (typeof atoPickDemoAssessorUserId === 'function') firstAssessor = atoPickDemoAssessorUserId(firstAsset);
+  if (!firstAssessor) firstAssessor = (state.users || []).find(function(u) { return u.role === 'assessor' || u.role === 'issm'; });
   var boundaryId = 'ato-b-xmpl-demo';
   state.authBoundaries.push({
     id: boundaryId,
@@ -1277,6 +1336,7 @@ function seedXmplAtoDemoDataIfMissing() {
     description: 'Demo boundary for RMF Assess + Authorize walkthrough.',
     assetTypes: firstAsset ? [firstAsset.type] : [],
     assetIds: firstAsset ? [firstAsset.id] : [],
+    processIds: [],
     aoUserId: firstAo ? firstAo.id : '',
     assessorUserIds: firstAssessor ? [firstAssessor.id] : [],
     atoStatus: 'in-assessment',
@@ -1356,6 +1416,10 @@ function getDemoPlaceholderNames() {
   Object.keys(state.controlOwners || {}).forEach(function(cid) {
     var o = state.controlOwners[cid];
     if (o && o.isDemoPlaceholder) add(o.name);
+  });
+  // Demo placeholder users (tagged when the prefill helpers seed state.users).
+  (state.users || []).forEach(function(u) {
+    if (u && u.isDemoPlaceholder) add(u.name);
   });
   return names;
 }
@@ -1639,6 +1703,32 @@ function getActiveFamilies() {
   return families.sort();
 }
 
+/**
+ * Catalog controls that enter program scope only when Privacy overlay is on:
+ * Privacy (P) baseline designation without the selected L/M/H security baseline letter.
+ * (Use for UI counts; PM tiering remains separate in the wizard.)
+ */
+function getPrivacyOnlyCatalogControlCount() {
+  if (!state || !state.baseline) return 0;
+  const b = state.baseline;
+  return CONTROLS.filter(function(c) {
+    return c.bl && c.bl.indexOf('P') !== -1 && c.bl.indexOf(b) === -1;
+  }).length;
+}
+
+/** Canonical control id if `input` matches an entry in CONTROLS (trim + case-insensitive), else null. */
+function resolveCatalogControlId(input) {
+  if (input == null || typeof input !== 'string') return null;
+  var t = input.trim();
+  if (!t) return null;
+  var u = t.toUpperCase();
+  for (var i = 0; i < CONTROLS.length; i++) {
+    var id = CONTROLS[i].id;
+    if (id === t || id.toUpperCase() === u) return id;
+  }
+  return null;
+}
+
 function getSavedSnapshots() {
   try {
     var raw = localStorage.getItem(SNAPSHOTS_KEY);
@@ -1666,7 +1756,7 @@ const XMPL_SNAPSHOT = {
   name: 'XMPL Info Sec Policy',
   saved: "2026-04-21T00:00:00.000Z",
   org: 'Xmpl Inc',
-  data: '{"baseline":"L","privacyOverlay":false,"orgName":"Xmpl Inc","programOwner":"Dana Reyes","programOwnerTitle":"Chief Information Security Officer","programOwnerEmail":"dana.reyes@xmpl.io","cisoIsISSM":true,"pmControls":{"PM-1":true,"PM-2":true,"PM-3":true,"PM-4":true,"PM-5":true,"PM-5(1)":true,"PM-6":true,"PM-7":true,"PM-7(1)":true,"PM-8":true,"PM-9":true,"PM-10":true,"PM-11":true,"PM-12":true,"PM-13":true,"PM-14":true,"PM-15":true,"PM-16":true,"PM-16(1)":true,"PM-17":true,"PM-18":true,"PM-19":true,"PM-20":true,"PM-20(1)":true,"PM-21":true,"PM-22":true,"PM-23":true,"PM-24":true,"PM-25":true,"PM-26":true},"domainOwners":{"AC":{"name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"Security Engineer"},"IA":{"name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"Security Engineer"},"AU":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"CM":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"IR":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"AT":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"PS":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"CP":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"CA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"PE":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"MP":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"MA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"SA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"SR":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"}},"policyDeadlines":{"AC":"2026-05-01","IA":"2026-05-01","AU":"2026-05-01","IR":"2026-05-01","CM":"2026-06-01","CP":"2026-06-01","AT":"2026-06-01","PS":"2026-06-01","CA":"2026-07-15","PE":"2026-07-15","MP":"2026-07-15","MA":"2026-07-15","SA":"2026-07-15","SR":"2026-07-15"},"policyStatus":{"AC":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"IA":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"AU":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"IR":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"CM":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"CP":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"AT":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"PS":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"CA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"PE":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"MP":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"MA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"SA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"SR":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"}},"controlStatus":{},"controlOwnerAttested":false,"controlTestResults":{},"assets":[],"attestations":{},"sspAttestations":{},"sspSignoffs":{},"customAssetTypes":[],"cisoComplete":false,"infoSecPolicy":{"orgName":"Xmpl Inc","ciso":"Dana Reyes","cisoEmail":"dana.reyes@xmpl.io","approvalStatus":"Draft","requirements":[{"id":"IS-REQ-1","controlFamily":"PM-1","title":"Information Security Program Plan","requirement":"Xmpl Inc shall develop, document, disseminate, review (annually), and update an organization-wide information security program plan. The plan shall describe the structure of the security program, identify key roles, reference all domain-level policies, and align security objectives to business risk tolerance.","nistRef":"[NIST 800-53: PM-1]"},{"id":"IS-REQ-2","controlFamily":"PM-2","title":"CISO Designation and Authority","requirement":"Xmpl Inc shall designate the CISO as the senior agency information security officer responsible for coordinating, developing, implementing, and maintaining the organization-wide information security program. The CISO shall report directly to the CEO and maintain authority over security budget, staffing, and risk acceptance decisions.","nistRef":"[NIST 800-53: PM-2]"},{"id":"IS-REQ-3","controlFamily":"PM-9","title":"Risk Management Strategy","requirement":"Xmpl Inc shall establish and maintain a risk management strategy that defines risk tolerance thresholds, assessment methodology, and risk response options (accept, mitigate, transfer, avoid). Risk management shall be integrated into the system development lifecycle and business planning processes.","nistRef":"[NIST 800-53: PM-9]"},{"id":"IS-REQ-4","controlFamily":"All -1 Controls","title":"Domain-Level Security Policies","requirement":"Xmpl Inc shall develop, approve, and maintain domain-level security policies and implementing procedures for each NIST 800-53 control family in scope. Policies shall state requirements (\'what must be done\') and procedures shall describe implementation methods (\'how to do it\'). All policies shall be reviewed annually and approved by the CISO.","nistRef":"[NIST 800-53: all -1 controls]"},{"id":"IS-REQ-5","controlFamily":"PM-3","title":"Information Security Resource Requirements","requirement":"Xmpl Inc shall define, resource, and track information security resource requirements as part of capital planning and investment control. Security spending shall be justified by risk reduction and aligned to the organization\'s strategic plan.","nistRef":"[NIST 800-53: PM-3]"},{"id":"IS-REQ-6","controlFamily":"PM-10","title":"Testing, Training, and Monitoring Process","requirement":"Xmpl Inc shall establish and institutionalize a process for ensuring that organizational plans for conducting security and privacy testing, training, and monitoring are developed and maintained.","nistRef":"[NIST 800-53: PM-10]"}]},"policySelectedControls":null,"domainPolicies":null,"controlOwners":{},"policyMerges":{"PS":"AT","MP":"PE","SR":"SA"},"policyPriorities":{},"domainDeadlines":{},"domainCustomNames":{"PS":"People Security (AT+PS)","MP":"Physical & Media Security (PE+MP)","SR":"Supply Chain & Acquisition (SA+SR)"},"cisoStep4Sub":1,"policyCustodians":{},"users":[{"id":"user-1","name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"ciso","families":["PM","AC","IA","AU","IR","CM","CP","AT","PS","CA","PE","MP","MA","SA","SR"],"controls":[],"note":"Chief Information Security Officer"},{"id":"user-2","name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"issm","families":["AC","IA"],"controls":[],"note":"Security Engineer"},{"id":"user-3","name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"issm","families":["AT","PS","CP"],"controls":[],"note":"GRC Analyst"},{"id":"user-4","name":"Liam Park","email":"liam.park@xmpl.io","role":"control-owner","families":["AC","IA"],"controls":["AC-1","AC-2","AC-3","AC-7","AC-8","AC-14","AC-17","AC-18","AC-19","AC-20"],"note":"DevOps Engineer"},{"id":"user-5","name":"Sofia Hernandez","email":"sofia.hernandez@xmpl.io","role":"control-owner","families":["AU","IR"],"controls":["AU-1","AU-2","AU-3","AU-4","AU-5","AU-6","AU-8","AU-9","AU-11","AU-12","IR-1","IR-2","IR-3","IR-4","IR-5"],"note":"Security Operations Analyst"},{"id":"user-6","name":"Noah Williams","email":"noah.williams@xmpl.io","role":"control-owner","families":["CM","CP"],"controls":["CM-1","CM-2","CM-3","CM-4","CM-5","CP-1","CP-2","CP-3"],"note":"Platform Engineer"}],"currentUserId":null,"controlDeadlines":{},"controlWorkflowState":{},"controlReviewQueue":[],"assetMappings":{},"policyVersions":{},"policyAcknowledgments":{},"testAdequacy":{}}'
+  data: '{"baseline":"L","privacyOverlay":false,"orgName":"Xmpl Inc","programOwner":"Dana Reyes","programOwnerTitle":"Chief Information Security Officer","programOwnerEmail":"dana.reyes@xmpl.io","cisoIsISSM":true,"pmControls":{"PM-1":true,"PM-2":true,"PM-3":true,"PM-4":true,"PM-5":true,"PM-5(1)":true,"PM-6":true,"PM-7":true,"PM-7(1)":true,"PM-8":true,"PM-9":true,"PM-10":true,"PM-11":true,"PM-12":true,"PM-13":true,"PM-14":true,"PM-15":true,"PM-16":true,"PM-16(1)":true,"PM-17":true,"PM-18":true,"PM-19":true,"PM-20":true,"PM-20(1)":true,"PM-21":true,"PM-22":true,"PM-23":true,"PM-24":true,"PM-25":true,"PM-26":true},"domainOwners":{"AC":{"name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"Security Engineer"},"IA":{"name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"Security Engineer"},"AU":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"CM":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"IR":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"AT":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"PS":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"CP":{"name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"GRC Analyst"},"CA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"PE":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"MP":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"MA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"SA":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"},"SR":{"name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"Chief Information Security Officer"}},"policyDeadlines":{"AC":"2026-05-01","IA":"2026-05-01","AU":"2026-05-01","IR":"2026-05-01","CM":"2026-06-01","CP":"2026-06-01","AT":"2026-06-01","PS":"2026-06-01","CA":"2026-07-15","PE":"2026-07-15","MP":"2026-07-15","MA":"2026-07-15","SA":"2026-07-15","SR":"2026-07-15"},"policyStatus":{"AC":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"IA":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"AU":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"IR":{"status":"Draft","version":"1.0","notes":"Initial draft pending domain owner review","lastUpdated":"2026-04-03"},"CM":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"CP":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"AT":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"PS":{"status":"Planned","version":"1.0","notes":"Scheduled for development","lastUpdated":"2026-04-03"},"CA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"PE":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"MP":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"MA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"SA":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"},"SR":{"status":"Planned","version":"1.0","notes":"Scheduled for Phase 2","lastUpdated":"2026-04-03"}},"controlStatus":{},"controlOwnerAttested":false,"controlTestResults":{},"customProgramRoles":[],"assets":[],"attestations":{},"sspAttestations":{},"sspSignoffs":{},"customAssetTypes":[],"cisoComplete":false,"infoSecPolicy":{"orgName":"Xmpl Inc","ciso":"Dana Reyes","cisoEmail":"dana.reyes@xmpl.io","approvalStatus":"Draft","requirements":[{"id":"IS-REQ-1","controlFamily":"PM-1","title":"Information Security Program Plan","requirement":"Xmpl Inc shall develop, document, disseminate, review (annually), and update an organization-wide information security program plan. The plan shall describe the structure of the security program, identify key roles, reference all domain-level policies, and align security objectives to business risk tolerance.","nistRef":"[NIST 800-53: PM-1]"},{"id":"IS-REQ-2","controlFamily":"PM-2","title":"CISO Designation and Authority","requirement":"Xmpl Inc shall designate the CISO as the senior agency information security officer responsible for coordinating, developing, implementing, and maintaining the organization-wide information security program. The CISO shall report directly to the CEO and maintain authority over security budget, staffing, and risk acceptance decisions.","nistRef":"[NIST 800-53: PM-2]"},{"id":"IS-REQ-3","controlFamily":"PM-9","title":"Risk Management Strategy","requirement":"Xmpl Inc shall establish and maintain a risk management strategy that defines risk tolerance thresholds, assessment methodology, and risk response options (accept, mitigate, transfer, avoid). Risk management shall be integrated into the system development lifecycle and business planning processes.","nistRef":"[NIST 800-53: PM-9]"},{"id":"IS-REQ-4","controlFamily":"All -1 Controls","title":"Domain-Level Security Policies","requirement":"Xmpl Inc shall develop, approve, and maintain domain-level security policies and implementing procedures for each NIST 800-53 control family in scope. Policies shall state requirements (\'what must be done\') and procedures shall describe implementation methods (\'how to do it\'). All policies shall be reviewed annually and approved by the CISO.","nistRef":"[NIST 800-53: all -1 controls]"},{"id":"IS-REQ-5","controlFamily":"PM-3","title":"Information Security Resource Requirements","requirement":"Xmpl Inc shall define, resource, and track information security resource requirements as part of capital planning and investment control. Security spending shall be justified by risk reduction and aligned to the organization\'s strategic plan.","nistRef":"[NIST 800-53: PM-3]"},{"id":"IS-REQ-6","controlFamily":"PM-10","title":"Testing, Training, and Monitoring Process","requirement":"Xmpl Inc shall establish and institutionalize a process for ensuring that organizational plans for conducting security and privacy testing, training, and monitoring are developed and maintained.","nistRef":"[NIST 800-53: PM-10]"}]},"policySelectedControls":null,"domainPolicies":null,"controlOwners":{},"policyMerges":{"PS":"AT","MP":"PE","SR":"SA"},"policyPriorities":{},"domainDeadlines":{},"domainCustomNames":{"PS":"People Security (AT+PS)","MP":"Physical & Media Security (PE+MP)","SR":"Supply Chain & Acquisition (SA+SR)"},"cisoStep4Sub":1,"policyCustodians":{},"users":[{"id":"user-1","name":"Dana Reyes","email":"dana.reyes@xmpl.io","role":"ciso","families":["PM","AC","IA","AU","IR","CM","CP","AT","PS","CA","PE","MP","MA","SA","SR"],"controls":[],"note":"Chief Information Security Officer"},{"id":"user-2","name":"Kai Nakamura","email":"kai.nakamura@xmpl.io","role":"issm","families":["AC","IA"],"controls":[],"note":"Security Engineer"},{"id":"user-3","name":"Mira Okonkwo","email":"mira.okonkwo@xmpl.io","role":"issm","families":["AT","PS","CP"],"controls":[],"note":"GRC Analyst"},{"id":"user-4","name":"Liam Park","email":"liam.park@xmpl.io","role":"control-owner","families":["AC","IA"],"controls":["AC-1","AC-2","AC-3","AC-7","AC-8","AC-14","AC-17","AC-18","AC-19","AC-20"],"note":"DevOps Engineer"},{"id":"user-5","name":"Sofia Hernandez","email":"sofia.hernandez@xmpl.io","role":"control-owner","families":["AU","IR"],"controls":["AU-1","AU-2","AU-3","AU-4","AU-5","AU-6","AU-8","AU-9","AU-11","AU-12","IR-1","IR-2","IR-3","IR-4","IR-5"],"note":"Security Operations Analyst"},{"id":"user-6","name":"Noah Williams","email":"noah.williams@xmpl.io","role":"control-owner","families":["CM","CP"],"controls":["CM-1","CM-2","CM-3","CM-4","CM-5","CP-1","CP-2","CP-3"],"note":"Platform Engineer"}],"currentUserId":null,"controlDeadlines":{},"controlWorkflowState":{},"controlReviewQueue":[],"assetMappings":{},"policyVersions":{},"policyAcknowledgments":{},"testAdequacy":{}}'
 };
 
 const XMPL_DOMAIN_SNAPSHOT = {

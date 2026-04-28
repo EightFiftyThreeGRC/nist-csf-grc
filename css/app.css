@@ -80,7 +80,7 @@
     }
 
     .sidebar-logo .brand {
-      font-size: 14px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--teal);
       letter-spacing: 0.5px;
@@ -95,7 +95,7 @@
     }
 
     .sidebar-logo .app-sub {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-muted);
       opacity: 0.7;
       letter-spacing: 0.3px;
@@ -1441,4 +1441,237 @@
         min-height: 40px;
       }
     }
-  
+
+    /* Small phones — tighten further so the persist toolbar doesn't crowd
+       the reset button or the hamburger. */
+    @media (max-width: 480px) {
+      #app-persist-toolbar {
+        right: 10px !important;
+        left: 60px !important;
+        gap: 6px !important;
+      }
+      #app-persist-toolbar .btn {
+        padding: 5px 9px !important;
+        font-size: 11px !important;
+      }
+      #saveIndicator {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+      }
+      .page-header h1 {
+        font-size: 19px;
+      }
+      .page-header p {
+        font-size: 13px;
+      }
+      .step-name {
+        font-size: 12px;
+      }
+      .step-num {
+        font-size: 10px;
+      }
+    }
+
+    /* Tablet portrait (~600–900px) — keep the sidebar visible but narrow it,
+       and let the wizard step nav stay on the left. */
+    @media (min-width: 769px) and (max-width: 900px) {
+      .sidebar {
+        width: 200px;
+      }
+      .main {
+        margin-left: 200px;
+      }
+      .step-nav {
+        width: 200px;
+      }
+    }
+
+    /* ============================================================
+       Top-right toolbar + reset button (extracted from inline styles
+       for maintainability and a11y)
+       ============================================================ */
+    #app-persist-toolbar {
+      position: fixed;
+      top: 14px;
+      right: 200px;
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: calc(100vw - 280px);
+      justify-content: flex-end;
+    }
+    #app-persist-toolbar #saveIndicator {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 4px 10px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+    #app-persist-toolbar .persist-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+    #resetBtn {
+      position: fixed;
+      top: 14px;
+      right: 20px;
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: white;
+      color: #64748b;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      letter-spacing: 0.3px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+    #resetBtn:hover,
+    #resetBtn:focus-visible {
+      background: #fef2f2;
+      color: var(--red);
+      border-color: #fca5a5;
+    }
+    /* Visible focus ring for keyboard users on every interactive control */
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [role="button"]:focus-visible,
+    .sidebar-item:focus-visible,
+    .step-item:focus-visible {
+      outline: 2px solid var(--teal);
+      outline-offset: 2px;
+    }
+
+    /* Sidebar profile button (extracted from inline styles) */
+    .profile-btn-wrap {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .profile-btn {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .profile-btn:hover,
+    .profile-btn:focus-visible {
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .profile-btn .profile-btn-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      line-height: 1.2;
+    }
+    .profile-btn .profile-btn-sub {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.72);
+      margin-top: 3px;
+    }
+
+    /* Role-picker overlay (extracted from inline styles) */
+    #rolePickerOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .role-picker-card {
+      width: min(980px, 94vw);
+      max-height: 90vh;
+      overflow: auto;
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      padding: 22px 22px 18px;
+    }
+    .role-picker-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .role-picker-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.92);
+    }
+    .role-picker-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    .role-picker-subtitle {
+      font-size: 13px;
+      color: rgba(226, 232, 240, 0.75);
+      margin-top: 6px;
+    }
+    .role-picker-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .role-picker-action-btn {
+      white-space: nowrap;
+    }
+    .role-picker-profiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 12px;
+    }
+
+    /* Skip link — invisible until focused, lets keyboard users jump past
+       the sidebar to the main content. */
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: var(--navy);
+      color: white;
+      padding: 8px 14px;
+      z-index: 2000;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 0 0 6px 0;
+    }
+    .skip-link:focus {
+      top: 0;
+    }

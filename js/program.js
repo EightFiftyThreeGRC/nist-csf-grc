@@ -258,19 +258,6 @@ function cisoNext(fromStep) {
     }
     if (!state.orgName || !state.orgName.trim()) { showToast('Please enter your Organization / Agency Name before continuing.', true); document.getElementById('orgNameInput')?.focus(); return; }
     if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
-    if (state.strictFismaMode) {
-      if (!state.programOwnerTitle || !String(state.programOwnerTitle).trim()) {
-        showToast('Strict FISMA mode: enter the Program Owner title / role (required).', true);
-        document.getElementById('programOwnerTitleInput')?.focus();
-        return;
-      }
-      var em = (state.programOwnerEmail || '').trim();
-      if (!em || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
-        showToast('Strict FISMA mode: enter a valid program owner email (required for FISMA accountability).', true);
-        document.getElementById('programOwnerEmailInput')?.focus();
-        return;
-      }
-    }
   }
   if (fromStep===3) {
     // Finalize the ISP and submit to the selected approver for review.
@@ -312,7 +299,7 @@ function submitISPForApproval(silent) {
   // policy status fallbacks) use `state.infoSecPolicy.title` as the "ISP exists / is done" flag.
   // Only set it if not already set so users can override the title themselves later.
   if (!state.infoSecPolicy.title) {
-    state.infoSecPolicy.title = 'Information Security Policy';
+    state.infoSecPolicy.title = getDefaultISPTitle();
   }
 
   // Only (re)submit if the ISP isn't already approved. Approved policies shouldn't regress on re-edit.
@@ -336,6 +323,10 @@ function submitISPForApproval(silent) {
   try { if (typeof syncUsersFromState === 'function') syncUsersFromState(); } catch (e) { console.warn('syncUsersFromState failed:', e); }
   try { markDirty(); } catch (e) { console.warn('markDirty failed:', e); }
   try { renderSidebarBadges(); } catch (e) { console.warn('renderSidebarBadges failed:', e); }
+}
+
+function getDefaultISPTitle() {
+  return state.privacyOverlay ? 'Information Security and Privacy Policy' : 'Information Security Policy';
 }
 
 function showToast(msg, isError=false) {
@@ -441,9 +432,10 @@ function renderSidebarBadges() {
 
     const ispDone = !!(state.infoSecPolicy && state.infoSecPolicy.title);
     const showISP = !user || userRole === 'ciso' || hasApprover;
+    const ispLabel = (state.infoSecPolicy && (state.infoSecPolicy.title || '').trim()) || getDefaultISPTitle();
     const ispEntry = showISP ? `<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="goToCISOPolicyEditor()">
       <span style="font-size:12px;margin-right:5px;">\uD83D\uDCCB</span>
-      <span style="font-weight:600;color:${ispDone?'#4ade80':'rgba(255,255,255,0.55)'};">Information Security Policy (Tier 1)</span>
+      <span style="font-weight:600;color:${ispDone?'#4ade80':'rgba(255,255,255,0.55)'};">${escapeHTML(ispLabel)} (Tier 1)</span>
     </div>` : '';
 
     // Pure Tier-1 ISP approver: no Tier-2 domain shortcuts in the sidebar (ISSM/CUST/CISO see domains)
@@ -585,7 +577,7 @@ function renderSidebarAssets() {
   // Optionally hide for roles that don't use asset tab
   var user = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
   var role = user ? user.role : 'admin';
-  var visibleTabs = ROLE_TABS[role] || TAB_IDS;
+  var visibleTabs = (typeof getRoleTabs === 'function') ? getRoleTabs(role) : (ROLE_TABS[role] || TAB_IDS);
   if (section && !visibleTabs.includes('asset') && role !== 'admin') {
     section.style.display = 'none';
     return;
@@ -680,11 +672,17 @@ function userCanAccessAssetWorkspace() {
 
 function openAssetWizardFromLibrary(assetId) {
   if (!userCanAccessAssetWorkspace()) {
-    showToast('Access restricted: only Asset Owners can open the asset SSP wizard.', true);
+    showToast('You do not have access to open the asset-owner SSP workspace for this system.', true);
     return;
   }
   goToAssetWorkspace();
   enterAssetSSP(assetId);
+}
+
+/** Open a process SSP wizard from library / reports (no asset-owner-only gate). */
+function openProcessSspFromLibrary(procId) {
+  goToAssetWorkspace();
+  if (typeof enterProcessSSP === 'function') enterProcessSSP(procId);
 }
 
 // ============================================================
@@ -694,10 +692,19 @@ function openAssetWizardFromLibrary(assetId) {
 function renderCISOStep1() {
   const body = document.getElementById('ciso-step-1-body');
   if (!body) return;
+
+  if (state.privacyOverlay) {
+    var _syncTitle = (state.programOwnerTitle || '').trim();
+    if (_syncTitle === DEFAULT_PROGRAM_OWNER_TITLE) {
+      state.programOwnerTitle = DEFAULT_PROGRAM_OWNER_TITLE_WITH_PRIVACY;
+      if (typeof markDirty === 'function') markDirty();
+    }
+  }
+
   const lCount = baselineCount('L');
   const mCount = baselineCount('M');
   const hCount = baselineCount('H');
-  const privCount = BASELINE_COUNTS.P;
+  const privCount = typeof getPrivacyOnlyCatalogControlCount === 'function' ? getPrivacyOnlyCatalogControlCount() : 0;
   const isFisma = !!state.fismaMode;
   const selectedTypes = Array.isArray(state.programInfoTypes) ? state.programInfoTypes : [];
 
@@ -834,21 +841,11 @@ function renderCISOStep1() {
     <div class="privacy-toggle-card ${state.privacyOverlay?'selected':''}" onclick="togglePrivacy()" style="margin-top:8px;">
       <div class="pt-icon">🔒</div>
       <div class="pt-info">
-        <div class="pt-name">Add Privacy Overlay (PT + PM-18 through PM-28)</div>
-        <div class="pt-desc">Adds ${privCount} privacy-specific controls from the PT (Privacy) family. Required if your system processes Personally Identifiable Information (PII).</div>
+        <div class="pt-name">Add Privacy Overlay (PT family + P-baseline controls + PM-18 through PM-28)</div>
+        <div class="pt-desc">Adds <strong>${privCount}</strong> catalog controls that apply only under the Privacy (P) designation for your selected baseline (including the <strong>PT</strong> family — PII Processing and Transparency), plus tiered PM privacy controls you confirm in Step 2. Use when systems process Personally Identifiable Information (PII).</div>
       </div>
       <div class="toggle-switch ${state.privacyOverlay?'on':''}"></div>
     </div>
-
-    <div class="privacy-toggle-card ${state.strictFismaMode?'selected':''}" onclick="setStrictFismaMode(!state.strictFismaMode)" style="margin-top:8px;border-color:${state.strictFismaMode?'#93c5fd':'var(--border)'};background:${state.strictFismaMode?'#eff6ff':'white'};">
-      <div class="pt-icon">🏛️</div>
-      <div class="pt-info">
-        <div class="pt-name">Strict FISMA mode (federal / agency programs)</div>
-        <div class="pt-desc">Tightens Step 1: requires organization name, program owner, <strong>title/role</strong>, and a <strong>valid work email</strong> before you can continue — aligned with FISMA program accountability and OMB A-123 reporting contact expectations.</div>
-      </div>
-      <div class="toggle-switch ${state.strictFismaMode?'on':''}"></div>
-    </div>
-    ${state.strictFismaMode ? `<div style="font-size:12px;line-height:1.55;color:var(--text-muted);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:4px;">Federal systems under <strong>FISMA</strong> use NIST RMF; most operate at the <strong>Moderate</strong> baseline. Confirm the selected impact level and privacy overlay with your risk assessment. Low baseline is allowed when justified — coordinate with your Authorizing Official (AO) when in doubt.</div>` : ''}
 
     <div style="display:flex;flex-direction:column;gap:14px;margin-top:20px;">
       <div class="form-group" style="margin-bottom:0;">
@@ -860,17 +857,17 @@ function renderCISOStep1() {
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Security Program Owner — Full Name <span class="required">*</span></label>
           <input class="form-input" id="programOwnerInput" placeholder="e.g., Jane Smith" value="${escapeHTML(state.programOwner)}" oninput="state.programOwner=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Senior official responsible for the security program (CISO, SAISO, or equivalent).</div>
+          <div class="form-hint">Senior official responsible for the security${state.privacyOverlay ? ' and privacy' : ''} program (CISO${state.privacyOverlay ? '/CPO' : ''}, SAISO, or equivalent).</div>
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Title / Role <span class="required">*</span></label>
-          <input class="form-input" id="programOwnerTitleInput" placeholder="e.g., Chief Information Security Officer" value="${escapeHTML(state.programOwnerTitle)}" oninput="state.programOwnerTitle=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Official title — flows into policy documents as the accountable role.${state.strictFismaMode ? ' <strong>Strict FISMA:</strong> must be non-empty to proceed.' : ''}</div>
+          <input class="form-input" id="programOwnerTitleInput" placeholder="${escapeHTML(getDefaultProgramOwnerTitle())}" value="${escapeHTML(state.programOwnerTitle)}" oninput="state.programOwnerTitle=this.value;applyCisoIsISSM();; window.markDirty();">
+          <div class="form-hint">Official title — flows into policy documents as the accountable role.${state.privacyOverlay ? ' With the privacy overlay, combined CISO/CPO accountability is typical.' : ''}</div>
         </div>
         <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Email Address${state.strictFismaMode ? ' <span class="required">*</span>' : ''}</label>
+          <label class="form-label">Email Address</label>
           <input class="form-input" id="programOwnerEmailInput" type="email" placeholder="e.g., jsmith@agency.gov" value="${escapeHTML(state.programOwnerEmail)}" oninput="state.programOwnerEmail=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Used to populate the Users &amp; Roles inventory automatically.${state.strictFismaMode ? ' <strong>Strict FISMA:</strong> a valid work email is required.' : ''}</div>
+          <div class="form-hint">Used to populate the Users &amp; Roles inventory automatically.</div>
         </div>
       </div>
       <label style="display:inline-flex;align-items:center;gap:10px;margin-top:14px;padding:10px 16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;cursor:pointer;user-select:none;">
@@ -887,10 +884,9 @@ function renderCISOStep1() {
       <h3>📊 Selected Program Scope</h3>
       <div class="summary-kv"><span class="sk">Baseline:</span><span class="sv">${state.baseline==='L'?'Low Impact':state.baseline==='M'?'Moderate Impact':'High Impact'}</span></div>
       <div class="summary-kv"><span class="sk">Privacy Overlay:</span><span class="sv">${state.privacyOverlay?'Yes — PT (Privacy) family included':'No'}</span></div>
-      <div class="summary-kv"><span class="sk">Strict FISMA mode:</span><span class="sv">${state.strictFismaMode ? 'On — federal accountability fields enforced' : 'Off'}</span></div>
       <div class="summary-kv"><span class="sk">Total Controls in Scope:</span><span class="sv">${BASELINE_COUNTS[state.baseline] || 0} controls across ${getActiveFamilies().filter(f=>f!=='PM').length} families${Object.values(state.pmControls||{}).filter(Boolean).length ? ' + ' + Object.values(state.pmControls||{}).filter(Boolean).length + ' PM controls' : ''}</span></div>
       <div class="summary-kv"><span class="sk">Organization:</span><span class="sv">${state.orgName||'Not yet set'}</span></div>
-      <div class="summary-kv"><span class="sk">Program Owner:</span><span class="sv">${state.programOwner ? state.programOwner + ' — ' + (state.programOwnerTitle||'') + (state.programOwnerEmail ? ' &lt;' + state.programOwnerEmail + '&gt;' : '') : 'Not yet assigned'}</span></div>
+      <div class="summary-kv"><span class="sk">Program Owner:</span><span class="sv">${state.programOwner ? state.programOwner + ' — ' + (((state.programOwnerTitle || '').trim()) || getDefaultProgramOwnerTitle()) + (state.programOwnerEmail ? ' &lt;' + state.programOwnerEmail + '&gt;' : '') : 'Not yet assigned'}</span></div>
     </div>` : ''}
   `;
 }
@@ -903,7 +899,7 @@ function applyCisoIsISSM() {
   if (!state.cisoIsISSM) return;           // only act when checking the box
   var cisoName  = (state.programOwner || '').trim();
   var cisoEmail = (state.programOwnerEmail || '').trim();
-  var cisoTitle = (state.programOwnerTitle || '').trim();
+  var cisoTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
   if (!cisoName) return;                   // nothing to fill if no name yet
   // Track the last CISO name auto-applied so typing can safely update
   // previously auto-filled owners (without clobbering manual overrides).
@@ -945,15 +941,30 @@ function togglePrivacy() {
   state.privacyOverlay = !state.privacyOverlay;
   // Reset privacy PM controls so renderCISOStep2 re-applies the right tier
   resetPrivacyPMDefaults();
-  renderCISOStep1();
-}
-
-function setStrictFismaMode(on) {
-  var next = !!on;
-  if (state.strictFismaMode === next) return;
-  state.strictFismaMode = next;
-  try { addAuditEntry('program', 'ciso', 'Strict FISMA mode ' + (next ? 'enabled' : 'disabled')); } catch (e) { /* no-op */ }
-  markDirty();
+  var prevIspDefault = state.privacyOverlay ? 'Information Security Policy' : 'Information Security and Privacy Policy';
+  var nextIspDefault = getDefaultISPTitle();
+  if (state.infoSecPolicy && typeof state.infoSecPolicy.title === 'string') {
+    var currentIspTitle = (state.infoSecPolicy.title || '').trim();
+    if (!currentIspTitle || currentIspTitle === prevIspDefault) {
+      state.infoSecPolicy.title = nextIspDefault;
+      if (typeof markDirty === 'function') markDirty();
+    }
+  }
+  var pt = (state.programOwnerTitle || '').trim();
+  if (state.privacyOverlay) {
+    if (!pt || pt === DEFAULT_PROGRAM_OWNER_TITLE) {
+      state.programOwnerTitle = getDefaultProgramOwnerTitle();
+      if (typeof markDirty === 'function') markDirty();
+    }
+  } else {
+    if (pt === DEFAULT_PROGRAM_OWNER_TITLE_WITH_PRIVACY) {
+      state.programOwnerTitle = DEFAULT_PROGRAM_OWNER_TITLE;
+      if (typeof markDirty === 'function') markDirty();
+    }
+    if (state.policySelectedControls && state.policySelectedControls.PT) {
+      delete state.policySelectedControls.PT;
+    }
+  }
   renderCISOStep1();
 }
 
@@ -1181,7 +1192,7 @@ function renderCISOStep2() {
 
     <div class="info-alert">
       <div class="ia-icon">ℹ️</div>
-      <div class="ia-text"><strong>PM-1, PM-2, and PM-9 are pre-selected</strong> as they form the foundation of any security program. All other PM controls are optional — select those applicable to your organization. PM controls are organization-wide and apply regardless of impact level.${state.privacyOverlay ? ` <strong style="color:#6366f1;">Privacy overlay is active:</strong> PM-18 through PM-${state.baseline==='H'?'28':state.baseline==='M'?'25':'20(1)'} are also pre-selected — these support the privacy program plan, leadership, disclosures, and PII governance requirements appropriate for your ${state.baseline==='H'?'High':state.baseline==='M'?'Moderate':'Low'} baseline. Policy requirements for these controls are automatically added to your Information Security Policy in Step 3.` : ''}</div>
+      <div class="ia-text"><strong>PM-1, PM-2, and PM-9 are pre-selected</strong> as they form the foundation of any security program. All other PM controls are optional — select those applicable to your organization. PM controls are organization-wide and apply regardless of impact level.${state.privacyOverlay ? ` <strong style="color:#6366f1;">Privacy overlay is active:</strong> PM-18 through PM-${state.baseline==='H'?'28':state.baseline==='M'?'25':'20(1)'} are also pre-selected — these support the privacy program plan, leadership, disclosures, and PII governance requirements appropriate for your ${state.baseline==='H'?'High':state.baseline==='M'?'Moderate':'Low'} baseline. Policy requirements for these controls are automatically added to your Tier 1 policy in Step 3.` : ''}</div>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1235,9 +1246,10 @@ function renderCISOStep3() {
   if (!state.infoSecPolicy) {
     const minus1 = getActiveControls().filter(c=>c.id.endsWith('-1')).map(c=>c.id);
     const ownerName  = state.programOwner || 'Program Owner';
-    const ownerTitle = state.programOwnerTitle || 'Chief Information Security Officer';
+    const ownerTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
     const orgNameVal = state.orgName || 'the organization';
     state.infoSecPolicy = {
+      title: getDefaultISPTitle(),
       custodian: { name: '', role: '', email: '' },
       sections: [
         { type:'purpose', title:'Purpose', content:`This policy establishes ${orgNameVal}'s commitment to information security and provides the overarching framework for all subordinate security policies. It defines the strategic direction, governance structure, and accountability for the protection of information assets. This policy is built on the NIST Risk Management Framework (SP 800-37 Rev. 2), which provides the lifecycle for managing security risk, and implements the security${state.privacyOverlay ? ' and privacy' : ''} controls cataloged in NIST SP 800-53 Rev. 5.` },
@@ -1250,7 +1262,7 @@ function renderCISOStep3() {
       ],
       roles: [
         { name:'Executive Leadership', responsibilities:['Approve and endorse the organization information security policy at the highest organizational level','Allocate resources (budget, personnel, technology) sufficient to execute the information security program','Accept enterprise-level risk on behalf of the organization and communicate risk tolerance to the CISO','Champion a security-aware culture across the organization'] },
-        { name: ownerTitle || 'Chief Information Security Officer (CISO)', responsibilities:['Draft, approve, and maintain this Tier 1 organizational information security policy','Report to executive leadership on security posture and program effectiveness','Oversee the information security program, including risk management, compliance, and continuous monitoring','Accept and formally document cyber risk decisions within delegated authority','Coordinate incident response at the program level and ensure lessons learned are integrated into policy'] },
+        { name: ownerTitle, responsibilities:['Draft, approve, and maintain this Tier 1 organizational information security policy','Report to executive leadership on security posture and program effectiveness','Oversee the information security program, including risk management, compliance, and continuous monitoring','Accept and formally document cyber risk decisions within delegated authority','Coordinate incident response at the program level and ensure lessons learned are integrated into policy'] },
         { name:'Information System Security Managers (ISSMs)', responsibilities:['Draft, approve, and maintain Tier 2 domain-level policies for assigned NIST 800-53 control families','Provide program-level oversight of ISSOs and ensure consistent application of this policy across the system portfolio','Review and approve SSPs, POA&Ms, and significant change requests before escalation to the AO','Coordinate common control identification and inheritance documentation across managed systems'] },
         { name:'All Personnel', responsibilities:['Comply with this policy and all subordinate domain policies applicable to their role','Complete security awareness training within required timeframes','Report suspected security incidents, policy violations, or vulnerabilities to the designated reporting channel'] },
       ],
@@ -1301,12 +1313,15 @@ function renderCISOStep3() {
       ];
     }
   }
+  if (!state.infoSecPolicy.title || !String(state.infoSecPolicy.title).trim()) {
+    state.infoSecPolicy.title = getDefaultISPTitle();
+  }
 
   // Ensure custodian object exists (migration for old saves)
   if (!state.infoSecPolicy.custodian) state.infoSecPolicy.custodian = { name: '', role: '', email: '' };
 
   // Keep CISO role name in sync with Step 1 title
-  var cisoTitle = state.programOwnerTitle || 'Chief Information Security Officer';
+  var cisoTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
   if (state.infoSecPolicy.roles && state.infoSecPolicy.roles.length >= 2) {
     state.infoSecPolicy.roles[1].name = cisoTitle;
   }
@@ -1338,7 +1353,7 @@ function renderCISOStep3() {
         : 'Define who and what this policy covers — people, systems, data, and organizational boundaries.';
       content = `
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${hint}</div>
-        <textarea class="form-input" rows="6" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:120px;" oninput="state.infoSecPolicy.sections[${si}].content=this.value; window.markDirty();">${escapeHTML(sec.content||'')}</textarea>`;
+        <textarea class="form-input" rows="6" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:120px;" oninput="setISPSectionContent(${si}, this.value);">${escapeHTML(sec.content||'')}</textarea>`;
     } else if (sec.type === 'roles') {
       content = renderRolesSection();
     } else if (sec.type === 'requirements') {
@@ -1350,17 +1365,23 @@ function renderCISOStep3() {
     } else if (sec.type === 'custom') {
       content = `
         <div style="margin-bottom:8px;">
-          <input class="form-input" style="font-size:14px;font-weight:600;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:4px 0;background:transparent;" value="${escapeHTML(sec.title)}" oninput="state.infoSecPolicy.sections[${si}].title=this.value;renderCISOStep3();; window.markDirty();" placeholder="Section title">
+          <input class="form-input" style="font-size:14px;font-weight:600;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:4px 0;background:transparent;" value="${escapeHTML(sec.title)}" oninput="setISPSectionTitle(${si}, this.value, true);" placeholder="Section title">
         </div>
-        <textarea class="form-input" rows="6" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:100px;" oninput="state.infoSecPolicy.sections[${si}].content=this.value; window.markDirty();" placeholder="Enter section content…">${escapeHTML(sec.content||'')}</textarea>`;
+        <textarea class="form-input" rows="6" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:100px;" oninput="setISPSectionContent(${si}, this.value);" placeholder="Enter section content…">${escapeHTML(sec.content||'')}</textarea>`;
     }
 
     return `<div class="isp-section" data-section-idx="${si}" ${dragAttr} style="margin-bottom:28px;padding:4px;border-radius:6px;transition:background 0.15s;">${hdr}${content}</div>`;
   }).join('');
 
   body.innerHTML = `
-    <div class="section-title">Information Security Policy</div>
-    <div class="section-subtitle">Review and customise your organization's top-level Information Security Policy. This policy governs all domain-specific subordinate policies.</div>
+    <div class="section-title">${escapeHTML((isp.title || '').trim() || getDefaultISPTitle())}</div>
+    <div class="section-subtitle">Review and customise your organization's top-level Tier 1 policy. This policy governs all domain-specific subordinate policies.</div>
+
+    <div style="border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;background:white;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Policy title</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Choose the public-facing name for your Tier 1 policy document.</div>
+      <input class="form-input" style="max-width:640px;font-size:14px;font-weight:600;" value="${escapeHTML((isp.title || '').trim() || getDefaultISPTitle())}" oninput="setISPTitle(this.value);" placeholder="${escapeHTML(getDefaultISPTitle())}">
+    </div>
 
     <!-- ISP Custodian -->
     <div style="border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;background:white;">
@@ -1374,7 +1395,7 @@ function renderCISOStep3() {
     </div>
 
     <!-- Policy Review Cycle Tracking (ISP) -->
-    ${renderReviewCycleCard('ISP', 'Information Security Policy')}
+    ${renderReviewCycleCard('ISP', (isp.title || '').trim() || getDefaultISPTitle())}
 
     ${unmappedPM.length > 0 ? `
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;display:flex;gap:10px;align-items:center;margin-bottom:20px;font-size:13px;">
@@ -1438,18 +1459,58 @@ function removeReqAtIndex(idx) {
 function addReqControl(reqIdx) {
   const cid = prompt('Enter control ID to map (e.g. PM-3, AC-1):');
   if (!cid) return;
-  const trimmed = cid.trim().toUpperCase();
-  if (!state.infoSecPolicy.requirements[reqIdx].controls.includes(trimmed)) {
-    state.infoSecPolicy.requirements[reqIdx].controls.push(trimmed);
+  const canonical = typeof resolveCatalogControlId === 'function' ? resolveCatalogControlId(cid) : null;
+  if (!canonical) {
+    showToast('Not a valid NIST SP 800-53 control ID in this app\'s catalog (e.g. AV-2 does not exist). Check spelling and family code.', true);
+    return;
   }
+  const reqs = state.infoSecPolicy.requirements;
+  if (!reqs || !reqs[reqIdx]) return;
+  if (!reqs[reqIdx].controls) reqs[reqIdx].controls = [];
+  if (!reqs[reqIdx].controls.includes(canonical)) {
+    reqs[reqIdx].controls.push(canonical);
+  }
+  try { markDirty(); } catch (e) {}
   renderCISOStep3();
 }
 
 function setISPCustodian(field, value) {
   if (!state.infoSecPolicy) return;
   if (!state.infoSecPolicy.custodian) state.infoSecPolicy.custodian = { name:'', role:'', email:'' };
+  var prev = state.infoSecPolicy.custodian[field];
   state.infoSecPolicy.custodian[field] = value;
+  if (typeof logFieldChange === 'function') logFieldChange('infoSecPolicy.custodian.' + field, prev, value);
   markDirty();
+}
+
+// ISP edit helpers — wrap raw mutations so the field-level change log captures them.
+function setISPTitle(value) {
+  if (!state.infoSecPolicy) return;
+  var prev = state.infoSecPolicy.title || '';
+  state.infoSecPolicy.title = value;
+  if (typeof logFieldChange === 'function') logFieldChange('infoSecPolicy.title', prev, value);
+  markDirty();
+}
+
+function setISPSectionContent(idx, value) {
+  if (!state.infoSecPolicy || !state.infoSecPolicy.sections) return;
+  var sec = state.infoSecPolicy.sections[idx];
+  if (!sec) return;
+  var prev = sec.content || '';
+  sec.content = value;
+  if (typeof logFieldChange === 'function') logFieldChange('infoSecPolicy.sections[' + idx + '].content', prev, value);
+  markDirty();
+}
+
+function setISPSectionTitle(idx, value, rerender) {
+  if (!state.infoSecPolicy || !state.infoSecPolicy.sections) return;
+  var sec = state.infoSecPolicy.sections[idx];
+  if (!sec) return;
+  var prev = sec.title || '';
+  sec.title = value;
+  if (typeof logFieldChange === 'function') logFieldChange('infoSecPolicy.sections[' + idx + '].title', prev, value);
+  markDirty();
+  if (rerender && typeof renderCISOStep3 === 'function') renderCISOStep3();
 }
 
 // ── Policy helper functions ──────────────────────────────────────────────────
@@ -1638,7 +1699,7 @@ function renderDocumentsSection() {
         <div style="display:flex;align-items:center;gap:8px;margin-top:2px;padding:6px 8px;background:#fff;border:1px solid #e0eaff;border-radius:6px;">
           <span style="font-size:13px;flex-shrink:0;">🔗</span>
           <span style="font-size:11px;font-weight:600;color:#6b7280;white-space:nowrap;flex-shrink:0;">Link</span>
-          <input class="form-input" style="font-size:12px;color:#3b82f6;border:none;border-radius:0;padding:0;background:transparent;flex:1;min-width:0;" value="${escapeHTML(d.url||'')}" oninput="state.infoSecPolicy.documents[${i}].url=this.value;renderCISOStep3();; window.markDirty();" placeholder="Paste any URL — SharePoint, Confluence, external site…">
+          <input class="form-input" style="font-size:12px;color:#3b82f6;border:none;border-radius:0;padding:0;background:transparent;flex:1;min-width:0;" value="${escapeHTML(d.url||'')}" oninput="state.infoSecPolicy.documents[${i}].url=this.value; window.markDirty();" placeholder="Paste any URL — SharePoint, Confluence, external site…">
           ${d.url ? `<a href="${escapeHTML(d.url)}" target="_blank" style="font-size:11px;color:var(--teal);white-space:nowrap;text-decoration:none;font-weight:600;flex-shrink:0;">↗ Open</a>` : ''}
         </div>
       </div>
@@ -1821,7 +1882,7 @@ const COMMON_MERGES = [
 
 // --- Priority tier helpers ---
 const PRIORITY_TIERS = { now: 45, soon: 90, later: 150 };
-const PRIORITY_DEFAULTS = { IR:'now', AC:'now', IA:'now', CP:'now', AT:'later', PE:'later' };
+const PRIORITY_DEFAULTS = { IR:'now', AC:'now', IA:'now', CP:'now', AT:'later', PE:'later', PT:'soon' };
 const PRIORITY_META = {
   now:   { label:'Now',   bg:'#fee2e2', fg:'#991b1b', bar:'#dc2626', hint:'30–60 days' },
   soon:  { label:'Soon',  bg:'#fef3c7', fg:'#92400e', bar:'#f59e0b', hint:'60–120 days' },
@@ -2072,16 +2133,6 @@ function renderCISOStep4b() {
 
     <div class="section-title">Assign Owners &amp; Deadlines</div>
     <div class="section-subtitle">Name the ISSM responsible for each policy domain. Deadlines are pre-filled from your priority settings — override any individually.</div>
-    ${(!hasAssessor || !hasAo) ? `
-    <div style="margin-top:12px;margin-bottom:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;">
-      <div style="font-size:13px;font-weight:800;color:#92400e;">Program readiness nudge</div>
-      <div style="font-size:12px;color:#78350f;margin-top:4px;">${!hasAssessor ? 'No Assessor user exists. ' : ''}${!hasAo ? 'No Authorizing Official user exists. ' : ''}Add required authorization roles before running RMF Assess + Authorize.</div>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-        ${!hasAssessor ? '<button type="button" class="btn btn-secondary btn-sm" onclick="openUsersRolePreset(\'assessor\')">Add Assessor</button>' : ''}
-        ${!hasAo ? '<button type="button" class="btn btn-secondary btn-sm" onclick="openUsersRolePreset(\'ao\')">Add Authorizing Official</button>' : ''}
-      </div>
-    </div>` : ''}
-
     ${returnedFams.length ? `
     <div style="border:1px solid rgba(220,38,38,0.3);border-radius:10px;background:rgba(254,242,242,0.8);padding:14px 18px;margin-bottom:20px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -2197,14 +2248,42 @@ function reassignReturnedPolicy(fam) {
   const input = document.getElementById('reassign-input-' + fam);
   const newOwner = (input ? input.value : '').trim();
   if (!newOwner) { showToast('Please enter a new owner name.', true); return; }
-  if (!state.domainOwners) state.domainOwners = {};
-  state.domainOwners[fam] = { name: newOwner, role: newOwner };
-  if (!state.policyStatus) state.policyStatus = {};
-  if (!state.policyStatus[fam]) state.policyStatus[fam] = {};
-  state.policyStatus[fam].status = 'Not Started';
-  delete state.policyStatus[fam].returnedAt;
-  showToast('✅ ' + fam + ' reassigned to ' + newOwner + '.');
+  reassignReturnedPolicyByName(fam, newOwner);
   renderActiveCisoSetupStep();
+}
+
+function reassignReturnedPolicyByName(fam, newOwner) {
+  var ownerName = String(newOwner || '').trim();
+  if (!ownerName) {
+    showToast('Please enter a new owner name.', true);
+    return false;
+  }
+  if (!state.domainOwners) state.domainOwners = {};
+  if (!state.policyStatus) state.policyStatus = {};
+  var merges = state.policyMerges || {};
+  var families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  var masterFam = merges[fam] || fam;
+  var relatedFams = [masterFam].concat(families.filter(function(f){ return merges[f] === masterFam; }));
+  var existingMaster = state.domainOwners[masterFam] || {};
+  var reassigned = [];
+  relatedFams.forEach(function(targetFam) {
+    var prior = state.domainOwners[targetFam] || {};
+    state.domainOwners[targetFam] = {
+      name: ownerName,
+      role: (existingMaster.role || prior.role || ownerName),
+      email: (existingMaster.email || prior.email || '')
+    };
+    if (!state.policyStatus[targetFam]) state.policyStatus[targetFam] = {};
+    state.policyStatus[targetFam].status = 'Not Started';
+    delete state.policyStatus[targetFam].returnedAt;
+    delete state.policyStatus[targetFam].returnedDate;
+    delete state.policyStatus[targetFam].returnedBy;
+    reassigned.push(targetFam);
+  });
+  addAuditEntry('policy', masterFam, 'Reassigned returned domain policy owner to ' + ownerName + ' for ' + reassigned.join(', ') + '.');
+  markDirty();
+  showToast('✅ Reassigned ' + reassigned.join(', ') + ' to ' + ownerName + '.');
+  return true;
 }
 
 // Apply all COMMON_MERGES that don't conflict with each other (first-entry-wins).
@@ -2409,6 +2488,11 @@ function autoPopulateControlOwnersFromDomain(fam) {
 }
 
 function prefillDemoOwners() {
+  if (state.cisoComplete) {
+    showToast('Cannot inject demo owners after program setup is finalized.', true);
+    return;
+  }
+  if (!confirm('This will populate domain owners with synthetic identities ("Alex Rivera", etc.) for demonstration only. Any record marked as a demo placeholder will be blocked from finalize/submit until you replace it with a real person. Continue?')) return;
   setTimeout(updateCISOFinishBtn, 100);
 
   // Fake people mapped to each consolidated bucket
@@ -2441,6 +2525,7 @@ function prefillDemoOwners() {
 
 function prefillDemoControlOwners(fam) {
   const title = getPolicyMergedTitle(fam);
+  if (!confirm('This will populate ' + title + ' control owners with synthetic identities for demo only. Demo placeholder records will be blocked from policy submit until you replace them with real people. Continue?')) return;
   const selected = (state.policySelectedControls || {})[fam] || [];
   if (!state.controlOwners) state.controlOwners = {};
   if (!state.users) state.users = [];
@@ -2453,15 +2538,19 @@ function prefillDemoControlOwners(fam) {
     { name: 'Marcus Torres',   role: 'control-owner', note: 'Infrastructure Lead',        email: 'marcus.torres@example.com' },
   ];
 
-  // Ensure each person exists in state.users so they can log in
+  // Ensure each person exists in state.users so they can log in. Tag demo
+  // identities so the role picker can refuse to impersonate them — non-repudiation
+  // shortcut: real attestations must come from real people.
   FAKE_CO_ROSTER.forEach(function(p) {
     const existing = state.users.find(function(u) { return u.name === p.name; });
     if (!existing) {
       state.users.push({
         id: 'u_co_' + p.name.replace(/\s+/g,'_').toLowerCase(),
         name: p.name, role: p.role, note: p.note, email: p.email,
-        families: [], controls: []
+        families: [], controls: [], isDemoPlaceholder: true
       });
+    } else if (!existing.isDemoPlaceholder) {
+      // Pre-existing user with the same name — leave them alone.
     }
   });
 

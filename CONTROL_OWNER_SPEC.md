@@ -1,6 +1,8 @@
 # Control Owner Wizard — Compliance & UX Specification
 
 > This file combines the former CONTROL_OWNER_WIZARD_SPECIFICATION.md (NIST SP 800-53 Rev. 5 compliance spec) and CONTROL_OWNER_UX_SPEC.md (UX design spec) into a single reference.
+>
+> Status note (2026-04-27): this is a target-state product specification. Some assessment/testing workflow language is conceptual and not currently exposed as a dedicated workspace in the live UI.
 
 ---
 
@@ -15,7 +17,7 @@
 
 ## Executive Summary
 
-This specification defines what the **Control Owner Wizard** in the Larsen Cyber GRC Wizard must capture, display, and report to satisfy NIST SP 800-53 Rev. 5 compliance requirements. The Control Owner role is responsible for documenting **control implementation status, evidence, and attestation** in preparation for control assessments.
+This specification defines what the **Control Owner Wizard** in EightFiftyThree GRC must capture, display, and report to satisfy NIST SP 800-53 Rev. 5 compliance requirements. The Control Owner role is responsible for documenting **control implementation status, evidence, and attestation** in preparation for control assessments.
 
 The wizard must balance two goals:
 1. **Compliance Accuracy:** Align with NIST SP 800-53A Assessment Methodology
@@ -929,11 +931,11 @@ Draft → Pending Review → Approved → Attested
 
 ---
 
-## Part 11: Tester Role Integration
+## Part 11: Assessment Role Integration (Conceptual)
 
 ### How Control Status Feeds Assessment
 
-The **Tester** (independent assessor) role must be able to:
+The **Assessor** (independent reviewer) role should be able to:
 
 1. **View Control Owner's Documentation:**
    - Implementation narrative
@@ -1076,14 +1078,14 @@ state.controlTestResults[controlId] = {
 - Clicks "Attest" → signs with email-based OTP verification
 - System records attestation with timestamp, signature hash, John's email
 - Control locked; status → "Attested"
-- Tester role now has access to review for assessment
+- Assessor review can proceed using the submitted evidence package
 
-**Step 10: Tester Assessment**
-- Tester (separate role) reviews John's documentation
+**Step 10: Assessor Review**
+- Assessor (separate role) reviews John's documentation
 - Schedules on-site test: review IAM system, sample 50 user accounts, verify deprovisioning
 - Executes test, records findings: "No exceptions found. Control operating as documented."
 - Links test result to control
-- Tester status: "Assessed" ✓
+- Assessor status: "Assessed" ✓
 
 ---
 
@@ -2299,12 +2301,12 @@ Option B: **All Controls in One List** (Simpler)
 
 ---
 
-## File References
+## File References (Current Modular Layout)
 
-- **State object location:** Line ~1938 in js/app.js
-- **Existing control steps:** Lines 4049–4537 (renderControlStep1/2/3)
-- **Policy Owner pattern (reference):** Lines 3321–3867 (renderPolicyStep1/2/3/4)
-- **CISO Step 4 (domain merging logic):** Lines 2886–3070 (renderCISOStep4)
+- **State and persistence foundations:** `js/core.js`
+- **Control Owner workspace rendering and handlers:** `js/controls.js`
+- **Policy Owner pattern and owner assignment flows:** `js/policies.js`
+- **CISO setup and owner-assignment patterns:** `js/program.js`
 
 ---
 

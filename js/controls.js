@@ -89,6 +89,7 @@ function renderControlLibraryView() {
   var statusFilter = state._controlLibraryStatusFilter || '';
   var assetTypeFilter = state._controlLibraryAssetTypeFilter || '';
   var q = (state._controlLibrarySearch || '').toLowerCase();
+  var cf = state._controlLibraryColFilters || {};
   function inActiveBaseline(c) {
     return c.bl && (c.bl.indexOf(state.baseline) !== -1 || (state.privacyOverlay && c.bl.indexOf('P') !== -1));
   }
@@ -104,7 +105,19 @@ function renderControlLibraryView() {
     var qMatch = !q || c.id.toLowerCase().includes(q) || c.n.toLowerCase().includes(q);
     var deselBaseline = cs.deselectDecision === 'Approved' && inActiveBaseline(c);
     if (statusFilter === '__deselected__' && !deselBaseline) return false;
-    return (!familyFilter || c.f === familyFilter) && (!statusFilter || statusFilter === '__deselected__' || status === statusFilter) && typeMatch && qMatch;
+    if (!(!familyFilter || c.f === familyFilter) || !(!statusFilter || statusFilter === '__deselected__' || status === statusFilter) || !typeMatch || !qMatch) return false;
+    // Per-column text filters
+    var owner = (state.controlOwners || {})[c.id] || {};
+    if (cf.control && !c.id.toLowerCase().includes(cf.control.toLowerCase())) return false;
+    if (cf.name && !c.n.toLowerCase().includes(cf.name.toLowerCase())) return false;
+    if (cf.owner && !(owner.name || 'Unassigned').toLowerCase().includes(cf.owner.toLowerCase())) return false;
+    if (cf.impl && !status.toLowerCase().includes(cf.impl.toLowerCase())) return false;
+    if (cf.asset && !cov.join(' ').toLowerCase().includes(cf.asset.toLowerCase())) return false;
+    if (cf.lifecycle) {
+      var lc = getControlDeselectLifecycle(c.id);
+      if (!lc.status.toLowerCase().includes(cf.lifecycle.toLowerCase())) return false;
+    }
+    return true;
   });
   var selectedTypeCount = rows.filter(function(c) { return getCtrlCoveredAssetTypes(c.id).length > 0; }).length;
   var designedCount = rows.filter(function(c) { return isControlDesigned(c.id); }).length;
@@ -128,7 +141,25 @@ function renderControlLibraryView() {
     + allTypeLabels.map(function(t){ return '<option value="' + escapeHTML(t) + '"' + (assetTypeFilter===t?' selected':'') + '>' + escapeHTML(t) + '</option>'; }).join('')
     + '</select>'
     + '</div>'
-    + '<div class="table-scroll"><table class="control-table"><thead><tr><th style="width:92px;">Control</th><th>Name</th><th style="width:150px;">Owner</th><th style="width:120px;">Implementation</th><th style="width:220px;">Asset Applicability</th><th style="width:90px;">Req Targets</th><th style="width:110px;">Compliance</th><th style="width:140px;">De-select Lifecycle</th></tr></thead><tbody>'
+    + (function(){
+        var fi = 'style="width:100%;box-sizing:border-box;padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--navy);font-family:inherit;" placeholder="Filter…" onclick="event.stopPropagation()"';
+        var cfv = state._controlLibraryColFilters || {};
+        function fval(k){ return escapeHTML(cfv[k]||''); }
+        function finput(k){ return '<input ' + fi + ' value="' + fval(k) + '" oninput="if(!state._controlLibraryColFilters)state._controlLibraryColFilters={};state._controlLibraryColFilters[\'' + k + '\']=this.value;renderControlLibraryView()">'; }
+        return '<div class="table-scroll"><table class="control-table"><thead>'
+          + '<tr><th style="width:92px;">Control</th><th>Name</th><th style="width:150px;">Owner</th><th style="width:120px;">Implementation</th><th style="width:220px;">Asset Applicability</th><th style="width:90px;">Req Targets</th><th style="width:110px;">Compliance</th><th style="width:140px;">De-select Lifecycle</th></tr>'
+          + '<tr style="background:var(--bg);">'
+          + '<th style="padding:4px 6px;">' + finput('control') + '</th>'
+          + '<th style="padding:4px 6px;">' + finput('name') + '</th>'
+          + '<th style="padding:4px 6px;">' + finput('owner') + '</th>'
+          + '<th style="padding:4px 6px;">' + finput('impl') + '</th>'
+          + '<th style="padding:4px 6px;">' + finput('asset') + '</th>'
+          + '<th style="padding:4px 6px;"></th>'
+          + '<th style="padding:4px 6px;"></th>'
+          + '<th style="padding:4px 6px;">' + finput('lifecycle') + '</th>'
+          + '</tr>'
+          + '</thead><tbody>';
+      })()
     + rows.map(function(c) {
       var cs = state.controlStatus[c.id] || {};
       var owner = (state.controlOwners || {})[c.id] || {};
@@ -531,9 +562,35 @@ function confirmReturnControl(ctrlId) {
   const reason = document.getElementById('returnCtrlReason')?.value.trim() || '';
   closeReturnCtrlModal();
   if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
+  if (!state.controlReviewQueue) state.controlReviewQueue = [];
+  var family = String(ctrlId || '').split('-')[0] || '';
+  var currentUser = state.currentUserId ? (state.users || []).find(function(u){ return u.id === state.currentUserId; }) : null;
+  var returnedBy = (currentUser && currentUser.name) ? currentUser.name : (state.programOwner || 'Control Owner');
   state.controlStatus[ctrlId].returnedToPolicyOwner = true;
   state.controlStatus[ctrlId].returnReason  = reason;
   state.controlStatus[ctrlId].returnedAt    = new Date().toLocaleDateString();
+  state.controlStatus[ctrlId].returnedBy    = returnedBy;
+  var existingQueueItem = state.controlReviewQueue.find(function(r) { return r && r.controlId === ctrlId; });
+  if (existingQueueItem) {
+    existingQueueItem.type = 'control-return';
+    existingQueueItem.family = family || existingQueueItem.family || '';
+    existingQueueItem.policyOwner = ((state.domainOwners || {})[family] || {}).name || existingQueueItem.policyOwner || '';
+    existingQueueItem.status = 'Returned to Policy Owner';
+    existingQueueItem.submittedBy = returnedBy;
+    existingQueueItem.submittedAt = new Date().toISOString();
+    existingQueueItem.notes = reason || '';
+  } else {
+    state.controlReviewQueue.push({
+      type: 'control-return',
+      controlId: ctrlId,
+      family: family,
+      policyOwner: ((state.domainOwners || {})[family] || {}).name || '',
+      submittedBy: returnedBy,
+      submittedAt: new Date().toISOString(),
+      status: 'Returned to Policy Owner',
+      notes: reason || ''
+    });
+  }
   markDirty();
   addAuditEntry('control', ctrlId, 'Control returned to policy owner' + (reason ? ': ' + reason : ''));
   showToast('↩ ' + ctrlId + ' returned to policy owner.');
@@ -546,6 +603,12 @@ function unreturnControl(ctrlId) {
   if (!state.controlStatus[ctrlId]) return;
   state.controlStatus[ctrlId].returnedToPolicyOwner = false;
   state.controlStatus[ctrlId].returnReason = '';
+  state.controlStatus[ctrlId].returnedBy = '';
+  if (state.controlReviewQueue && state.controlReviewQueue.length) {
+    state.controlReviewQueue = state.controlReviewQueue.filter(function(r) {
+      return !(r && r.controlId === ctrlId && (r.type === 'control-return' || r.status === 'Returned to Policy Owner'));
+    });
+  }
   markDirty();
   showToast('Control ' + ctrlId + ' restored to your queue.');
   renderControlStep1();
@@ -694,6 +757,15 @@ function renderControlStep2() {
     body.innerHTML = `<div class="empty-state"><div class="es-icon">🏛️</div><div class="es-title">CISO Setup Required</div></div>`;
     return;
   }
+  // Preserve scroll positions across re-renders so button clicks do not jump to top.
+  var prevListEl = document.getElementById('ctrlDetailList');
+  var prevFormEl = document.getElementById('ctrlDetailForm');
+  var hadPrevList = !!prevListEl;
+  var hadPrevForm = !!prevFormEl;
+  var prevListScrollTop = prevListEl ? prevListEl.scrollTop : 0;
+  var prevFormScrollTop = prevFormEl ? prevFormEl.scrollTop : 0;
+  var prevPageScrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+
   const controls = getScopedControls().filter(c =>
     !(state.controlStatus[c.id]||{}).returnedToPolicyOwner &&
     !(state.controlStatus[c.id]||{}).recommendedDeselect
@@ -738,6 +810,17 @@ function renderControlStep2() {
         ${sel ? renderControlDetailForm(sel) : '<div class="empty-state"><div class="es-title">Select a control from the list</div></div>'}
       </div>
     </div>`;
+
+  // Restore prior scroll positions after DOM replacement.
+  setTimeout(function() {
+    var nextListEl = document.getElementById('ctrlDetailList');
+    var nextFormEl = document.getElementById('ctrlDetailForm');
+    if (hadPrevList && nextListEl) nextListEl.scrollTop = prevListScrollTop;
+    if (hadPrevForm && nextFormEl) nextFormEl.scrollTop = prevFormScrollTop;
+    if (Math.abs((window.scrollY || 0) - prevPageScrollTop) > 4) {
+      window.scrollTo(0, prevPageScrollTop);
+    }
+  }, 0);
 }
 
 function filterCtrlDetailList() {
@@ -757,15 +840,26 @@ function selectCtrlDetail(ctrlId) {
 // Return list of {reqId, reqText, policyTitle, fam} for all requirements that cite ctrlId
 function getControlPolicyReqs(ctrlId) {
   var hits = [];
-  if (!state.domainPolicies) return hits;
-  Object.keys(state.domainPolicies).forEach(function(fam) {
-    var dp = state.domainPolicies[fam];
-    if (!dp || !dp.requirements) return;
-    dp.requirements.forEach(function(req) {
-      if (req.controls && req.controls.includes(ctrlId)) {
-        hits.push({ reqId: req.id||'', reqText: req.text||'', policyTitle: dp.title || getPolicyMergedTitle(fam), fam: fam });
-      }
+  // Search domain policies (Tier 2)
+  if (state.domainPolicies) {
+    Object.keys(state.domainPolicies).forEach(function(fam) {
+      var dp = state.domainPolicies[fam];
+      if (!dp || !dp.requirements) return;
+      dp.requirements.forEach(function(req) {
+        var cids = Array.isArray(req.controls) ? req.controls : (req.controlId ? [req.controlId] : []);
+        if (cids.some(function(c){ return String(c).trim() === ctrlId; })) {
+          hits.push({ reqId: req.id||'', reqText: req.text||'', policyTitle: dp.title || getPolicyMergedTitle(fam), fam: fam });
+        }
+      });
     });
+  }
+  // Search ISP (Tier 1) — covers PM controls and any cross-cutting requirements
+  var isp = state.infoSecPolicy || {};
+  (isp.requirements || []).forEach(function(req) {
+    var cids = Array.isArray(req.controls) ? req.controls : (req.controlId ? [req.controlId] : []);
+    if (cids.some(function(c){ return String(c).trim() === ctrlId; })) {
+      hits.push({ reqId: req.id||'', reqText: req.text||'', policyTitle: isp.title || 'Information Security Policy', fam: 'ISP' });
+    }
   });
   return hits;
 }
@@ -789,7 +883,8 @@ function normalizeControlDesignState(ctrlId) {
       assetType: r.assetType || 'General',
       requirement: r.requirement || '',
       evidenceNeeded: r.evidenceNeeded || '',
-      acceptanceCriteria: r.acceptanceCriteria || ''
+      acceptanceCriteria: r.acceptanceCriteria || '',
+      procedureRefs: r.procedureRefs || ''
     };
   });
   // Backward compatibility: older snapshots used one free-text assetGuidance field.
@@ -798,7 +893,8 @@ function normalizeControlDesignState(ctrlId) {
       assetType: 'General',
       requirement: cs.assetGuidance,
       evidenceNeeded: '',
-      acceptanceCriteria: ''
+      acceptanceCriteria: '',
+      procedureRefs: ''
     });
   }
   if (!Array.isArray(cs.evidence)) cs.evidence = [];
@@ -817,7 +913,10 @@ function normalizeControlDesignState(ctrlId) {
     } else {
       e.kind = 'ref';
       e.type = e.type || 'Policy';
-      e.ref = e.ref != null ? String(e.ref) : '';
+      e.title = e.title != null ? String(e.title) : '';
+      e.description = e.description != null ? String(e.description) : '';
+      e.url = e.url != null ? String(e.url) : (e.ref != null ? String(e.ref) : '');
+      e.ref = e.ref != null ? String(e.ref) : e.url;
       delete e.dataUrl;
       delete e.mime;
       delete e.caption;
@@ -931,6 +1030,253 @@ function setCtrlDesignSource(ctrlId, source) {
   setTimeout(function(){ renderControlStep2(); }, 0);
 }
 
+function getBulkDesignSourceEligibleControls(sourceCtrlId) {
+  var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
+  var controls = getScopedControls().filter(function(c) {
+    var cs = state.controlStatus[c.id] || {};
+    if (c.id === sourceCtrlId) return false;
+    if (cs.returnedToPolicyOwner || cs.recommendedDeselect) return false;
+    return true;
+  });
+  controls.sort(function(a, b) {
+    if (source && a.f === source.f && b.f !== source.f) return -1;
+    if (source && b.f === source.f && a.f !== source.f) return 1;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  return controls;
+}
+
+function openBulkDesignSourceModal(sourceCtrlId) {
+  var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
+  var sourceStatus = (state.controlStatus || {})[sourceCtrlId] || {};
+  var eligible = getBulkDesignSourceEligibleControls(sourceCtrlId);
+  if (!eligible.length) {
+    showToast('No other eligible controls found in your queue.', true);
+    return;
+  }
+  var sameFamily = source ? source.f : '';
+  var selected = {};
+  eligible.forEach(function(c) {
+    selected[c.id] = !!(sameFamily && c.f === sameFamily);
+  });
+  window._bulkDesignSourceState = {
+    sourceCtrlId: sourceCtrlId,
+    familyFilter: sameFamily,
+    search: '',
+    overwrite: false,
+    selected: selected
+  };
+
+  var existing = document.getElementById('bulkDesignSourceOverlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'bulkDesignSourceOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10050;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 18px;';
+  overlay.innerHTML = ''
+    + '<div style="background:white;border-radius:14px;width:940px;max-width:100%;box-shadow:0 24px 60px rgba(2,6,23,0.22);overflow:hidden;">'
+    + '  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px;">Apply this design source to other controls</div>'
+    + '      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">Source: <span class="control-id">' + escapeHTML(sourceCtrlId) + '</span> — ' + escapeHTML((source && source.n) || '') + '</div>'
+    + '      <div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin-top:3px;">'
+    + escapeHTML((sourceStatus.externalDocTitle || '').trim() || 'Untitled reference')
+    + ' · '
+    + escapeHTML((sourceStatus.externalDocType || '').trim() || 'Document')
+    + '      </div>'
+    + '    </div>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkDesignSourceModal()">Close</button>'
+    + '  </div>'
+    + '  <div id="bulkDesignSourceBody" style="padding:16px 20px;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeBulkDesignSourceModal(); });
+  renderBulkDesignSourceModalBody();
+}
+
+function closeBulkDesignSourceModal() {
+  var overlay = document.getElementById('bulkDesignSourceOverlay');
+  if (overlay) overlay.remove();
+  window._bulkDesignSourceState = null;
+}
+
+function renderBulkDesignSourceModalBody() {
+  var st = window._bulkDesignSourceState;
+  var body = document.getElementById('bulkDesignSourceBody');
+  if (!st || !body) return;
+  var eligible = getBulkDesignSourceEligibleControls(st.sourceCtrlId);
+  var source = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
+  var families = Array.from(new Set(eligible.map(function(c) { return c.f; }))).sort();
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  var filtered = eligible.filter(function(c) {
+    if (familyFilter && c.f !== familyFilter) return false;
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+  var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
+
+  body.innerHTML = ''
+    + '<div style="display:grid;grid-template-columns:180px 1fr auto;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Family filter</label>'
+    + '    <select class="form-select" style="font-size:12px;" onchange="window._bulkDesignSourceState.familyFilter=this.value;renderBulkDesignSourceModalBody();">'
+    + '      <option value="">All families</option>'
+    +        families.map(function(f) {
+              return '<option value="' + escapeHTML(f) + '"' + (familyFilter === f ? ' selected' : '') + '>' + escapeHTML(f + ' — ' + (FAMILIES[f] || f)) + '</option>';
+            }).join('')
+    + '    </select></div>'
+    + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
+    + '    <input class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="window._bulkDesignSourceState.search=this.value;renderBulkDesignSourceModalBody();"></div>'
+    + '  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--navy);white-space:nowrap;padding-bottom:8px;">'
+    + '    <input type="checkbox" ' + (st.overwrite ? 'checked' : '') + ' onchange="window._bulkDesignSourceState.overwrite=this.checked;renderBulkDesignSourceModalBody();" style="accent-color:var(--teal);">'
+    + '    Overwrite existing external-source fields'
+    + '  </label>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible controls'
+    + (source && source.f ? ' · default scope: ' + escapeHTML(source.f) : '')
+    + '  </div>'
+    + '  <div style="display:flex;gap:8px;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkDesignSourceSelectFiltered(true)">Select all eligible</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkDesignSourceSelectFiltered(false)">Clear</button>'
+    + '  </div>'
+    + '</div>'
+    + '<div style="border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;">'
+    + '  <table class="control-table" style="margin:0;">'
+    + '    <thead><tr>'
+    + '      <th style="width:42px;"><input type="checkbox" ' + (allFilteredSelected ? 'checked' : '') + ' onchange="bulkDesignSourceSelectFiltered(this.checked)" style="accent-color:var(--teal);"></th>'
+    + '      <th style="width:95px;">Control</th>'
+    + '      <th>Name</th>'
+    + '      <th style="width:70px;">Family</th>'
+    + '      <th style="width:130px;">Current Source</th>'
+    + '    </tr></thead>'
+    + '    <tbody>'
+    +      (filtered.length ? filtered.map(function(c) {
+            var cs = (state.controlStatus || {})[c.id] || {};
+            var curSource = cs.designSource || (cs.externalDocRef ? 'external' : 'inline');
+            var checked = !!st.selected[c.id];
+            return '<tr>'
+              + '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="bulkDesignSourceSetOne(\'' + c.id.replace(/'/g, "\\'") + '\',this.checked)" style="accent-color:var(--teal);"></td>'
+              + '<td><span class="control-id">' + escapeHTML(c.id) + '</span></td>'
+              + '<td style="font-size:12px;color:var(--navy);">' + escapeHTML(c.n) + '</td>'
+              + '<td><span class="family-badge">' + escapeHTML(c.f) + '</span></td>'
+              + '<td style="font-size:11px;color:var(--text-muted);">' + escapeHTML(curSource === 'external' ? 'External reference' : 'Inline design') + '</td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No controls match current filter.</td></tr>')
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">'
+    + '  <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkDesignSourceModal()">Cancel</button>'
+    + '  <button type="button" class="btn btn-primary btn-sm" onclick="applyBulkDesignSourceToSelected()">Apply to selected controls</button>'
+    + '</div>';
+}
+
+function bulkDesignSourceSetOne(ctrlId, checked) {
+  var st = window._bulkDesignSourceState;
+  if (!st) return;
+  st.selected[ctrlId] = !!checked;
+  renderBulkDesignSourceModalBody();
+}
+
+function bulkDesignSourceSelectFiltered(checked) {
+  var st = window._bulkDesignSourceState;
+  if (!st) return;
+  var eligible = getBulkDesignSourceEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  eligible.forEach(function(c) {
+    if (familyFilter && c.f !== familyFilter) return;
+    if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
+    st.selected[c.id] = !!checked;
+  });
+  renderBulkDesignSourceModalBody();
+}
+
+function applyBulkDesignSourceToSelected() {
+  var st = window._bulkDesignSourceState;
+  if (!st) return;
+  var sourceId = st.sourceCtrlId;
+  var sourceStatus = (state.controlStatus || {})[sourceId] || {};
+  var sourcePayload = {
+    designSource: 'external',
+    externalDocTitle: String(sourceStatus.externalDocTitle || ''),
+    externalDocType: String(sourceStatus.externalDocType || ''),
+    externalDocRef: String(sourceStatus.externalDocRef || ''),
+    externalDocSummary: String(sourceStatus.externalDocSummary || '')
+  };
+  var selectedIds = getBulkDesignSourceEligibleControls(sourceId)
+    .map(function(c) { return c.id; })
+    .filter(function(id) { return !!st.selected[id]; });
+  if (!selectedIds.length) {
+    showToast('Select at least one control to update.', true);
+    return;
+  }
+  if (!sourcePayload.externalDocTitle.trim() || !sourcePayload.externalDocRef.trim() || !sourcePayload.externalDocSummary.trim()) {
+    showToast('Complete source title, reference, and coverage summary before bulk apply.', true);
+    return;
+  }
+  if (!window.confirm('Apply this external design source to ' + selectedIds.length + ' control' + (selectedIds.length === 1 ? '' : 's') + '?')) {
+    return;
+  }
+
+  var idx = 0;
+  var appliedCount = 0;
+  var skippedCount = 0;
+  var overwrite = !!st.overwrite;
+  var fields = ['externalDocTitle', 'externalDocType', 'externalDocRef', 'externalDocSummary'];
+
+  function applyChunk() {
+    var end = Math.min(idx + 30, selectedIds.length);
+    for (; idx < end; idx++) {
+      var ctrlId = selectedIds[idx];
+      if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
+      var target = state.controlStatus[ctrlId];
+      var changed = false;
+
+      if (target.designSource !== 'external') {
+        target.designSource = 'external';
+        changed = true;
+      }
+      fields.forEach(function(key) {
+        var currentVal = String(target[key] || '');
+        var nextVal = String(sourcePayload[key] || '');
+        if (overwrite) {
+          if (currentVal !== nextVal) {
+            target[key] = nextVal;
+            changed = true;
+          }
+        } else if (!currentVal.trim() && nextVal.trim()) {
+          target[key] = nextVal;
+          changed = true;
+        }
+      });
+      if (target.designSource && (!target.status || target.status === 'Not Started')) {
+        target.status = 'Planned';
+        changed = true;
+      }
+
+      if (changed) appliedCount++;
+      else skippedCount++;
+    }
+
+    if (idx < selectedIds.length) {
+      requestAnimationFrame(applyChunk);
+      return;
+    }
+
+    addAuditEntry('control', sourceId, 'Bulk-applied design source from ' + sourceId + ' to ' + appliedCount + ' control(s)' + (skippedCount ? ' (' + skippedCount + ' unchanged)' : '') + '.');
+    markDirty();
+    closeBulkDesignSourceModal();
+    showToast('✅ Applied source to ' + appliedCount + ' control' + (appliedCount === 1 ? '' : 's') + (skippedCount ? ' · ' + skippedCount + ' unchanged' : '') + '.');
+    renderControlStep2();
+  }
+
+  applyChunk();
+}
+
 function setCtrlDesignPart(ctrlId, letter, value) {
   if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
   if (!state.controlStatus[ctrlId].designParts) state.controlStatus[ctrlId].designParts = {};
@@ -1015,7 +1361,11 @@ function buildEvidenceArtifactSectionHTML(ctrl) {
           return '<option' + ((evRow.type || '') === tp ? ' selected' : '') + '>' + tp + '</option>';
         }).join('')
         + '</select>'
-        + '<input class="form-input" style="font-size:12px;" placeholder="URL, path, or reference ID" value="' + escapeHTML(evRow.ref || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'ref\',this.value)">'
+        + '<input class="form-input" style="font-size:12px;" placeholder="Evidence name (e.g., CP Procedure v2.1)" value="' + escapeHTML(evRow.title || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'title\',this.value)">'
+        + '</div>'
+        + '<div style="margin-top:8px;">'
+        + '<input class="form-input" style="font-size:12px;margin-bottom:8px;" placeholder="Description / context" value="' + escapeHTML(evRow.description || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'description\',this.value)">'
+        + '<input class="form-input" style="font-size:12px;" placeholder="URL, path, or reference ID" value="' + escapeHTML(evRow.url || evRow.ref || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'url\',this.value)">'
         + '</div>'
       : '<div style="margin-top:8px;">'
         + '<input class="form-input" style="font-size:11px;margin-bottom:6px;" placeholder="Caption / context" value="' + escapeHTML(evRow.caption || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'caption\',this.value)">'
@@ -1032,6 +1382,7 @@ function buildEvidenceArtifactSectionHTML(ctrl) {
       + '<option value="ref"' + (kind === 'ref' ? ' selected' : '') + '>Document / reference</option>'
       + '<option value="image"' + (kind === 'image' ? ' selected' : '') + '>Screenshot (PNG/JPEG)</option>'
       + '</select>'
+      + '<button type="button" class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;" onclick="openBulkEvidenceRowModal(\'' + cid + '\',' + idx + ')">Apply to controls…</button>'
       + '<button type="button" class="btn btn-sm" style="font-size:10px;padding:2px 8px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;" onclick="removeCtrlEvidence(\'' + cid + '\',' + idx + ')">Remove</button>'
       + '</div></div>'
       + refPart
@@ -1059,7 +1410,10 @@ function setEvidenceKind(ctrlId, idx, kind) {
   } else {
     row.kind = 'ref';
     row.type = row.type || 'Policy';
-    row.ref = row.ref != null ? row.ref : (row.caption || '');
+    row.title = row.title != null ? row.title : '';
+    row.description = row.description != null ? row.description : '';
+    row.url = row.url != null ? row.url : (row.ref != null ? row.ref : (row.caption || ''));
+    row.ref = row.ref != null ? row.ref : row.url;
     delete row.dataUrl;
     delete row.mime;
     delete row.caption;
@@ -1221,7 +1575,10 @@ function renderControlDetailForm(ctrl) {
         No assets or processes in inventory yet — add them in the Assets &amp; SSP tab. Asset type coverage below still applies.
       </div>`}
 
-      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px;">Asset Type Coverage <span style="font-weight:400;color:var(--text-muted);">(check all that apply)</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:700;color:var(--navy);">Asset Type Coverage <span style="font-weight:400;color:var(--text-muted);">(check all that apply)</span></div>
+        <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="openBulkControlFieldModal('${cid}','assetCoverage')">Apply to controls…</button>
+      </div>
       ${buildAssetCoverageHTML(ctrl.id)}
     </div>
 
@@ -1282,6 +1639,9 @@ function renderControlDetailForm(ctrl) {
           <label class="form-label" style="font-size:10px;">Coverage Summary <span style="font-weight:400;">(briefly explain how the document addresses each NIST sub-requirement)</span></label>
           <textarea class="form-input" rows="3" style="font-size:12px;resize:vertical;" placeholder="e.g. Section 3.1 addresses sub-req (a–d): account types and approval. Section 4 covers (g): monitoring. Section 5 covers (h–l): lifecycle notifications." oninput="setCtrlField('${cid}','externalDocSummary',this.value)">${escapeHTML(cs.externalDocSummary||'')}</textarea>
         </div>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openBulkDesignSourceModal('${cid}')">Apply this source to other controls</button>
+        </div>
       </div>
       ` : nistParts ? `
       <div style="font-size:11px;color:#166534;margin-bottom:12px;padding:8px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;">
@@ -1332,7 +1692,10 @@ function renderControlDetailForm(ctrl) {
       `}
 
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-        <label class="form-label">Auditor-Ready Narrative <span style="font-weight:400;font-size:11px;color:var(--text-muted);">(optional — integrates all sub-reqs into one statement)</span></label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <label class="form-label" style="margin-bottom:0;">Auditor-Ready Narrative <span style="font-weight:400;font-size:11px;color:var(--text-muted);">(optional — integrates all sub-reqs into one statement)</span></label>
+          <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="openBulkControlFieldModal('${cid}','narrative')">Apply to controls…</button>
+        </div>
         <textarea class="form-input" rows="3" style="font-size:12px;line-height:1.6;resize:vertical;" placeholder="The organization implements ${ctrl.id} through…" oninput="setCtrlField('${cid}','narrative',this.value)">${escapeHTML(cs.narrative||'')}</textarea>
       </div>
     </div>
@@ -1341,7 +1704,10 @@ function renderControlDetailForm(ctrl) {
 
     <!-- ⑤ Implementation Status -->
     <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px;">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);margin-bottom:4px;">Implementation Status</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);">Implementation Status</div>
+        <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="openBulkControlFieldModal('${cid}','implementationStatus')">Apply to controls…</button>
+      </div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Set the overall status. If asset types are in scope, you can also track status per asset type to reflect partial rollout.</div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:${coveredTypes.length>0?'14px':'0'};">
@@ -1445,7 +1811,7 @@ function setCtrlOwnerField(ctrlId, field, value) {
 function addCtrlEvidence(ctrlId) {
   if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
   if (!state.controlStatus[ctrlId].evidence) state.controlStatus[ctrlId].evidence = [];
-  state.controlStatus[ctrlId].evidence.push({ kind: 'ref', type: 'Policy', ref: '' });
+  state.controlStatus[ctrlId].evidence.push({ kind: 'ref', type: 'Policy', title: '', description: '', url: '', ref: '' });
   markDirty();
   renderControlStep2();
 }
@@ -1460,9 +1826,533 @@ function setEvidenceField(ctrlId, idx, field, value) {
   if (state.controlStatus[ctrlId]?.evidence?.[idx]) {
     var prev = state.controlStatus[ctrlId].evidence[idx][field];
     state.controlStatus[ctrlId].evidence[idx][field] = value;
+    if (field === 'url') state.controlStatus[ctrlId].evidence[idx].ref = value;
+    if (field === 'ref' && !state.controlStatus[ctrlId].evidence[idx].url) state.controlStatus[ctrlId].evidence[idx].url = value;
     logFieldChange('controlStatus.' + ctrlId + '.evidence[' + idx + '].' + field, prev, value);
     markDirty();
   }
+}
+
+function getBulkEvidenceEligibleControls(sourceCtrlId) {
+  return getScopedControls().filter(function(c) {
+    var cs = state.controlStatus[c.id] || {};
+    if (c.id === sourceCtrlId) return false;
+    if (cs.returnedToPolicyOwner || cs.recommendedDeselect) return false;
+    return true;
+  });
+}
+
+function buildEvidenceRowSignature(row) {
+  if (!row) return '';
+  var kind = row.kind === 'image' ? 'image' : 'ref';
+  if (kind === 'image') {
+    return 'image|' + String(row.caption || '').trim() + '|' + String(row.dataUrl || '').trim();
+  }
+  return 'ref|' + String(row.type || '').trim() + '|' + String(row.title || '').trim() + '|' + String(row.url || row.ref || '').trim() + '|' + String(row.description || '').trim();
+}
+
+function cloneEvidenceRowForCopy(row) {
+  if (!row) return null;
+  if (row.kind === 'image') {
+    return {
+      kind: 'image',
+      caption: String(row.caption || ''),
+      dataUrl: String(row.dataUrl || ''),
+      mime: String(row.mime || (String(row.dataUrl || '').indexOf('image/jpeg') !== -1 ? 'image/jpeg' : 'image/png'))
+    };
+  }
+  return {
+    kind: 'ref',
+    type: String(row.type || 'Policy'),
+    title: String(row.title || ''),
+    description: String(row.description || ''),
+    url: String(row.url || row.ref || ''),
+    ref: String(row.url || row.ref || '')
+  };
+}
+
+function openBulkEvidenceRowModal(sourceCtrlId, rowIdx) {
+  normalizeControlDesignState(sourceCtrlId);
+  var sourceControl = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
+  var sourceRows = ((state.controlStatus || {})[sourceCtrlId] || {}).evidence || [];
+  var sourceRow = sourceRows[rowIdx];
+  if (!sourceRow) {
+    showToast('Evidence row not found.', true);
+    return;
+  }
+  var sourceSignature = buildEvidenceRowSignature(sourceRow);
+  if (!sourceSignature) {
+    showToast('Complete the evidence row first before bulk apply.', true);
+    return;
+  }
+  var eligible = getBulkEvidenceEligibleControls(sourceCtrlId);
+  if (!eligible.length) {
+    showToast('No other eligible controls found in your queue.', true);
+    return;
+  }
+
+  var selected = {};
+  var defaultFamily = sourceControl ? sourceControl.f : '';
+  eligible.forEach(function(c) { selected[c.id] = !!(defaultFamily && c.f === defaultFamily); });
+
+  window._bulkEvidenceRowState = {
+    sourceCtrlId: sourceCtrlId,
+    sourceRowIdx: rowIdx,
+    familyFilter: defaultFamily,
+    search: '',
+    selected: selected
+  };
+
+  var existing = document.getElementById('bulkEvidenceRowOverlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'bulkEvidenceRowOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10060;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 18px;';
+  overlay.innerHTML = ''
+    + '<div style="background:white;border-radius:14px;width:940px;max-width:100%;box-shadow:0 24px 60px rgba(2,6,23,0.22);overflow:hidden;">'
+    + '  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px;">Apply this evidence row to other controls</div>'
+    + '      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">Source: <span class="control-id">' + escapeHTML(sourceCtrlId) + '</span> · Evidence row ' + (rowIdx + 1) + '</div>'
+    + '    </div>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkEvidenceRowModal()">Close</button>'
+    + '  </div>'
+    + '  <div id="bulkEvidenceRowBody" style="padding:16px 20px;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeBulkEvidenceRowModal(); });
+  renderBulkEvidenceRowModalBody();
+}
+
+function closeBulkEvidenceRowModal() {
+  var overlay = document.getElementById('bulkEvidenceRowOverlay');
+  if (overlay) overlay.remove();
+  window._bulkEvidenceRowState = null;
+}
+
+function renderBulkEvidenceRowModalBody() {
+  var st = window._bulkEvidenceRowState;
+  var body = document.getElementById('bulkEvidenceRowBody');
+  if (!st || !body) return;
+  var eligible = getBulkEvidenceEligibleControls(st.sourceCtrlId);
+  var sourceControl = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
+  var families = Array.from(new Set(eligible.map(function(c) { return c.f; }))).sort();
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  var filtered = eligible.filter(function(c) {
+    if (familyFilter && c.f !== familyFilter) return false;
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+  var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
+
+  body.innerHTML = ''
+    + '<div style="display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Family filter</label>'
+    + '    <select class="form-select" style="font-size:12px;" onchange="window._bulkEvidenceRowState.familyFilter=this.value;renderBulkEvidenceRowModalBody();">'
+    + '      <option value="">All families</option>'
+    +        families.map(function(f) {
+              return '<option value="' + escapeHTML(f) + '"' + (familyFilter === f ? ' selected' : '') + '>' + escapeHTML(f + ' — ' + (FAMILIES[f] || f)) + '</option>';
+            }).join('')
+    + '    </select></div>'
+    + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
+    + '    <input class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="window._bulkEvidenceRowState.search=this.value;renderBulkEvidenceRowModalBody();"></div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible controls'
+    + (sourceControl && sourceControl.f ? ' · default scope: ' + escapeHTML(sourceControl.f) : '')
+    + '  </div>'
+    + '  <div style="display:flex;gap:8px;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectFiltered(true)">Select all eligible</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectFiltered(false)">Clear</button>'
+    + '  </div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Evidence is appended; duplicate rows (same type+reference or same image+caption) are skipped.</div>'
+    + '<div style="border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;">'
+    + '  <table class="control-table" style="margin:0;">'
+    + '    <thead><tr>'
+    + '      <th style="width:42px;"><input type="checkbox" ' + (allFilteredSelected ? 'checked' : '') + ' onchange="bulkEvidenceSelectFiltered(this.checked)" style="accent-color:var(--teal);"></th>'
+    + '      <th style="width:95px;">Control</th>'
+    + '      <th>Name</th>'
+    + '      <th style="width:70px;">Family</th>'
+    + '      <th style="width:100px;">Evidence Rows</th>'
+    + '    </tr></thead>'
+    + '    <tbody>'
+    +      (filtered.length ? filtered.map(function(c) {
+            var cs = (state.controlStatus || {})[c.id] || {};
+            var checked = !!st.selected[c.id];
+            var evCount = (cs.evidence || []).length;
+            return '<tr>'
+              + '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="bulkEvidenceSetOne(\'' + c.id.replace(/'/g, "\\'") + '\',this.checked)" style="accent-color:var(--teal);"></td>'
+              + '<td><span class="control-id">' + escapeHTML(c.id) + '</span></td>'
+              + '<td style="font-size:12px;color:var(--navy);">' + escapeHTML(c.n) + '</td>'
+              + '<td><span class="family-badge">' + escapeHTML(c.f) + '</span></td>'
+              + '<td style="font-size:11px;color:var(--text-muted);">' + evCount + '</td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No controls match current filter.</td></tr>')
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">'
+    + '  <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkEvidenceRowModal()">Cancel</button>'
+    + '  <button type="button" class="btn btn-primary btn-sm" onclick="applyBulkEvidenceRowToSelected()">Apply evidence row</button>'
+    + '</div>';
+}
+
+function bulkEvidenceSetOne(ctrlId, checked) {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  st.selected[ctrlId] = !!checked;
+  renderBulkEvidenceRowModalBody();
+}
+
+function bulkEvidenceSelectFiltered(checked) {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  var eligible = getBulkEvidenceEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  eligible.forEach(function(c) {
+    if (familyFilter && c.f !== familyFilter) return;
+    if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
+    st.selected[c.id] = !!checked;
+  });
+  renderBulkEvidenceRowModalBody();
+}
+
+function applyBulkEvidenceRowToSelected() {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  normalizeControlDesignState(st.sourceCtrlId);
+  var sourceRows = ((state.controlStatus || {})[st.sourceCtrlId] || {}).evidence || [];
+  var sourceRow = sourceRows[st.sourceRowIdx];
+  if (!sourceRow) {
+    showToast('Source evidence row not found.', true);
+    return;
+  }
+  var copiedRow = cloneEvidenceRowForCopy(sourceRow);
+  if (!copiedRow) {
+    showToast('Unable to copy source evidence row.', true);
+    return;
+  }
+  var sourceSig = buildEvidenceRowSignature(copiedRow);
+  if (!sourceSig) {
+    showToast('Complete the source evidence row first.', true);
+    return;
+  }
+  var selectedIds = getBulkEvidenceEligibleControls(st.sourceCtrlId)
+    .map(function(c) { return c.id; })
+    .filter(function(id) { return !!st.selected[id]; });
+  if (!selectedIds.length) {
+    showToast('Select at least one control to update.', true);
+    return;
+  }
+  if (!window.confirm('Apply this evidence row to ' + selectedIds.length + ' control' + (selectedIds.length === 1 ? '' : 's') + '?')) {
+    return;
+  }
+
+  var idx = 0;
+  var appliedCount = 0;
+  var skippedCount = 0;
+
+  function applyChunk() {
+    var end = Math.min(idx + 30, selectedIds.length);
+    for (; idx < end; idx++) {
+      var ctrlId = selectedIds[idx];
+      normalizeControlDesignState(ctrlId);
+      var cs = state.controlStatus[ctrlId] || {};
+      if (!Array.isArray(cs.evidence)) cs.evidence = [];
+      var signatures = {};
+      cs.evidence.forEach(function(r) { signatures[buildEvidenceRowSignature(r)] = true; });
+      if (signatures[sourceSig]) {
+        skippedCount++;
+        continue;
+      }
+      cs.evidence.push(cloneEvidenceRowForCopy(copiedRow));
+      appliedCount++;
+    }
+    if (idx < selectedIds.length) {
+      requestAnimationFrame(applyChunk);
+      return;
+    }
+
+    addAuditEntry('control', st.sourceCtrlId, 'Bulk-applied evidence row ' + (st.sourceRowIdx + 1) + ' from ' + st.sourceCtrlId + ' to ' + appliedCount + ' control(s)' + (skippedCount ? ' (' + skippedCount + ' duplicates skipped)' : '') + '.');
+    markDirty();
+    closeBulkEvidenceRowModal();
+    showToast('✅ Evidence applied to ' + appliedCount + ' control' + (appliedCount === 1 ? '' : 's') + (skippedCount ? ' · ' + skippedCount + ' duplicates skipped' : '') + '.');
+    renderControlStep2();
+  }
+
+  applyChunk();
+}
+
+function getGenericBulkEligibleControls(sourceCtrlId) {
+  return getScopedControls().filter(function(c) {
+    var cs = state.controlStatus[c.id] || {};
+    if (c.id === sourceCtrlId) return false;
+    if (cs.returnedToPolicyOwner || cs.recommendedDeselect) return false;
+    return true;
+  });
+}
+
+function openBulkControlFieldModal(sourceCtrlId, mode) {
+  var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
+  var sourceStatus = (state.controlStatus || {})[sourceCtrlId] || {};
+  var eligible = getGenericBulkEligibleControls(sourceCtrlId);
+  if (!eligible.length) {
+    showToast('No other eligible controls found in your queue.', true);
+    return;
+  }
+  var modeMeta = {
+    assetCoverage: {
+      title: 'Apply asset coverage to other controls',
+      summary: 'Copies selected asset types from this control. Existing target coverage is replaced.',
+      preview: function() {
+        var keys = Object.keys(sourceStatus.assetCoverage || {}).filter(function(k) { return !!(sourceStatus.assetCoverage || {})[k]; });
+        return keys.length ? (keys.length + ' selected asset type(s)') : 'No asset types currently selected';
+      }
+    },
+    narrative: {
+      title: 'Apply auditor-ready narrative to other controls',
+      summary: 'Copies Auditor-Ready Narrative text from this control.',
+      preview: function() {
+        var txt = String(sourceStatus.narrative || '').trim();
+        return txt ? (txt.length > 120 ? txt.slice(0, 120) + '…' : txt) : 'No narrative text entered';
+      }
+    },
+    implementationStatus: {
+      title: 'Apply implementation status to other controls',
+      summary: 'Copies overall Implementation Status and status by asset type. Existing status fields are replaced.',
+      preview: function() {
+        var status = String(sourceStatus.status || 'Not Started');
+        var byType = Object.keys(sourceStatus.assetTypeStatus || {}).filter(function(k){ return !!(sourceStatus.assetTypeStatus || {})[k]; }).length;
+        return status + (byType ? (' · ' + byType + ' asset-type override(s)') : '');
+      }
+    }
+  };
+  var meta = modeMeta[mode];
+  if (!meta) return;
+
+  var selected = {};
+  var defaultFamily = source ? source.f : '';
+  eligible.forEach(function(c) { selected[c.id] = !!(defaultFamily && c.f === defaultFamily); });
+
+  window._bulkControlFieldState = {
+    sourceCtrlId: sourceCtrlId,
+    mode: mode,
+    familyFilter: defaultFamily,
+    search: '',
+    selected: selected
+  };
+
+  var existing = document.getElementById('bulkControlFieldOverlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'bulkControlFieldOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10070;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 18px;';
+  overlay.innerHTML = ''
+    + '<div style="background:white;border-radius:14px;width:940px;max-width:100%;box-shadow:0 24px 60px rgba(2,6,23,0.22);overflow:hidden;">'
+    + '  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px;">' + escapeHTML(meta.title) + '</div>'
+    + '      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">Source: <span class="control-id">' + escapeHTML(sourceCtrlId) + '</span> — ' + escapeHTML((source && source.n) || '') + '</div>'
+    + '      <div style="font-size:11px;color:#334155;line-height:1.45;margin-top:4px;"><strong>Preview:</strong> ' + escapeHTML(meta.preview()) + '</div>'
+    + '      <div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin-top:3px;">' + escapeHTML(meta.summary) + '</div>'
+    + '    </div>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkControlFieldModal()">Close</button>'
+    + '  </div>'
+    + '  <div id="bulkControlFieldBody" style="padding:16px 20px;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeBulkControlFieldModal(); });
+  renderBulkControlFieldModalBody();
+}
+
+function closeBulkControlFieldModal() {
+  var overlay = document.getElementById('bulkControlFieldOverlay');
+  if (overlay) overlay.remove();
+  window._bulkControlFieldState = null;
+}
+
+function renderBulkControlFieldModalBody() {
+  var st = window._bulkControlFieldState;
+  var body = document.getElementById('bulkControlFieldBody');
+  if (!st || !body) return;
+  var eligible = getGenericBulkEligibleControls(st.sourceCtrlId);
+  var sourceControl = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
+  var families = Array.from(new Set(eligible.map(function(c) { return c.f; }))).sort();
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  var filtered = eligible.filter(function(c) {
+    if (familyFilter && c.f !== familyFilter) return false;
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+  var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
+
+  body.innerHTML = ''
+    + '<div style="display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Family filter</label>'
+    + '    <select class="form-select" style="font-size:12px;" onchange="window._bulkControlFieldState.familyFilter=this.value;renderBulkControlFieldModalBody();">'
+    + '      <option value="">All families</option>'
+    +        families.map(function(f) {
+              return '<option value="' + escapeHTML(f) + '"' + (familyFilter === f ? ' selected' : '') + '>' + escapeHTML(f + ' — ' + (FAMILIES[f] || f)) + '</option>';
+            }).join('')
+    + '    </select></div>'
+    + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
+    + '    <input class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="window._bulkControlFieldState.search=this.value;renderBulkControlFieldModalBody();"></div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible controls'
+    + (sourceControl && sourceControl.f ? ' · default scope: ' + escapeHTML(sourceControl.f) : '')
+    + '  </div>'
+    + '  <div style="display:flex;gap:8px;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkControlFieldSelectFiltered(true)">Select all eligible</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkControlFieldSelectFiltered(false)">Clear</button>'
+    + '  </div>'
+    + '</div>'
+    + '<div style="border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;">'
+    + '  <table class="control-table" style="margin:0;">'
+    + '    <thead><tr>'
+    + '      <th style="width:42px;"><input type="checkbox" ' + (allFilteredSelected ? 'checked' : '') + ' onchange="bulkControlFieldSelectFiltered(this.checked)" style="accent-color:var(--teal);"></th>'
+    + '      <th style="width:95px;">Control</th>'
+    + '      <th>Name</th>'
+    + '      <th style="width:70px;">Family</th>'
+    + '    </tr></thead>'
+    + '    <tbody>'
+    +      (filtered.length ? filtered.map(function(c) {
+            var checked = !!st.selected[c.id];
+            return '<tr>'
+              + '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="bulkControlFieldSetOne(\'' + c.id.replace(/'/g, "\\'") + '\',this.checked)" style="accent-color:var(--teal);"></td>'
+              + '<td><span class="control-id">' + escapeHTML(c.id) + '</span></td>'
+              + '<td style="font-size:12px;color:var(--navy);">' + escapeHTML(c.n) + '</td>'
+              + '<td><span class="family-badge">' + escapeHTML(c.f) + '</span></td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No controls match current filter.</td></tr>')
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">'
+    + '  <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkControlFieldModal()">Cancel</button>'
+    + '  <button type="button" class="btn btn-primary btn-sm" onclick="applyBulkControlFieldToSelected()">Apply to selected controls</button>'
+    + '</div>';
+}
+
+function bulkControlFieldSetOne(ctrlId, checked) {
+  var st = window._bulkControlFieldState;
+  if (!st) return;
+  st.selected[ctrlId] = !!checked;
+  renderBulkControlFieldModalBody();
+}
+
+function bulkControlFieldSelectFiltered(checked) {
+  var st = window._bulkControlFieldState;
+  if (!st) return;
+  var eligible = getGenericBulkEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  eligible.forEach(function(c) {
+    if (familyFilter && c.f !== familyFilter) return;
+    if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
+    st.selected[c.id] = !!checked;
+  });
+  renderBulkControlFieldModalBody();
+}
+
+function applyBulkControlFieldToSelected() {
+  var st = window._bulkControlFieldState;
+  if (!st) return;
+  var sourceId = st.sourceCtrlId;
+  var mode = st.mode;
+  var sourceCs = (state.controlStatus || {})[sourceId] || {};
+  var selectedIds = getGenericBulkEligibleControls(sourceId)
+    .map(function(c) { return c.id; })
+    .filter(function(id) { return !!st.selected[id]; });
+  if (!selectedIds.length) {
+    showToast('Select at least one control to update.', true);
+    return;
+  }
+
+  if (mode === 'narrative' && !String(sourceCs.narrative || '').trim()) {
+    showToast('Enter Auditor-Ready Narrative text first.', true);
+    return;
+  }
+  if (mode === 'assetCoverage') {
+    var covKeys = Object.keys(sourceCs.assetCoverage || {}).filter(function(k){ return !!(sourceCs.assetCoverage || {})[k]; });
+    if (!covKeys.length) {
+      showToast('Select at least one asset type coverage checkbox first.', true);
+      return;
+    }
+  }
+
+  if (!window.confirm('Apply this to ' + selectedIds.length + ' control' + (selectedIds.length === 1 ? '' : 's') + '?')) return;
+
+  var idx = 0;
+  var appliedCount = 0;
+  var skippedCount = 0;
+
+  function applyChunk() {
+    var end = Math.min(idx + 30, selectedIds.length);
+    for (; idx < end; idx++) {
+      var ctrlId = selectedIds[idx];
+      normalizeControlDesignState(ctrlId);
+      var target = state.controlStatus[ctrlId] || {};
+      var changed = false;
+
+      if (mode === 'assetCoverage') {
+        var nextCoverage = JSON.parse(JSON.stringify(sourceCs.assetCoverage || {}));
+        var prevSig = JSON.stringify(target.assetCoverage || {});
+        var nextSig = JSON.stringify(nextCoverage || {});
+        if (prevSig !== nextSig) {
+          target.assetCoverage = nextCoverage;
+          changed = true;
+        }
+      } else if (mode === 'narrative') {
+        var nextNarrative = String(sourceCs.narrative || '');
+        if (String(target.narrative || '') !== nextNarrative) {
+          target.narrative = nextNarrative;
+          changed = true;
+        }
+      } else if (mode === 'implementationStatus') {
+        var nextStatus = String(sourceCs.status || 'Not Started');
+        var prevStatus = String(target.status || 'Not Started');
+        var prevAssetTypeStatusSig = JSON.stringify(target.assetTypeStatus || {});
+        var nextAssetTypeStatus = JSON.parse(JSON.stringify(sourceCs.assetTypeStatus || {}));
+        var nextAssetTypeStatusSig = JSON.stringify(nextAssetTypeStatus || {});
+        if (prevStatus !== nextStatus) {
+          target.status = nextStatus;
+          changed = true;
+        }
+        if (prevAssetTypeStatusSig !== nextAssetTypeStatusSig) {
+          target.assetTypeStatus = nextAssetTypeStatus;
+          changed = true;
+        }
+      }
+
+      if (changed) appliedCount++;
+      else skippedCount++;
+    }
+
+    if (idx < selectedIds.length) {
+      requestAnimationFrame(applyChunk);
+      return;
+    }
+
+    var modeLabel = mode === 'assetCoverage' ? 'asset coverage'
+      : mode === 'narrative' ? 'auditor-ready narrative'
+      : 'implementation status';
+    addAuditEntry('control', sourceId, 'Bulk-applied ' + modeLabel + ' from ' + sourceId + ' to ' + appliedCount + ' control(s)' + (skippedCount ? ' (' + skippedCount + ' unchanged)' : '') + '.');
+    markDirty();
+    closeBulkControlFieldModal();
+    showToast('✅ Applied ' + modeLabel + ' to ' + appliedCount + ' control' + (appliedCount === 1 ? '' : 's') + (skippedCount ? ' · ' + skippedCount + ' unchanged' : '') + '.');
+    renderControlStep2();
+  }
+
+  applyChunk();
 }
 
 function setAssetCoverage(ctrlId, typeKey, checked) {
@@ -1537,40 +2427,64 @@ function addCustomAssetType(ctrlId) {
     showToast('"' + name + '" already exists.', true); input.select(); return;
   }
   input.value = '';
-  if (userCanApproveAssetTypeRequests()) {
-    applyAssetTypeAdd(name, groupName);
-    addAuditEntry('program', 'asset-types', 'Asset type added directly by ' + getCurrentActorName() + ': "' + name + '" in group "' + groupName + '"');
-    markDirty();
-    showToast('✅ Added asset type "' + name + '"');
-    setCustomAssetCoverage(ctrlId, name, true);
-    var coverageDiv = document.getElementById('asset-coverage-' + ctrlId);
-    if (coverageDiv) coverageDiv.outerHTML = buildAssetCoverageHTML(ctrlId);
-    return;
-  }
-  if (groupInput) groupInput.value = groupName;
-  submitAssetTypeRequest('add', name, 'Requested from control design coverage editor', groupName);
-  showToast('Asset type add request submitted to program owner.');
+  applyAssetTypeAdd(name, groupName);
+  addAuditEntry('program', 'asset-types', 'Asset type added by ' + getCurrentActorName() + ': "' + name + '" in group "' + groupName + '" (from control design coverage editor)');
+  markDirty();
+  showToast('✅ Added asset type "' + name + '"');
+  setCustomAssetCoverage(ctrlId, name, true);
+  var coverageDiv = document.getElementById('asset-coverage-' + ctrlId);
+  if (coverageDiv) coverageDiv.outerHTML = buildAssetCoverageHTML(ctrlId);
 }
 
 function removeCustomAssetType(typeName) {
-  if (!confirm('Request deletion of asset type "' + typeName + '"?\n\nIf approved, this will uncheck it from all controls.')) return;
-  if (userCanApproveAssetTypeRequests()) {
-    var removed = applyAssetTypeDelete(typeName);
-    if (!removed) { showToast('Type not found or already removed.', true); return; }
-    addAuditEntry('program', 'asset-types', 'Asset type removed directly by ' + getCurrentActorName() + ': "' + typeName + '"');
-    markDirty();
-    showToast('Removed asset type "' + typeName + '"');
-    renderControlStep2();
-    return;
-  }
-  submitAssetTypeRequest('delete', typeName, 'Requested from control design coverage editor');
+  var clean = String(typeName || '').trim();
+  if (!clean) return;
+  if (!confirm('Permanently remove "' + clean + '" from the asset type catalog?\n\nThis may affect control coverage mappings that reference this type.')) return;
+  var removed = applyAssetTypeDelete(clean);
+  if (!removed) { showToast('Type not found or already removed.', true); return; }
+  addAuditEntry('program', 'asset-types', 'Asset type removed by ' + getCurrentActorName() + ': "' + clean + '" (from control design coverage editor)');
+  markDirty();
+  showToast('Removed asset type "' + clean + '"');
   renderControlStep2();
 }
+
+// When AI built-in asset types are checked on a control, suggest other in-scope controls teams often review (heuristic — not NIST COSAiS).
+var HEURISTIC_AI_GOVERNANCE_CONTROL_IDS = ['SA-3', 'SA-8', 'SA-10', 'SA-11', 'SA-15', 'SI-7', 'SI-10', 'AC-3', 'AC-6', 'AU-2', 'AU-6', 'CM-2', 'CM-6', 'RA-3', 'RA-5', 'SC-28', 'PL-8', 'SR-3', 'SR-5'];
 
 function buildAssetCoverageHTML(ctrlId) {
   ensureAssetTypeMetadata();
   var cs = state.controlStatus[ctrlId] || {};
   var customTypes = state.customAssetTypes || [];
+  var cov = cs.assetCoverage || {};
+  var hasAiAssetTypeInCoverage = false;
+  getActiveAssetTypeCatalog().forEach(function(cat) {
+    cat.types.forEach(function(t) {
+      if (typeof isBuiltInAiAssetTypeKey === 'function' && isBuiltInAiAssetTypeKey(t.key) && cov[t.key]) hasAiAssetTypeInCoverage = true;
+    });
+  });
+
+  var cosaisCalloutHTML = '';
+  if (hasAiAssetTypeInCoverage) {
+    var inScopeSet = {};
+    if (typeof getActiveControls === 'function') {
+      getActiveControls().forEach(function(c) { inScopeSet[c.id] = true; });
+    }
+    var suggested = [];
+    HEURISTIC_AI_GOVERNANCE_CONTROL_IDS.forEach(function(id) {
+      var canon = typeof resolveCatalogControlId === 'function' ? resolveCatalogControlId(id) : id;
+      if (canon && canon !== ctrlId && inScopeSet[canon] && suggested.indexOf(canon) === -1) suggested.push(canon);
+    });
+    cosaisCalloutHTML = '<div style="grid-column:1/-1;font-size:11px;line-height:1.55;color:#4c1d95;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 12px;margin-bottom:6px;">'
+      + '<div style="font-weight:800;margin-bottom:4px;color:#6b21a8;">AI asset types in scope for this control</div>'
+      + 'NIST\'s <a href="https://csrc.nist.gov/projects/cosais" target="_blank" rel="noopener noreferrer" style="color:#6d28d9;font-weight:700;">COSAiS</a> (Control Overlays for Securing AI Systems) develops overlays for applying SP 800-53 to AI use cases — consult that project for emerging official guidance alongside your baseline.'
+      + (suggested.length ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(107,33,168,0.25);">'
+        + '<span style="font-weight:700;color:#6b21a8;">Heuristic only (not from NIST):</span> teams often scrutinize these other in-scope controls when AI types apply: '
+        + suggested.map(function(id) {
+          return '<span style="font-family:monospace;font-weight:700;background:rgba(255,255,255,0.9);padding:1px 6px;border-radius:4px;margin-right:4px;">' + escapeHTML(id) + '</span>';
+        }).join('')
+        + '.</div>' : '')
+      + '</div>';
+  }
 
   var standardHTML = getActiveAssetTypeCatalog().map(function(cat) {
     var groupHTML = '<div style="grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">' + cat.category + '</div>';
@@ -1612,7 +2526,7 @@ function buildAssetCoverageHTML(ctrlId) {
     + '</div>';
 
   return '<div id="asset-coverage-' + ctrlId + '" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-bottom:8px;">'
-    + standardHTML + customHTML + addRowHTML
+    + cosaisCalloutHTML + standardHTML + customHTML + addRowHTML
     + '</div>';
 }
 
@@ -1721,6 +2635,10 @@ function renderControlStep3() {
                 <label class="form-label" style="font-size:10px;">Evidence acceptance criteria</label>
                 <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. Must be from current quarter, include asset owner + approver names, and show closure of all exceptions." oninput="setAssetOwnerReq('${cid}','${tlabel}','acceptanceCriteria',this.value)">${escapeHTML(req.acceptanceCriteria||'')}</textarea>
               </div>
+              <div style="grid-column:1 / -1;">
+                <label class="form-label" style="font-size:10px;">Procedure / standard references</label>
+                <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. CP Policy v2.1 §4.3, BCP SOP-07, DR Test Runbook 2026-Q2" oninput="setAssetOwnerReq('${cid}','${tlabel}','procedureRefs',this.value)">${escapeHTML(req.procedureRefs||'')}</textarea>
+              </div>
             </div>
           </div>`;
         }).join('') : `
@@ -1739,6 +2657,10 @@ function renderControlStep3() {
               <label class="form-label" style="font-size:10px;">Evidence acceptance criteria</label>
               <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="Define what makes evidence acceptable for review." oninput="setAssetOwnerReq('${cid}','General','acceptanceCriteria',this.value)">${escapeHTML((existing.find(r=>r.assetType==='General')||{}).acceptanceCriteria||'')}</textarea>
             </div>
+            <div style="grid-column:1 / -1;">
+              <label class="form-label" style="font-size:10px;">Procedure / standard references</label>
+              <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. Program SOP-12, control procedure wiki page, approved standard ID" oninput="setAssetOwnerReq('${cid}','General','procedureRefs',this.value)">${escapeHTML((existing.find(r=>r.assetType==='General')||{}).procedureRefs||'')}</textarea>
+            </div>
           </div>
         </div>`;
 
@@ -1751,6 +2673,7 @@ function renderControlStep3() {
                 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${covTypes.map(t=>escapeHTML(t.label)).join(' · ')}</div>`
                 : `<div style="font-size:11px;color:#d97706;margin-top:2px;">⚠ No asset types identified — set coverage in Step 2</div>`}
             </div>
+            <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="openBulkAssetOwnerReqModal('${cid}')">Apply to controls…</button>
             ${chipHTML(cs.status||'Not Started')}
           </div>
           <div style="padding:16px 18px;">
@@ -1762,6 +2685,231 @@ function renderControlStep3() {
     </div>`;
 }
 
+function getStep3DesignedEligibleControls(sourceCtrlId) {
+  return getScopedControls().filter(function(c) {
+    var cs = state.controlStatus[c.id] || {};
+    if (c.id === sourceCtrlId) return false;
+    if (cs.returnedToPolicyOwner || cs.recommendedDeselect) return false;
+    return !!(
+      cs.designSource ||
+      (cs.approach && cs.approach.trim()) ||
+      (cs.designParts && Object.values(cs.designParts).some(function(v) { return v && v.trim(); }))
+    );
+  });
+}
+
+function cloneAssetOwnerRequirementsForCopy(reqs) {
+  return (reqs || []).map(function(r) {
+    return {
+      assetType: r.assetType || 'General',
+      requirement: r.requirement || '',
+      evidenceNeeded: r.evidenceNeeded || '',
+      acceptanceCriteria: r.acceptanceCriteria || '',
+      procedureRefs: r.procedureRefs || ''
+    };
+  });
+}
+
+function signatureAssetOwnerRequirements(reqs) {
+  var normalized = cloneAssetOwnerRequirementsForCopy(reqs).slice().sort(function(a, b) {
+    return String(a.assetType || '').localeCompare(String(b.assetType || ''));
+  });
+  return JSON.stringify(normalized);
+}
+
+function openBulkAssetOwnerReqModal(sourceCtrlId) {
+  normalizeControlDesignState(sourceCtrlId);
+  var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
+  var sourceReqs = ((state.controlStatus[sourceCtrlId] || {}).assetOwnerRequirements || []);
+  if (!sourceReqs.length) {
+    showToast('Add at least one Step 3 requirement block before bulk apply.', true);
+    return;
+  }
+  var eligible = getStep3DesignedEligibleControls(sourceCtrlId);
+  if (!eligible.length) {
+    showToast('No other eligible Step 3 controls found in your queue.', true);
+    return;
+  }
+  var selected = {};
+  var defaultFamily = source ? source.f : '';
+  eligible.forEach(function(c) { selected[c.id] = !!(defaultFamily && c.f === defaultFamily); });
+
+  window._bulkAssetOwnerReqState = {
+    sourceCtrlId: sourceCtrlId,
+    familyFilter: defaultFamily,
+    search: '',
+    selected: selected
+  };
+
+  var existing = document.getElementById('bulkAssetOwnerReqOverlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'bulkAssetOwnerReqOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10075;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 18px;';
+  overlay.innerHTML = ''
+    + '<div style="background:white;border-radius:14px;width:940px;max-width:100%;box-shadow:0 24px 60px rgba(2,6,23,0.22);overflow:hidden;">'
+    + '  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px;">Apply Step 3 requirements to other controls</div>'
+    + '      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">Source: <span class="control-id">' + escapeHTML(sourceCtrlId) + '</span> — ' + escapeHTML((source && source.n) || '') + '</div>'
+    + '      <div style="font-size:11px;color:#334155;line-height:1.45;margin-top:4px;"><strong>Copies:</strong> all Step 3 requirement blocks (actions, evidence, criteria, and procedure references).</div>'
+    + '    </div>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkAssetOwnerReqModal()">Close</button>'
+    + '  </div>'
+    + '  <div id="bulkAssetOwnerReqBody" style="padding:16px 20px;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeBulkAssetOwnerReqModal(); });
+  renderBulkAssetOwnerReqModalBody();
+}
+
+function closeBulkAssetOwnerReqModal() {
+  var overlay = document.getElementById('bulkAssetOwnerReqOverlay');
+  if (overlay) overlay.remove();
+  window._bulkAssetOwnerReqState = null;
+}
+
+function renderBulkAssetOwnerReqModalBody() {
+  var st = window._bulkAssetOwnerReqState;
+  var body = document.getElementById('bulkAssetOwnerReqBody');
+  if (!st || !body) return;
+  var eligible = getStep3DesignedEligibleControls(st.sourceCtrlId);
+  var sourceControl = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
+  var families = Array.from(new Set(eligible.map(function(c) { return c.f; }))).sort();
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  var filtered = eligible.filter(function(c) {
+    if (familyFilter && c.f !== familyFilter) return false;
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+  var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
+
+  body.innerHTML = ''
+    + '<div style="display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Family filter</label>'
+    + '    <select class="form-select" style="font-size:12px;" onchange="window._bulkAssetOwnerReqState.familyFilter=this.value;renderBulkAssetOwnerReqModalBody();">'
+    + '      <option value="">All families</option>'
+    +        families.map(function(f) {
+              return '<option value="' + escapeHTML(f) + '"' + (familyFilter === f ? ' selected' : '') + '>' + escapeHTML(f + ' — ' + (FAMILIES[f] || f)) + '</option>';
+            }).join('')
+    + '    </select></div>'
+    + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
+    + '    <input class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="window._bulkAssetOwnerReqState.search=this.value;renderBulkAssetOwnerReqModalBody();"></div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible controls'
+    + (sourceControl && sourceControl.f ? ' · default scope: ' + escapeHTML(sourceControl.f) : '')
+    + '  </div>'
+    + '  <div style="display:flex;gap:8px;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkAssetOwnerReqSelectFiltered(true)">Select all eligible</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkAssetOwnerReqSelectFiltered(false)">Clear</button>'
+    + '  </div>'
+    + '</div>'
+    + '<div style="border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;">'
+    + '  <table class="control-table" style="margin:0;">'
+    + '    <thead><tr>'
+    + '      <th style="width:42px;"><input type="checkbox" ' + (allFilteredSelected ? 'checked' : '') + ' onchange="bulkAssetOwnerReqSelectFiltered(this.checked)" style="accent-color:var(--teal);"></th>'
+    + '      <th style="width:95px;">Control</th>'
+    + '      <th>Name</th>'
+    + '      <th style="width:70px;">Family</th>'
+    + '    </tr></thead>'
+    + '    <tbody>'
+    +      (filtered.length ? filtered.map(function(c) {
+            var checked = !!st.selected[c.id];
+            return '<tr>'
+              + '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="bulkAssetOwnerReqSetOne(\'' + c.id.replace(/'/g, "\\'") + '\',this.checked)" style="accent-color:var(--teal);"></td>'
+              + '<td><span class="control-id">' + escapeHTML(c.id) + '</span></td>'
+              + '<td style="font-size:12px;color:var(--navy);">' + escapeHTML(c.n) + '</td>'
+              + '<td><span class="family-badge">' + escapeHTML(c.f) + '</span></td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No controls match current filter.</td></tr>')
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">'
+    + '  <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkAssetOwnerReqModal()">Cancel</button>'
+    + '  <button type="button" class="btn btn-primary btn-sm" onclick="applyBulkAssetOwnerReqToSelected()">Apply to selected controls</button>'
+    + '</div>';
+}
+
+function bulkAssetOwnerReqSetOne(ctrlId, checked) {
+  var st = window._bulkAssetOwnerReqState;
+  if (!st) return;
+  st.selected[ctrlId] = !!checked;
+  renderBulkAssetOwnerReqModalBody();
+}
+
+function bulkAssetOwnerReqSelectFiltered(checked) {
+  var st = window._bulkAssetOwnerReqState;
+  if (!st) return;
+  var eligible = getStep3DesignedEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  eligible.forEach(function(c) {
+    if (familyFilter && c.f !== familyFilter) return;
+    if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
+    st.selected[c.id] = !!checked;
+  });
+  renderBulkAssetOwnerReqModalBody();
+}
+
+function applyBulkAssetOwnerReqToSelected() {
+  var st = window._bulkAssetOwnerReqState;
+  if (!st) return;
+  normalizeControlDesignState(st.sourceCtrlId);
+  var sourceCs = (state.controlStatus || {})[st.sourceCtrlId] || {};
+  var sourceReqs = cloneAssetOwnerRequirementsForCopy(sourceCs.assetOwnerRequirements || []);
+  if (!sourceReqs.length) {
+    showToast('Source control has no Step 3 requirements to copy.', true);
+    return;
+  }
+  var selectedIds = getStep3DesignedEligibleControls(st.sourceCtrlId)
+    .map(function(c) { return c.id; })
+    .filter(function(id) { return !!st.selected[id]; });
+  if (!selectedIds.length) {
+    showToast('Select at least one control to update.', true);
+    return;
+  }
+  if (!window.confirm('Apply Step 3 requirements to ' + selectedIds.length + ' control' + (selectedIds.length === 1 ? '' : 's') + '?')) return;
+
+  var idx = 0;
+  var appliedCount = 0;
+  var skippedCount = 0;
+  var sourceSig = signatureAssetOwnerRequirements(sourceReqs);
+
+  function applyChunk() {
+    var end = Math.min(idx + 30, selectedIds.length);
+    for (; idx < end; idx++) {
+      var ctrlId = selectedIds[idx];
+      normalizeControlDesignState(ctrlId);
+      var targetCs = state.controlStatus[ctrlId] || {};
+      var prevSig = signatureAssetOwnerRequirements(targetCs.assetOwnerRequirements || []);
+      if (prevSig === sourceSig) {
+        skippedCount++;
+        continue;
+      }
+      targetCs.assetOwnerRequirements = cloneAssetOwnerRequirementsForCopy(sourceReqs);
+      appliedCount++;
+    }
+
+    if (idx < selectedIds.length) {
+      requestAnimationFrame(applyChunk);
+      return;
+    }
+
+    addAuditEntry('control', st.sourceCtrlId, 'Bulk-applied Step 3 requirements from ' + st.sourceCtrlId + ' to ' + appliedCount + ' control(s)' + (skippedCount ? ' (' + skippedCount + ' unchanged)' : '') + '.');
+    markDirty();
+    closeBulkAssetOwnerReqModal();
+    showToast('✅ Applied Step 3 requirements to ' + appliedCount + ' control' + (appliedCount === 1 ? '' : 's') + (skippedCount ? ' · ' + skippedCount + ' unchanged' : '') + '.');
+    renderControlStep3();
+  }
+
+  applyChunk();
+}
+
 function setAssetOwnerReq(ctrlId, assetTypeLabel, field, value) {
   normalizeControlDesignState(ctrlId);
   if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
@@ -1771,7 +2919,7 @@ function setAssetOwnerReq(ctrlId, assetTypeLabel, field, value) {
   if (existing) {
     existing[field] = value;
   } else {
-    const newReq = { assetType: assetTypeLabel, requirement: '', evidenceNeeded: '', acceptanceCriteria: '' };
+    const newReq = { assetType: assetTypeLabel, requirement: '', evidenceNeeded: '', acceptanceCriteria: '', procedureRefs: '' };
     newReq[field] = value;
     reqs.push(newReq);
   }
@@ -1790,19 +2938,21 @@ function getControlOwnerGuidanceForScope(ctrlId, scopeLabel) {
     return {
       actions: (cs.assetGuidance || '').trim(),
       evidence: '',
-      criteria: ''
+      criteria: '',
+      refs: ''
     };
   }
   return {
     actions: selected.requirement || '',
     evidence: selected.evidenceNeeded || '',
-    criteria: selected.acceptanceCriteria || ''
+    criteria: selected.acceptanceCriteria || '',
+    refs: selected.procedureRefs || ''
   };
 }
 
 function buildGuidanceFromControlOwner(ctrlId, scopeLabel) {
   var g = getControlOwnerGuidanceForScope(ctrlId, scopeLabel);
-  var hasAny = (g.actions || '').trim() || (g.evidence || '').trim() || (g.criteria || '').trim();
+  var hasAny = (g.actions || '').trim() || (g.evidence || '').trim() || (g.criteria || '').trim() || (g.refs || '').trim();
   if (!hasAny) {
     return '<em style="color:#86efac;">No requirements defined yet by control owner in Control Wizard Step 3.</em>';
   }
@@ -1815,6 +2965,9 @@ function buildGuidanceFromControlOwner(ctrlId, scopeLabel) {
   }
   if ((g.criteria || '').trim()) {
     html += '<div><strong>Acceptance criteria:</strong> ' + _esc(g.criteria) + '</div>';
+  }
+  if ((g.refs || '').trim()) {
+    html += '<div style="margin-top:6px;"><strong>Procedure/standard references:</strong> ' + _esc(g.refs) + '</div>';
   }
   return html;
 }
@@ -1861,6 +3014,15 @@ function renderControlStep4() {
   };
   const returnedCount  = getScopedControls().filter(c=>(state.controlStatus[c.id]||{}).returnedToPolicyOwner).length;
   const deselectCount  = getScopedControls().filter(c=>(state.controlStatus[c.id]||{}).recommendedDeselect).length;
+  const currentUser = state.currentUserId ? (state.users||[]).find(function(u){ return u.id===state.currentUserId; }) : null;
+  const currentName = (currentUser && currentUser.name) ? String(currentUser.name).trim().toLowerCase() : '';
+  const evidenceRequests = (state.controlReviewQueue || []).filter(function(r) {
+    if (!r || r.status !== 'Evidence Requested' || !r.controlId || !currentName) return false;
+    const owner = (state.controlOwners || {})[r.controlId] || {};
+    const submittedBy = String(r.submittedBy || '').trim().toLowerCase();
+    const ownerName = String(owner.name || '').trim().toLowerCase();
+    return submittedBy === currentName || ownerName === currentName;
+  });
   const pctDesigned    = controls.length ? Math.round((designedControls.length/controls.length)*100) : 0;
 
   body.innerHTML = `
@@ -1870,6 +3032,16 @@ function renderControlStep4() {
     <div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#1e40af;">
       <strong>📌 What you're submitting:</strong> A design-only package: policy/NIST-aligned control design, scoped assets/processes, and required implementation/evidence expectations for asset and process owners.
     </div>
+
+    ${evidenceRequests.length ? `
+    <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#9a3412;">
+      <strong>⚠ Additional evidence requested:</strong> ${evidenceRequests.length} control submission${evidenceRequests.length===1?'':'s'} need updates.
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+        ${evidenceRequests.slice(0,10).map(function(r){ return '<span class="control-id">' + escapeHTML(r.controlId) + '</span>'; }).join('')}
+        ${evidenceRequests.length > 10 ? `<span style="font-size:11px;color:#9a3412;">+${evidenceRequests.length - 10} more</span>` : ''}
+      </div>
+      <div style="font-size:11px;color:#7c2d12;margin-top:8px;">Update the control design/evidence notes and resubmit from this step.</div>
+    </div>` : ''}
 
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;">
       ${[
@@ -2046,8 +3218,22 @@ function submitControlDesign() {
   if (!state.controlReviewQueue) state.controlReviewQueue = [];
   myControls.forEach(function(c) {
     const ex = state.controlReviewQueue.find(r=>r.controlId===c.id);
-    if (ex) { ex.status='Design Submitted'; ex.submittedAt=new Date().toISOString(); ex.submittedBy=name; }
-    else state.controlReviewQueue.push({ controlId:c.id, family:c.f, policyOwner:(state.domainOwners[c.f]||{}).name||'', submittedBy:name, submittedAt:new Date().toISOString(), status:'Design Submitted' });
+    if (ex) {
+      ex.status='Design Submitted';
+      ex.submittedAt=new Date().toISOString();
+      ex.submittedBy=name;
+      ex.notes = notes || '';
+    } else {
+      state.controlReviewQueue.push({
+        controlId:c.id,
+        family:c.f,
+        policyOwner:(state.domainOwners[c.f]||{}).name||'',
+        submittedBy:name,
+        submittedAt:new Date().toISOString(),
+        status:'Design Submitted',
+        notes: notes || ''
+      });
+    }
   });
 
   addAuditEntry('control', null, 'Control design submitted by ' + name + ': ' + selectedControls.length + ' selected for review (' + designedControls.length + '/' + controls.length + ' designed, ' + fullyMappedReqs.length + '/' + controls.length + ' fully mapped), routed to ' + recipientLabel);
