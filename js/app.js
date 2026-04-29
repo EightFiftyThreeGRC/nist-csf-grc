@@ -1030,6 +1030,13 @@ function maybeShowWelcomeIntro() {
     dismissed = localStorage.getItem(WELCOME_INTRO_STORAGE_KEY) === '1';
   } catch (e) {}
   if (dismissed) return;
+  /* Returning browsers with an existing program: set flag so we do not block them after this deploy. */
+  try {
+    if (typeof state !== 'undefined' && String(state.orgName || '').trim() !== '') {
+      localStorage.setItem(WELCOME_INTRO_STORAGE_KEY, '1');
+      return;
+    }
+  } catch (e2) {}
   var ov = document.getElementById('welcomeIntroOverlay');
   if (!ov) return;
   ov.classList.add('is-visible');
