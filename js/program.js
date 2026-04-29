@@ -1375,11 +1375,11 @@ function renderCISOStep3() {
 
   body.innerHTML = `
     <div class="section-title">${escapeHTML((isp.title || '').trim() || getDefaultISPTitle())}</div>
-    <div class="section-subtitle">Review and customise your organization's top-level Tier 1 policy. This policy governs all domain-specific subordinate policies.</div>
+    <div class="section-subtitle">Review and edit your organization's overall security policy here. The domain policies your teams write later should line up with this document.</div>
 
     <div style="border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;background:white;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Policy title</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Choose the public-facing name for your Tier 1 policy document.</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Choose the name shown in the app, reports, and exports (for example on a cover page or table of contents).</div>
       <input class="form-input" style="max-width:640px;font-size:14px;font-weight:600;" value="${escapeHTML((isp.title || '').trim() || getDefaultISPTitle())}" oninput="setISPTitle(this.value);" placeholder="${escapeHTML(getDefaultISPTitle())}">
     </div>
 
