@@ -1347,20 +1347,17 @@ function renderReports() {
               <th style="width:70px;">Family</th>
               <th>Baselines</th>
               <th style="width:130px;">Impl. Status</th>
-              <th style="width:100px;">Test Result</th>
             </tr>
           </thead>
           <tbody id="tbod-${Math.random().toString(36).slice(2,8)}">
             ${controls.map(c => {
               const cs = state.controlStatus[c.id]||{};
-              const tr = state.controlTestResults[c.id]||{};
               return `<tr data-id="${c.id}" data-family="${c.f}" data-status="${cs.status||'Not Started'}">
                 <td><span class="control-id">${c.id}</span></td>
                 <td>${c.n}</td>
                 <td><span class="family-badge">${c.f}</span></td>
                 <td>${pillsHTML(c.bl)}</td>
                 <td>${chipHTML(cs.status||'Not Started')}</td>
-                <td>${tr.result ? chipHTML(tr.result) : '<span style="color:var(--text-muted); font-size:12px;">Not tested</span>'}</td>
               </tr>`;
             }).join('')}
           </tbody>
