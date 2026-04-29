@@ -680,6 +680,15 @@ function renderPolicyLibraryCatalog() {
     + '</div>';
 }
 
+/** Toggle the admin-only explainer under Build / Edit Policies (Domain policies home). */
+function policyToggleAdminDraftHint(btn) {
+  var panel = document.getElementById('policy-admin-draft-hint');
+  if (!panel) return;
+  var open = panel.style.display !== 'block';
+  panel.style.display = open ? 'block' : 'none';
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 function renderPolicyList() {
   const listPanel = document.getElementById('policy-list-panel');
   const wizPanel = document.getElementById('policy-wizard-panel');
@@ -767,6 +776,8 @@ function renderPolicyList() {
     }
   }
 
+  const isAdmin = !state.currentUserId;
+
   // ── Dropdown ──
   let opts = '<option value="">Select your role\u2026</option>';
   ownerNames.forEach(function(name) {
@@ -825,11 +836,15 @@ function renderPolicyList() {
         + (cardDisabled
             ? '<button class="btn btn-secondary btn-sm" style="width:100%;opacity:0.45;" disabled>' + btnLabel + '</button>'
             : '<button class="btn btn-primary btn-sm" style="width:100%;" onclick="event.stopPropagation(); openPolicyDoc(\'' + masterFam + '\')">' + btnLabel + '</button>')
+        + (isAdmin && status === 'Not Started'
+          ? '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.45;padding:8px 10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">'
+          + '<span style="color:var(--navy);font-weight:700;">Admin mode:</span> '
+          + 'Use <strong>Switch role / impersonate</strong> in the sidebar and sign in as this policy owner to start a draft in the wizard.</div>'
+          : '')
         + '</div>';
     });
   }
 
-  const isAdmin = !state.currentUserId;
   let cardsSection;
   if (famsToShow.length) {
     cardsSection = cards
@@ -911,8 +926,18 @@ function renderPolicyList() {
   // Only show role dropdown for admin (no currentUserId = admin mode)
   const rolePickerHTML = isAdmin
     ? '<div style="margin-bottom:16px;">'
+        + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">'
+        + '<div style="min-width:0;flex:1;">'
         + '<div style="font-size:16px;font-weight:800;color:var(--navy);margin-bottom:4px;">Build / Edit Policies</div>'
-        + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Filter by policy owner to work on a specific domain.</div>'
+        + '<div style="font-size:13px;color:var(--text-muted);">Filter by policy owner to preview domains assigned to them.</div>'
+        + '</div>'
+        + '<button type="button" id="policy-admin-draft-hint-btn" class="btn btn-secondary btn-sm" style="white-space:nowrap;flex-shrink:0;" onclick="policyToggleAdminDraftHint(this)" aria-expanded="false" aria-controls="policy-admin-draft-hint" title="Why drafting is disabled in Admin mode">'
+        + '\u2139\uFE0F Why can\u2019t I draft?</button>'
+        + '</div>'
+        + '<div id="policy-admin-draft-hint" style="display:none;margin-bottom:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:var(--text);background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;">'
+        + '<strong style="color:var(--navy);">Admin mode is read-only here.</strong> '
+        + 'To write or submit domain policy content, open <strong>Switch role / impersonate</strong> (sidebar, under your profile), choose the policy owner who matches the dropdown below, then return to this tab. '
+        + 'That profile opens the full drafting wizard; Admin stays useful for oversight, users, and reports.</div>'
         + '<label style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); display:block; margin-bottom:8px;">Policy Owner</label>'
         + '<select class="form-select" style="font-size:14px; max-width:420px;" onchange="state._policyOwnerFilter=this.value; renderPolicyList();">' + opts + '</select>'
         + '</div>'
