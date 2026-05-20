@@ -1032,6 +1032,61 @@ function dismissWelcomeIntro() {
   }, 0);
 }
 
+/* Reusable wizard walkthrough modal. The same #wizardVideoOverlay is used for every
+   wizard; the trigger button passes the mp4 path and modal title to openWizardVideo. */
+var _wizardVideoLastFocus = null;
+
+function openWizardVideo(src, title) {
+  var ov = document.getElementById('wizardVideoOverlay');
+  var v  = document.getElementById('wizardVideoEl');
+  var t  = document.getElementById('wizardVideoTitle');
+  if (!ov || !v) return;
+  try { _wizardVideoLastFocus = document.activeElement; } catch (e) {}
+  if (t && title) t.textContent = title;
+  try {
+    while (v.firstChild) v.removeChild(v.firstChild);
+    v.src = src;
+    v.currentTime = 0;
+    v.muted = false;
+  } catch (eS) {}
+  ov.classList.add('is-visible');
+  ov.removeAttribute('aria-hidden');
+  try { document.body.style.overflow = 'hidden'; } catch (e2) {}
+  setTimeout(function() {
+    try {
+      var btn = ov.querySelector('.wizard-video-close');
+      if (btn) btn.focus();
+    } catch (e3) {}
+    try { v.play(); } catch (e4) {}
+  }, 50);
+}
+
+function closeWizardVideo() {
+  var ov = document.getElementById('wizardVideoOverlay');
+  var v  = document.getElementById('wizardVideoEl');
+  if (v) {
+    try { v.pause(); } catch (eP) {}
+    try { v.currentTime = 0; } catch (eT) {}
+    try { v.muted = true; } catch (eM) {}
+    /* Drop the src so the browser stops downloading the file in the background. */
+    try { v.removeAttribute('src'); v.load(); } catch (eC) {}
+  }
+  if (ov) {
+    ov.classList.remove('is-visible');
+    ov.setAttribute('aria-hidden', 'true');
+  }
+  try { document.body.style.overflow = ''; } catch (e5) {}
+  setTimeout(function() {
+    try { if (_wizardVideoLastFocus && _wizardVideoLastFocus.focus) _wizardVideoLastFocus.focus(); } catch (e6) {}
+  }, 0);
+}
+
+document.addEventListener('keydown', function(ev) {
+  if (ev.key !== 'Escape') return;
+  var ov = document.getElementById('wizardVideoOverlay');
+  if (ov && ov.classList.contains('is-visible')) closeWizardVideo();
+});
+
 function maybeShowWelcomeIntro() {
   var dismissed = false;
   try {
@@ -1067,6 +1122,14 @@ document.addEventListener('DOMContentLoaded', function() {
   try { goToStep('ciso', 1); } catch (e) { console.warn('goToStep:', e); }
   try { setupMobileNav(); } catch (e) { console.warn('setupMobileNav:', e); }
   try { maybeShowWelcomeIntro(); } catch (e) { console.warn('maybeShowWelcomeIntro:', e); }
+  try {
+    var wvo = document.getElementById('wizardVideoOverlay');
+    if (wvo) {
+      wvo.addEventListener('click', function(ev) {
+        if (ev.target === wvo) closeWizardVideo();
+      });
+    }
+  } catch (eBd) { console.warn('wizardVideoOverlay backdrop wiring:', eBd); }
   window.addEventListener('beforeunload', function(ev) {
     if (!window.isDirty) return;
     try { saveToStorage(); } catch (e2) {}

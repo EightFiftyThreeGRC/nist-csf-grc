@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -54,6 +54,18 @@
     <div class="welcome-intro-actions">
       <button type="button" class="btn btn-primary welcome-intro-proceed" onclick="dismissWelcomeIntro()">Proceed to program setup</button>
     </div>
+  </div>
+</div>
+
+<!-- Reusable wizard walkthrough modal — populated by openWizardVideo(src, title) in app.js -->
+<div id="wizardVideoOverlay" role="dialog" aria-modal="true" aria-labelledby="wizardVideoTitle" aria-hidden="true">
+  <div class="wizard-video-card">
+    <button type="button" class="wizard-video-close" aria-label="Close walkthrough" onclick="closeWizardVideo()">×</button>
+    <h2 id="wizardVideoTitle" class="wizard-video-title">Walkthrough</h2>
+    <div class="wizard-video-frame">
+      <video id="wizardVideoEl" controls preload="metadata" playsinline></video>
+    </div>
+    <p class="wizard-video-caption">What this wizard covers and why.</p>
   </div>
 </div>
 
@@ -155,7 +167,13 @@
   <!-- ============================================================ -->
   <div class="tab-panel active" id="tab-ciso">
     <div class="page-header">
-      <h1>Information Security Program Setup</h1>
+      <div class="page-header-row">
+        <h1>Information Security Program Setup</h1>
+        <button type="button" class="btn btn-secondary wizard-video-trigger"
+          onclick="openWizardVideo('assets/videos/01-program-setup.mp4', 'Program Setup walkthrough')">
+          ▶ Watch 4-min walkthrough
+        </button>
+      </div>
       <p>Configure your NIST 800-53 baseline, assign program ownership, and set policy deadlines.</p>
     </div>
     <div class="wizard-container">
