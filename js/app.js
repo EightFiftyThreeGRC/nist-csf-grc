@@ -1010,6 +1010,14 @@ function dismissWelcomeIntro() {
   } catch (e) {}
   var ov = document.getElementById('welcomeIntroOverlay');
   if (ov) {
+    try {
+      var vids = ov.getElementsByTagName('video');
+      for (var i = 0; i < vids.length; i++) {
+        try { vids[i].pause(); } catch (eP) {}
+        try { vids[i].currentTime = 0; } catch (eT) {}
+        try { vids[i].muted = true; } catch (eM) {}
+      }
+    } catch (eV) {}
     ov.classList.remove('is-visible');
     ov.setAttribute('aria-hidden', 'true');
   }
