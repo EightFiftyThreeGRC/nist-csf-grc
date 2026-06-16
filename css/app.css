@@ -244,18 +244,161 @@
     /* Wizard Container */
     .wizard-container {
       display: flex;
+      flex-wrap: wrap;
       padding: 24px 32px;
       gap: 24px;
       flex: 1;
       overflow: hidden;
     }
 
+    /* Setup focus — calmer first-run experience */
+    body.setup-focus-mode .sidebar-advanced { display: none; }
+    body.setup-focus-mode .profile-btn-wrap { opacity: 0.65; }
+    body.setup-focus-mode .persist-advanced { display: none !important; }
+    body.setup-focus-mode #resetBtn { display: none !important; }
+    body.setup-focus-mode #ciso-step-nav-panel { display: none; }
+    body.setup-focus-mode .ciso-setup-progress { display: block; }
+    body:not(.setup-focus-mode) .ciso-setup-progress { display: none; }
+    body:not(.setup-focus-mode) #ciso-step-nav-panel { display: flex; }
+
+    .ciso-setup-progress {
+      width: 100%;
+      flex: 0 0 100%;
+      margin-bottom: 4px;
+    }
+    .ciso-setup-progress-track {
+      height: 4px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .ciso-setup-progress-fill {
+      height: 100%;
+      width: 14%;
+      background: linear-gradient(90deg, var(--accent), #764ba2);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+    .ciso-setup-progress-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .setup-page-header h1 { letter-spacing: -0.03em; }
+
+    /* Onboarding home — matches landing tone */
+    .onboard-hero {
+      max-width: 720px;
+      margin: 0 auto 40px;
+      text-align: center;
+      padding: 24px 0 8px;
+    }
+    .onboard-eyebrow {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .onboard-title {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.08;
+      margin: 0 0 16px;
+    }
+    .onboard-lead {
+      font-size: 17px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin: 0 0 28px;
+    }
+    .onboard-step-rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .onboard-step-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 980px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.08);
+      color: var(--text-muted);
+    }
+    .onboard-step-chip.current {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+    }
+    .onboard-step-chip.done {
+      color: var(--green);
+      border-color: rgba(22, 163, 74, 0.25);
+    }
+    .onboard-step-num {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 10px;
+      background: rgba(0,0,0,0.05);
+    }
+    .onboard-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .onboard-cta {
+      font-size: 16px;
+      padding: 14px 28px;
+      border-radius: 980px;
+      box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
+    }
+    .onboard-resume {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .onboard-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .onboard-feature {
+      display: flex;
+      gap: 14px;
+      padding: 18px;
+      border-radius: 14px;
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      text-align: left;
+    }
+    .onboard-feature span { font-size: 28px; }
+    .onboard-feature strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .onboard-feature p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.45; }
+
     /* Step Navigation */
     .step-nav {
       width: 220px;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .step-nav-title {
@@ -271,9 +414,9 @@
 
     .step-item {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       cursor: pointer;
-      padding: 8px;
+      padding: 6px 8px;
       border-radius: 8px;
       transition: background-color 0.2s ease;
     }
@@ -293,8 +436,8 @@
 
     .step-circle {
       flex-shrink: 0;
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -1701,14 +1844,19 @@
     }
     .welcome-intro-actions {
       display: flex;
-      justify-content: flex-end;
+      flex-direction: column;
+      align-items: stretch;
       gap: 10px;
     }
     .welcome-intro-proceed {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
-      padding: 12px 22px;
-      border-radius: 10px;
+      padding: 14px 22px;
+      border-radius: 980px;
+      box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
+    }
+    .welcome-intro-secondary {
+      border-radius: 980px;
     }
     @media (max-width: 900px) {
       .welcome-intro-card {

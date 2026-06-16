@@ -1,11 +1,71 @@
 // js/hub.js — Command Center (post-setup home dashboard)
 
+function getSetupProgressSummary() {
+  var step = (typeof currentStep !== 'undefined' && currentStep.ciso) ? currentStep.ciso : 1;
+  var pct = Math.round((step / 7) * 100);
+  var labels = ['Organization', 'Baseline', 'Integrations', 'PM Controls', 'InfoSec Policy', 'Consolidate', 'Assign Owners'];
+  return { step: step, pct: pct, label: labels[step - 1] || 'Organization' };
+}
+
+function startProgramSetup() {
+  showTab('ciso');
+  goToStep('ciso', 1);
+}
+
+function renderOnboardingHome() {
+  var body = document.getElementById('home-body');
+  var pageHeader = document.querySelector('#tab-home .page-header');
+  if (pageHeader) pageHeader.style.display = 'none';
+  if (!body) return;
+
+  var progress = getSetupProgressSummary();
+  var hasStarted = !!(String(state.orgName || '').trim() || String(state.programOwner || '').trim() || state.baseline);
+
+  var steps = [
+    { n: 1, label: 'Organization' },
+    { n: 2, label: 'Baseline' },
+    { n: 3, label: 'Integrations' },
+    { n: 4, label: 'PM controls' },
+    { n: 5, label: 'InfoSec policy' },
+    { n: 6, label: 'Consolidate' },
+    { n: 7, label: 'Assign owners' }
+  ];
+
+  var stepChips = steps.map(function(s) {
+    var done = s.n < progress.step;
+    var current = s.n === progress.step;
+    var cls = 'onboard-step-chip' + (done ? ' done' : '') + (current ? ' current' : '');
+    return '<span class="' + cls + '"><span class="onboard-step-num">' + (done ? '✓' : s.n) + '</span>' + escapeHTML(s.label) + '</span>';
+  }).join('');
+
+  body.innerHTML = ''
+    + '<div class="onboard-hero">'
+    + '<p class="onboard-eyebrow">EightFiftyThree GRC</p>'
+    + '<h2 class="onboard-title">NIST 800-53.<br>Without the spreadsheet.</h2>'
+    + '<p class="onboard-lead">The landing page got you here — now let\'s stand up your program in <strong>seven short steps</strong>. One screen at a time, no overwhelm.</p>'
+    + '<div class="onboard-step-rail">' + stepChips + '</div>'
+    + '<div class="onboard-actions">'
+    + '<button type="button" class="btn btn-primary onboard-cta" onclick="startProgramSetup()">' + (hasStarted ? 'Continue setup' : 'Start program setup') + '</button>'
+    + '<button type="button" class="btn btn-secondary" onclick="openWizardVideo(\'assets/videos/01-program-setup.mp4\', \'Program setup walkthrough\')">▶ Watch walkthrough</button>'
+    + '</div>'
+    + (hasStarted
+      ? '<p class="onboard-resume">You\'re on step ' + progress.step + ' — <strong>' + escapeHTML(progress.label) + '</strong>. Pick up where you left off.</p>'
+      : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes. Integrations (SharePoint, Entra, ISO/SOC 2/HIPAA) are optional.</p>')
+    + '</div>'
+    + '<div class="onboard-features">'
+    + '<div class="onboard-feature"><span>📋</span><div><strong>Domain policies</strong><p>Build AC, AU, SC, and the rest after setup.</p></div></div>'
+    + '<div class="onboard-feature"><span>🔧</span><div><strong>Control implementation</strong><p>Design obligations and link SharePoint evidence.</p></div></div>'
+    + '<div class="onboard-feature"><span>🖥️</span><div><strong>Assets &amp; SSP</strong><p>Inventory systems and submit attestation packages.</p></div></div>'
+    + '</div>';
+}
+
 function getNextActions() {
   var actions = [];
   var today = new Date().toISOString().slice(0, 10);
 
   if (!state.cisoComplete) {
-    actions.push({ priority: 1, icon: '🏛️', label: 'Finish program setup', desc: 'Complete baseline, ISP, and owner assignment.', action: "showTab('ciso');goToStep('ciso',1);" });
+    var p = getSetupProgressSummary();
+    actions.push({ priority: 1, icon: '🏛️', label: 'Continue program setup', desc: 'Step ' + p.step + ' of 7 — ' + p.label + '.', action: "startProgramSetup();" });
     return actions;
   }
 
@@ -42,6 +102,15 @@ function getNextActions() {
 function renderHomeTab() {
   var body = document.getElementById('home-body');
   if (!body) return;
+
+  if (!state.cisoComplete) {
+    renderOnboardingHome();
+    return;
+  }
+
+  var pageHeader = document.querySelector('#tab-home .page-header');
+  if (pageHeader) pageHeader.style.display = '';
+
   var org = escapeHTML(state.orgName || 'Your organization');
   var baseline = state.baseline ? (state.baseline === 'L' ? 'Low' : state.baseline === 'M' ? 'Moderate' : 'High') : '—';
   var ctrlTotal = typeof getActiveControls === 'function' ? getActiveControls().length : 0;
@@ -80,7 +149,7 @@ function renderHomeTab() {
   body.innerHTML = ''
     + '<div class="hub-hero">'
     + '<h2 class="hub-greeting">Command Center</h2>'
-    + '<p class="hub-org">' + org + ' · ' + baseline + ' baseline' + (state.cisoComplete ? '' : ' · <em>Setup in progress</em>') + '</p>'
+    + '<p class="hub-org">' + org + ' · ' + baseline + ' baseline</p>'
     + '</div>'
     + '<div class="hub-kpi-grid">'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + implPct + '%</div><div class="hub-kpi-label">Controls implemented</div><div class="hub-kpi-sub">' + implemented + ' / ' + ctrlTotal + '</div></div>'

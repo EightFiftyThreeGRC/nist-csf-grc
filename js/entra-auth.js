@@ -278,7 +278,7 @@ function renderEntraSetupCardHtml() {
     + '<div class="entra-setup-head">'
     + '<div><div class="entra-setup-title">Microsoft Entra ID</div>'
     + '<div class="entra-setup-sub">Optional work-account sign-in instead of demo profile picking.</div></div>'
-    + '<label class="fw-toggle" onclick="event.stopPropagation();"><input type="checkbox"' + (cfg.enabled ? ' checked' : '') + ' onchange="setEntraConfigField(\'enabled\',this.checked);renderCISOStep1();"><span class="fw-toggle-track"></span></label>'
+    + '<label class="fw-toggle" onclick="event.stopPropagation();"><input type="checkbox"' + (cfg.enabled ? ' checked' : '') + ' onchange="setEntraConfigField(\'enabled\',this.checked);if(typeof refreshCurrentCisoStep===\'function\')refreshCurrentCisoStep();"><span class="fw-toggle-track"></span></label>'
     + '</div>'
     + (cfg.enabled
       ? '<p style="font-size:13px;color:var(--text-muted);margin:0;">Configure app registration details under <button type="button" class="btn-link" onclick="showTab(\'users\')">Users &amp; roles</button>. Users must have their Microsoft email on the roster.</p>'

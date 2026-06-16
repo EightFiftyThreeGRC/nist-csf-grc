@@ -634,7 +634,7 @@ function goToProgramSetupOrDashboard() {
 function goToDomainOwnersFromDashboard() {
   if (!state.currentUserId) {
     showTab('ciso');
-    goToStep('ciso', 5);
+    goToStep('ciso', 7);
     return;
   }
   if (state.cisoComplete) {
@@ -642,7 +642,7 @@ function goToDomainOwnersFromDashboard() {
     return;
   }
   showTab('ciso');
-  goToStep('ciso', 5);
+  goToStep('ciso', 7);
 }
 
 function showTab(tabId) {
@@ -691,6 +691,7 @@ function showTab(tabId) {
   if (tabId === 'users')    renderUsersTab();
   updateNotificationBadges();
   enhanceKeyboardAccessibility();
+  if (typeof applySetupFocusMode === 'function') applySetupFocusMode();
 }
 
 
@@ -717,7 +718,7 @@ function enhanceKeyboardAccessibility() {
 const currentStep = { ciso:1, policy:1, control:1, asset:1 };
 
 function goToStep(tabId, step) {
-  const maxSteps = { ciso:5, policy:4, control:4, asset:4 };
+  const maxSteps = { ciso:7, policy:4, control:4, asset:4 };
   const max = maxSteps[tabId] || 4;
   if (step < 1 || step > max) return;
   if (tabId === 'asset') {
@@ -728,10 +729,13 @@ function goToStep(tabId, step) {
   }
   // Validate CISO step progression
   if (tabId === 'ciso' && step > 1) {
-    if (!state.baseline) { showToast('Please select a baseline impact level first.', true); return; }
     if (!state.orgName || !state.orgName.trim()) { showToast('Please enter your Organization / Agency Name before continuing.', true); document.getElementById('orgNameInput')?.focus(); return; }
     if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
     if (!state.programOwnerTitle || !state.programOwnerTitle.trim()) { showToast('Please enter the Program Owner title before continuing.', true); document.getElementById('programOwnerTitleInput')?.focus(); return; }
+  }
+  if (tabId === 'ciso' && step > 2 && !state.baseline) {
+    showToast('Please select a baseline impact level first.', true);
+    return;
   }
   // Hide all steps
   for (let i = 1; i <= max; i++) {
@@ -754,7 +758,10 @@ function goToStep(tabId, step) {
     if (conn) { conn.classList.toggle('done', i < step); }
   }
   // Re-render step bodies when navigating
-  if (tabId==='ciso') renderCISOStep(step);
+  if (tabId==='ciso') {
+    renderCISOStep(step);
+    if (typeof updateCisoSetupProgress === 'function') updateCisoSetupProgress(step);
+  }
   if (tabId==='policy') { renderPolicyWizardChrome(step); renderPolicyStep(step); }
   if (tabId==='control') renderControlStep(step);
   if (tabId==='asset') { renderAssetWizardChrome(); renderAssetStep(step); }
@@ -1008,6 +1015,11 @@ function setupMobileNav() {
 /** localStorage key: once set, welcome intro is skipped on this browser. */
 var WELCOME_INTRO_STORAGE_KEY = 'eightfiftythree-grc-welcome-dismissed';
 
+function applySetupFocusMode() {
+  var inSetup = !state.cisoComplete;
+  document.body.classList.toggle('setup-focus-mode', inSetup);
+}
+
 function dismissWelcomeIntro() {
   try {
     localStorage.setItem(WELCOME_INTRO_STORAGE_KEY, '1');
@@ -1030,8 +1042,11 @@ function dismissWelcomeIntro() {
   } catch (e2) {}
   setTimeout(function() {
     try {
-      var pb = document.getElementById('profileBtn');
-      if (pb && typeof pb.focus === 'function') pb.focus();
+      showTab('home');
+    } catch (eH) {}
+    try {
+      var cta = document.querySelector('.onboard-cta');
+      if (cta && typeof cta.focus === 'function') cta.focus();
     } catch (e3) {}
   }, 0);
 }
@@ -1133,13 +1148,11 @@ document.addEventListener('DOMContentLoaded', function() {
       try { applyRoleView('admin'); } catch (e) { console.warn('applyRoleView:', e); }
     }
     try { renderSidebarBadges(); } catch (e) { console.warn('renderSidebarBadges:', e); }
+    try { applySetupFocusMode(); } catch (e) { console.warn('applySetupFocusMode:', e); }
     try {
       if (state.cisoComplete) showTab('home');
-      else showTab('ciso');
+      else showTab('home');
     } catch (e) { console.warn('showTab:', e); }
-    try {
-      if (!state.cisoComplete) goToStep('ciso', 1);
-    } catch (e) { console.warn('goToStep:', e); }
   });
   try { setupMobileNav(); } catch (e) { console.warn('setupMobileNav:', e); }
   try { maybeShowWelcomeIntro(); } catch (e) { console.warn('maybeShowWelcomeIntro:', e); }

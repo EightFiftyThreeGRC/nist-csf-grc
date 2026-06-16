@@ -85,7 +85,8 @@ function toggleActiveFramework(fwId) {
   state.activeFrameworks[fwId] = !current;
   markDirty();
   renderFrameworksTab();
-  if (typeof renderCISOStep1 === 'function' && document.getElementById('ciso-step-1-body')) renderCISOStep1();
+  if (typeof refreshCurrentCisoStep === 'function') refreshCurrentCisoStep();
+  else if (typeof renderCISOStep3Integrations === 'function' && document.getElementById('ciso-step-3-body')) renderCISOStep3Integrations();
 }
 
 function computeFrameworkCoverage(fwId) {
@@ -300,7 +301,7 @@ function renderSharePointSetupCardHtml() {
     + '<div class="sp-setup-head">'
     + '<div><div class="sp-setup-title">Evidence in SharePoint</div>'
     + '<div class="sp-setup-sub">Store artifacts in SharePoint — this tool keeps links and context, not file copies.</div></div>'
-    + '<label class="fw-toggle" onclick="event.stopPropagation();"><input type="checkbox"' + (cfg.enabled ? ' checked' : '') + ' onchange="setSharePointConfigField(\'enabled\',this.checked);renderCISOStep1();"><span class="fw-toggle-track"></span></label>'
+    + '<label class="fw-toggle" onclick="event.stopPropagation();"><input type="checkbox"' + (cfg.enabled ? ' checked' : '') + ' onchange="setSharePointConfigField(\'enabled\',this.checked);if(typeof refreshCurrentCisoStep===\'function\')refreshCurrentCisoStep();"><span class="fw-toggle-track"></span></label>'
     + '</div>'
     + (cfg.enabled
       ? '<div class="sp-setup-fields">'

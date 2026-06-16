@@ -168,7 +168,7 @@ function updateCISOFinishBtn() {
     btn.innerHTML = '⚠️ Replace demo placeholder owners';
     btn.style.opacity = '0.5';
     if (!document.getElementById('fake-review-panel')) {
-      btn.insertAdjacentHTML('beforebegin', '<div id="fake-review-panel" style="padding:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin-bottom:16px;"><h4 style="color:#92400e;margin:0 0 8px 0;">Demo placeholder owners</h4><p style="font-size:12px;color:#78350f;margin:0 0 8px 0;">The following names are flagged as portfolio demo data and cannot be used for real attestations: <strong>' + escapeHTML(demoNames.join(', ')) + '</strong>. Edit each owner name or email in Step 5 to clear the DEMO badge, then finalize.</p></div>');
+      btn.insertAdjacentHTML('beforebegin', '<div id="fake-review-panel" style="padding:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin-bottom:16px;"><h4 style="color:#92400e;margin:0 0 8px 0;">Demo placeholder owners</h4><p style="font-size:12px;color:#78350f;margin:0 0 8px 0;">The following names are flagged as portfolio demo data and cannot be used for real attestations: <strong>' + escapeHTML(demoNames.join(', ')) + '</strong>. Edit each owner name or email in Step 7 to clear the DEMO badge, then finalize.</p></div>');
     }
     return;
   }
@@ -190,13 +190,13 @@ function updateCISOFinishBtn() {
     return;
   }
 
-  // Step 4 (consolidate): hide finalize — use Next in footer to reach step 5
-  if (currentStep.ciso === 4) {
+  // Step 6 (consolidate): hide finalize — use Next in footer to reach step 7
+  if (currentStep.ciso === 6) {
     btn.style.display = 'none';
     return;
   }
-  // Step 5 (owners): show finalize when all owners assigned
-  if (currentStep.ciso === 5) {
+  // Step 7 (owners): show finalize when all owners assigned
+  if (currentStep.ciso === 7) {
     btn.style.display = '';
     const ready = allOwnersAssigned();
     btn.innerHTML = ready ? '✓ Finalise Program Setup' : '✓ Finalise Program Setup — assign all owners first';
@@ -223,23 +223,54 @@ function updateCISOFinishBtn() {
 // renderCISOStep router, cisoNext, allOwnersAssigned,
 // updateCISOFinishBtn, goToStep, prefillFakeOwners, etc.
 // ============================================================
-function renderCISOStep(step) {
-  if (step===1) renderCISOStep1();
-  if (step===2) renderCISOStep2();
-  if (step===3) renderCISOStep3();
-  if (step===4) renderCISOStep4a();
-  if (step===5) renderCISOStep4b();
+var CISO_WIZARD_STEPS = 7;
+var CISO_STEP_LABELS = ['Organization', 'Baseline', 'Integrations', 'PM Controls', 'InfoSec Policy', 'Consolidate', 'Assign Owners'];
+
+function updateCisoSetupProgress(step) {
+  var s = step || (typeof currentStep !== 'undefined' ? currentStep.ciso : 1) || 1;
+  var fill = document.getElementById('ciso-setup-progress-fill');
+  var label = document.getElementById('ciso-setup-progress-label');
+  var desc = document.getElementById('ciso-setup-header-desc');
+  if (fill) fill.style.width = Math.round((s / CISO_WIZARD_STEPS) * 100) + '%';
+  var name = CISO_STEP_LABELS[s - 1] || '';
+  if (label) label.textContent = 'Step ' + s + ' of ' + CISO_WIZARD_STEPS + ' · ' + name;
+  if (desc) desc.textContent = 'Step ' + s + ' of ' + CISO_WIZARD_STEPS + ' — ' + name + '. One decision at a time.';
 }
 
-/** After merge/unmerge while on setup steps 4 or 5, refresh the visible panel only. */
+function cisoStepProgressHtml(step, label) {
+  return '<div class="ciso-step-progress" style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:16px;">Step '
+    + step + ' of ' + CISO_WIZARD_STEPS + ' · ' + escapeHTML(label) + '</div>';
+}
+
+function refreshCurrentCisoStep() {
+  renderCISOStep(currentStep.ciso);
+}
+
+function renderCISOStep(step) {
+  if (step===1) renderCISOStep1();
+  if (step===2) renderCISOStep2Baseline();
+  if (step===3) renderCISOStep3Integrations();
+  if (step===4) renderCISOStep2();
+  if (step===5) renderCISOStep3();
+  if (step===6) renderCISOStep4a();
+  if (step===7) renderCISOStep4b();
+  updateCisoSetupProgress(step);
+}
+
+/** After merge/unmerge while on setup steps 6 or 7, refresh the visible panel only. */
 function renderActiveCisoSetupStep() {
-  if (currentStep.ciso === 5) renderCISOStep4b();
-  else if (currentStep.ciso === 4) renderCISOStep4a();
+  if (currentStep.ciso === 7) renderCISOStep4b();
+  else if (currentStep.ciso === 6) renderCISOStep4a();
 }
 
 function cisoNext(fromStep) {
-  if (fromStep >= 5) return;
+  if (fromStep >= CISO_WIZARD_STEPS) return;
   if (fromStep===1) {
+    if (!state.orgName || !state.orgName.trim()) { showToast('Please enter your Organization / Agency Name before continuing.', true); document.getElementById('orgNameInput')?.focus(); return; }
+    if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
+    if (!state.programOwnerTitle || !state.programOwnerTitle.trim()) { showToast('Please enter the Program Owner title before continuing.', true); document.getElementById('programOwnerTitleInput')?.focus(); return; }
+  }
+  if (fromStep===2) {
     if (state.fismaMode) {
       if (!Array.isArray(state.programInfoTypes) || state.programInfoTypes.length === 0) {
         showToast('FISMA / CUI mode is on — pick at least one information type so a baseline can be derived.', true);
@@ -256,10 +287,8 @@ function cisoNext(fromStep) {
       showToast('Please select a baseline impact level before continuing.', true);
       return;
     }
-    if (!state.orgName || !state.orgName.trim()) { showToast('Please enter your Organization / Agency Name before continuing.', true); document.getElementById('orgNameInput')?.focus(); return; }
-    if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
   }
-  if (fromStep===3) {
+  if (fromStep===5) {
     // Finalize the ISP and submit to the selected approver for review.
     // Wrapped so a submission failure can never block the wizard from advancing.
     try { submitISPForApproval(/*silent=*/false); } catch (e) { console.warn('submitISPForApproval failed:', e); }
@@ -351,7 +380,7 @@ function cisoFinish() {
   const unassigned = masters.filter(f => !(state.domainOwners[f] || {}).name);
 
   if (unassigned.length > 0) {
-    showToast('Assign an owner for all ' + unassigned.length + ' domain(s) before finalizing, or use "Prefill demo data" in Step 5 and then replace placeholder names with real people.', true);
+    showToast('Assign an owner for all ' + unassigned.length + ' domain(s) before finalizing, or use "Prefill demo data" in Step 7 and then replace placeholder names with real people.', true);
     return;
   }
   clearScopedUndoStack('program finalization');
@@ -378,6 +407,7 @@ function cisoFinish() {
   addAuditEntry('program', null, 'Program setup completed by CISO');
   renderSidebarBadges();
   updateCISOFinishBtn();
+  if (typeof applySetupFocusMode === 'function') applySetupFocusMode();
   showTab('home');
   showToast('✅ Program setup complete! Command Center is your new home base.');
 }
@@ -683,11 +713,55 @@ function openProcessSspFromLibrary(procId) {
 }
 
 // ============================================================
-// CISO STEP 1 — BASELINE SELECTION
-// Low / Moderate / High + Privacy Overlay toggle.
+// CISO STEP 1 — ORGANIZATION
+// CISO STEP 2 — BASELINE & SCOPE
+// CISO STEP 3 — INTEGRATIONS (optional)
 // ============================================================
 function renderCISOStep1() {
   const body = document.getElementById('ciso-step-1-body');
+  if (!body) return;
+
+  body.innerHTML = `
+    ${cisoStepProgressHtml(1, 'Organization')}
+    <div class="section-title">Who owns this program?</div>
+    <div class="section-subtitle">Start with the basics — your organization and the senior official accountable for the security program.</div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;margin-top:8px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Organization / Agency Name <span class="required">*</span></label>
+        <input class="form-input" id="orgNameInput" placeholder="e.g., Acme Corp, Department of Defense — Agency X" value="${escapeHTML(state.orgName)}" oninput="state.orgName=this.value; window.markDirty();">
+        <div class="form-hint">Full legal name of the organization this information security program governs.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Security Program Owner — Full Name <span class="required">*</span></label>
+          <input class="form-input" id="programOwnerInput" placeholder="e.g., Jane Smith" value="${escapeHTML(state.programOwner)}" oninput="state.programOwner=this.value;applyCisoIsISSM(); window.markDirty();">
+          <div class="form-hint">Senior official responsible for the security program (CISO, SAISO, or equivalent).</div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Title / Role <span class="required">*</span></label>
+          <input class="form-input" id="programOwnerTitleInput" placeholder="${escapeHTML(getDefaultProgramOwnerTitle())}" value="${escapeHTML(state.programOwnerTitle)}" oninput="state.programOwnerTitle=this.value;applyCisoIsISSM(); window.markDirty();">
+          <div class="form-hint">Official title — flows into policy documents as the accountable role.</div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" id="programOwnerEmailInput" type="email" placeholder="e.g., jsmith@agency.gov" value="${escapeHTML(state.programOwnerEmail)}" oninput="state.programOwnerEmail=this.value;applyCisoIsISSM(); window.markDirty();">
+          <div class="form-hint">Used to populate the Users &amp; Roles inventory automatically.</div>
+        </div>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:10px;margin-top:4px;padding:10px 16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;cursor:pointer;user-select:none;">
+        <input type="checkbox" ${state.cisoIsISSM ? 'checked' : ''} onchange="state.cisoIsISSM=this.checked;applyCisoIsISSM();renderCISOStep1();" style="width:16px;height:16px;accent-color:#0369a1;cursor:pointer;">
+        <div>
+          <span style="font-size:13px;color:#0369a1;font-weight:600;">Program Owner also owns domain policies</span>
+          <span style="font-size:12px;color:#64748b;"> — common in teams under ~100 people.</span>
+        </div>
+      </label>
+    </div>
+  `;
+}
+
+function renderCISOStep2Baseline() {
+  const body = document.getElementById('ciso-step-2-body');
   if (!body) return;
 
   if (state.privacyOverlay) {
@@ -705,18 +779,16 @@ function renderCISOStep1() {
   const isFisma = !!state.fismaMode;
   const selectedTypes = Array.isArray(state.programInfoTypes) ? state.programInfoTypes : [];
 
-  // FISMA / CUI mode toggle — sits at the top of Step 1 because it changes how the rest of this step works.
   const fismaToggleCard = `
     <div class="privacy-toggle-card ${isFisma?'selected':''}" onclick="toggleProgramFismaMode()" style="margin-bottom:14px;border-color:${isFisma?'#7c3aed':'var(--border)'};${isFisma?'background:#f5f3ff;':''}">
       <div class="pt-icon">🏛️</div>
       <div class="pt-info">
         <div class="pt-name">FISMA / CUI program (info-types-driven baseline)</div>
-        <div class="pt-desc">Turn on if this program is required to comply with FISMA, FedRAMP, DoD RMF, or handle Controlled Unclassified Information (CUI). Replaces baseline picking with a NIST 800-60 information-types catalog — the baseline is derived as the FIPS 199 high-water mark of the data your systems handle.</div>
+        <div class="pt-desc">Turn on if this program must comply with FISMA, FedRAMP, DoD RMF, or handle CUI. Derives baseline from NIST 800-60 information types.</div>
       </div>
       <div class="toggle-switch ${isFisma?'on':''}"></div>
     </div>`;
 
-  // Build the baseline-selection block — manual (non-FISMA) or info-types-driven (FISMA).
   let baselineBlock = '';
   if (!isFisma) {
     baselineBlock = `
@@ -746,7 +818,6 @@ function renderCISOStep1() {
         </div>
       </div>`;
   } else {
-    // FISMA mode: derived baseline + tailoring controls + info-types catalog picker.
     const derivedBaseline = computeBaselineFromInfoTypes(selectedTypes);
     const override = (state.baselineOverride === 'L' || state.baselineOverride === 'M' || state.baselineOverride === 'H') ? state.baselineOverride : null;
     const effectiveBaseline = override || derivedBaseline;
@@ -757,7 +828,6 @@ function renderCISOStep1() {
     const derivedPill = (b) => derivedBaseline === b
       ? ' <span style="background:#7c3aed;color:white;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;">DERIVED</span>'
       : '';
-    // Cards remain clickable in FISMA mode — clicking any card tailors the baseline to that level.
     baselineBlock = `
       <div style="margin-bottom:8px;">
         <div class="section-title" style="margin-bottom:2px;">Program baseline <span style="font-size:11px;font-weight:600;color:#7c3aed;background:#ede9fe;padding:2px 8px;border-radius:10px;margin-left:6px;letter-spacing:0.4px;">FISMA</span></div>
@@ -832,6 +902,7 @@ function renderCISOStep1() {
   }
 
   body.innerHTML = `
+    ${cisoStepProgressHtml(2, 'Baseline & scope')}
     ${fismaToggleCard}
     ${baselineBlock}
 
@@ -839,47 +910,9 @@ function renderCISOStep1() {
       <div class="pt-icon">🔒</div>
       <div class="pt-info">
         <div class="pt-name">Add Privacy Overlay (PT family + P-baseline controls + PM-18 through PM-28)</div>
-        <div class="pt-desc">Adds <strong>${privCount}</strong> catalog controls that apply only under the Privacy (P) designation for your selected baseline (including the <strong>PT</strong> family — PII Processing and Transparency), plus tiered PM privacy controls you confirm in Step 2. Use when systems process Personally Identifiable Information (PII).</div>
+        <div class="pt-desc">Adds <strong>${privCount}</strong> catalog controls for PII processing, plus tiered PM privacy controls you confirm in Step 4. Use when systems process Personally Identifiable Information (PII).</div>
       </div>
       <div class="toggle-switch ${state.privacyOverlay?'on':''}"></div>
-    </div>
-
-    ${typeof renderFrameworkSetupSectionHtml === 'function' ? renderFrameworkSetupSectionHtml() : ''}
-
-    ${typeof renderSharePointSetupCardHtml === 'function' ? renderSharePointSetupCardHtml() : ''}
-
-    ${typeof renderEntraSetupCardHtml === 'function' ? renderEntraSetupCardHtml() : ''}
-
-    <div style="display:flex;flex-direction:column;gap:14px;margin-top:20px;">
-      <div class="form-group" style="margin-bottom:0;">
-        <label class="form-label">Organization / Agency Name <span class="required">*</span></label>
-        <input class="form-input" id="orgNameInput" placeholder="e.g., Acme Corp, Department of Defense — Agency X" value="${escapeHTML(state.orgName)}" oninput="state.orgName=this.value; window.markDirty();">
-        <div class="form-hint">Full legal name of the organization this information security program governs.</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Security Program Owner — Full Name <span class="required">*</span></label>
-          <input class="form-input" id="programOwnerInput" placeholder="e.g., Jane Smith" value="${escapeHTML(state.programOwner)}" oninput="state.programOwner=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Senior official responsible for the security${state.privacyOverlay ? ' and privacy' : ''} program (CISO${state.privacyOverlay ? '/CPO' : ''}, SAISO, or equivalent).</div>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Title / Role <span class="required">*</span></label>
-          <input class="form-input" id="programOwnerTitleInput" placeholder="${escapeHTML(getDefaultProgramOwnerTitle())}" value="${escapeHTML(state.programOwnerTitle)}" oninput="state.programOwnerTitle=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Official title — flows into policy documents as the accountable role.${state.privacyOverlay ? ' With the privacy overlay, combined CISO/CPO accountability is typical.' : ''}</div>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Email Address</label>
-          <input class="form-input" id="programOwnerEmailInput" type="email" placeholder="e.g., jsmith@agency.gov" value="${escapeHTML(state.programOwnerEmail)}" oninput="state.programOwnerEmail=this.value;applyCisoIsISSM();; window.markDirty();">
-          <div class="form-hint">Used to populate the Users &amp; Roles inventory automatically.</div>
-        </div>
-      </div>
-      <label style="display:inline-flex;align-items:center;gap:10px;margin-top:14px;padding:10px 16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;cursor:pointer;user-select:none;">
-        <input type="checkbox" ${state.cisoIsISSM ? 'checked' : ''} onchange="state.cisoIsISSM=this.checked;applyCisoIsISSM();renderCISOStep1();" style="width:16px;height:16px;accent-color:#0369a1;cursor:pointer;">
-        <div>
-          <span style="font-size:13px;color:#0369a1;font-weight:600;">Program Owner also owns domain policies</span>
-          <span style="font-size:12px;color:#64748b;"> — they own domain-level policies directly. Common in teams under ~100 people.</span>
-        </div>
-      </label>
     </div>
 
     ${state.baseline ? `
@@ -894,10 +927,27 @@ function renderCISOStep1() {
   `;
 }
 
+function renderCISOStep3Integrations() {
+  const body = document.getElementById('ciso-step-3-body');
+  if (!body) return;
+
+  body.innerHTML = `
+    ${cisoStepProgressHtml(3, 'Integrations')}
+    <div class="section-title">Connect your tools</div>
+    <div class="section-subtitle">All optional — enable multi-framework tracking, SharePoint evidence links, or Microsoft Entra ID sign-in now, or configure later under Users &amp; Program.</div>
+
+    ${typeof renderFrameworkSetupSectionHtml === 'function' ? renderFrameworkSetupSectionHtml() : ''}
+
+    ${typeof renderSharePointSetupCardHtml === 'function' ? renderSharePointSetupCardHtml() : ''}
+
+    ${typeof renderEntraSetupCardHtml === 'function' ? renderEntraSetupCardHtml() : ''}
+  `;
+}
+
 // When "Program Owner also owns domain policies" is toggled, auto-populate domain owners
 // with the CISO's info for any unassigned domains. Domains that already
 // have a *different* person assigned are left alone so the user can keep
-// a mixed assignment.  All fields remain editable in Step 5.
+// a mixed assignment.  All fields remain editable in Step 7.
 function applyCisoIsISSM() {
   if (!state.cisoIsISSM) return;           // only act when checking the box
   var cisoName  = (state.programOwner || '').trim();
@@ -936,7 +986,7 @@ function selectBaseline(bl) {
   state.baseline = bl;
   // Reset privacy PM controls so they re-apply correctly when Step 2 is next rendered
   resetPrivacyPMDefaults();
-  renderCISOStep1();
+  renderCISOStep2Baseline();
   renderSidebarBadges();
 }
 
@@ -968,7 +1018,7 @@ function togglePrivacy() {
       delete state.policySelectedControls.PT;
     }
   }
-  renderCISOStep1();
+  renderCISOStep2Baseline();
 }
 
 const PM_PRIVACY_LOW_DEFAULTS = ['PM-18', 'PM-19', 'PM-20', 'PM-20(1)'];
@@ -1046,7 +1096,7 @@ function toggleProgramFismaMode() {
     if (typeof addAuditEntry === 'function') addAuditEntry('program', '', 'FISMA / CUI mode disabled — baseline is now picked manually.');
   }
   if (typeof markDirty === 'function') markDirty();
-  renderCISOStep1();
+  renderCISOStep2Baseline();
   if (typeof renderSidebarBadges === 'function') renderSidebarBadges();
 }
 
@@ -1059,7 +1109,7 @@ function toggleProgramInfoType(id) {
   _refreshEffectiveProgramBaseline();
   resetPrivacyPMDefaults();
   if (typeof markDirty === 'function') markDirty();
-  renderCISOStep1();
+  renderCISOStep2Baseline();
   if (typeof renderSidebarBadges === 'function') renderSidebarBadges();
 }
 
@@ -1087,7 +1137,7 @@ function setProgramBaselineOverride(letter) {
     }
   }
   if (typeof markDirty === 'function') markDirty();
-  renderCISOStep1();
+  renderCISOStep2Baseline();
   if (typeof renderSidebarBadges === 'function') renderSidebarBadges();
 }
 
@@ -1144,7 +1194,7 @@ const PM_STATEMENTS = {
 // Program Management controls toggle + auto-draft statements.
 // ============================================================
 function renderCISOStep2() {
-  const body = document.getElementById('ciso-step-2-body');
+  const body = document.getElementById('ciso-step-4-body');
   if (!body) return;
   const pmControls = CONTROLS.filter(c => c.f==='PM');
   const coreControls = pmControls.filter(c => c.bl.some(b=>['L','M','H'].includes(b)));
@@ -1239,10 +1289,10 @@ function selectAllPM(val) {
 // documents, revision history. Drag-and-drop sections.
 // ============================================================
 function renderCISOStep3() {
-  const body = document.getElementById('ciso-step-3-body');
+  const body = document.getElementById('ciso-step-5-body');
   if (!body) return;
   if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Return to Step 1 to choose an impact level (Low, Moderate, or High) that matches your system\'s risk profile.</p></div>';
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Return to Step 2 to choose an impact level (Low, Moderate, or High) that matches your system\'s risk profile.</p></div>';
     return;
   }
   // Init policy state
@@ -1975,10 +2025,10 @@ function ownerSummaryHTML(masters, families, merges) {
 
 // --- Step 4: Consolidate & Prioritize ---
 function renderCISOStep4a() {
-  const body = document.getElementById('ciso-step-4-body');
+  const body = document.getElementById('ciso-step-6-body');
   if (!body) return;
   if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Complete Step 1 first.</p></div>';
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Complete Step 2 first.</p></div>';
     return;
   }
   const families = getActiveFamilies().filter(f => f !== 'PM');
@@ -1991,7 +2041,7 @@ function renderCISOStep4a() {
 
   body.innerHTML = `
     <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:16px;">
-      <span style="opacity:0.55;margin-right:8px;">Step 4 of 5</span> Consolidate &amp; Prioritize
+      <span style="opacity:0.55;margin-right:8px;">Step 6 of 7</span> Consolidate &amp; Prioritize
     </div>
 
     <div class="section-title">Consolidate &amp; Prioritize Policies</div>
@@ -2104,10 +2154,10 @@ function renderCISOStep4a() {
 
 // --- Step 5: Assign Owners & Deadlines ---
 function renderCISOStep4b() {
-  const body = document.getElementById('ciso-step-5-body');
+  const body = document.getElementById('ciso-step-7-body');
   if (!body) return;
   if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Complete Step 1 first.</p></div>';
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Complete Step 2 first.</p></div>';
     return;
   }
   const families = getActiveFamilies().filter(f => f !== 'PM');
@@ -2129,7 +2179,7 @@ function renderCISOStep4b() {
   body.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
       <div style="font-size:12px;font-weight:700;color:var(--navy);">
-        <span style="opacity:0.55;margin-right:8px;">Step 5 of 5</span> Assign Owners &amp; Deadlines
+        <span style="opacity:0.55;margin-right:8px;">Step 7 of 7</span> Assign Owners &amp; Deadlines
       </div>
       ${!state.currentUserId ? `<button type="button" onclick="prefillDemoOwners()" style="font-size:11px;font-weight:700;color:#a5b4fc;background:rgba(165,180,252,0.1);border:1px solid rgba(165,180,252,0.3);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;">🧪 Prefill demo data</button>` : ''}
     </div>

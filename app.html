@@ -18,26 +18,16 @@
 <div id="welcomeIntroOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeIntroTitle" aria-describedby="welcomeIntroDesc" aria-hidden="true">
   <div class="welcome-intro-card">
     <div class="welcome-intro-brand">EightFiftyThree <span class="welcome-intro-brand-sub">GRC</span></div>
-    <h1 id="welcomeIntroTitle" class="welcome-intro-title">Welcome</h1>
+    <h1 id="welcomeIntroTitle" class="welcome-intro-title">NIST 800-53.<br>Without the spreadsheet.</h1>
     <p id="welcomeIntroDesc" class="welcome-intro-lead">
-      Stand up a practical <strong>NIST SP 800-53</strong> program — with crosswalks to <strong>ISO 27001</strong>, <strong>SOC 2</strong>, and <strong>HIPAA</strong> built in.
-      Choose your baseline, shape policies and ownership, link evidence from SharePoint, and export when you're ready.
+      Stand up a defensible program in your browser — policies, controls, SSP attestations, and POA&amp;M.
+      <strong>Seven short setup steps</strong>, then you're into the workspaces.
     </p>
-    <div class="welcome-intro-video" style="margin:14px 0;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;background:#0b1120;">
-      <video controls preload="metadata" playsinline style="display:block;width:100%;height:auto;" aria-label="Orientation video: NIST 800-53, RMF, and how this tool maps to both">
-        <source src="assets/videos/00-orientation.mp4" type="video/mp4">
-      </video>
-    </div>
-    <p class="welcome-intro-footnote" style="margin-top:-4px;font-style:italic;">New here? Watch the 4-minute orientation above — what NIST 800-53 is, how RMF wraps around it, and how this tool maps to both.</p>
-    <ul class="welcome-intro-list" aria-label="What you will do first">
-      <li><span class="welcome-intro-num">1</span> Program setup — baseline, PM controls, and ISP structure</li>
-      <li><span class="welcome-intro-num">2</span> Domain policies and control ownership</li>
-      <li><span class="welcome-intro-num">3</span> Implementation design, assets, dashboard, and export</li>
-    </ul>
-    <p class="welcome-intro-footnote">Your data stays in this browser (localStorage) unless you export it. Nothing is sent to a server.</p>
     <div class="welcome-intro-actions">
-      <button type="button" class="btn btn-primary welcome-intro-proceed" onclick="dismissWelcomeIntro()">Proceed to program setup</button>
+      <button type="button" class="btn btn-primary welcome-intro-proceed" onclick="dismissWelcomeIntro()">Get started</button>
+      <button type="button" class="btn btn-secondary welcome-intro-secondary" onclick="openWizardVideo('assets/videos/00-orientation.mp4', 'Product orientation')">▶ Watch orientation</button>
     </div>
+    <p class="welcome-intro-footnote">Your data stays in this browser unless you export it. Nothing is sent to a server.</p>
   </div>
 </div>
 
@@ -72,19 +62,19 @@
   </div>
 
   <div class="sidebar-section" id="sidebar-home-section">
-    <div class="sidebar-item" onclick="showTab('home')" id="nav-home">
+    <div class="sidebar-item active" onclick="showTab('home')" id="nav-home">
       <span class="icon">◆</span> Command Center
     </div>
   </div>
 
-  <div class="sidebar-section">
+  <div class="sidebar-section" id="sidebar-setup-section">
     <div class="sidebar-section-label">Program overview</div>
-    <div class="sidebar-item active" onclick="showTab('ciso')" id="nav-ciso">
+    <div class="sidebar-item" onclick="showTab('ciso')" id="nav-ciso">
       <span class="icon">🏛️</span> Program setup
     </div>
   </div>
 
-  <div class="sidebar-section" id="sidebar-policies-section">
+  <div class="sidebar-section sidebar-advanced" id="sidebar-policies-section">
     <div class="sidebar-section-label">Policies</div>
     <div class="sidebar-item" onclick="goToPoliciesHome()" id="nav-policy">
       <span class="icon">📋</span> Domain policies
@@ -93,7 +83,7 @@
     <div id="sidebar-policies-list" class="sidebar-sub-list"></div>
   </div>
 
-  <div class="sidebar-section" id="sidebar-controls-section">
+  <div class="sidebar-section sidebar-advanced" id="sidebar-controls-section">
     <div class="sidebar-section-label">Controls</div>
     <div class="sidebar-item" onclick="goToControlWorkspace()" id="nav-control">
       <span class="icon">🔧</span> Control implementation
@@ -102,7 +92,7 @@
     <div id="sidebar-controls-list" class="sidebar-sub-list"></div>
   </div>
 
-  <div class="sidebar-section" id="sidebar-assets-section">
+  <div class="sidebar-section sidebar-advanced" id="sidebar-assets-section">
     <div class="sidebar-section-label">Assets</div>
     <div class="sidebar-item" onclick="goToAssetWorkspace()" id="nav-asset">
       <span class="icon">🖥️</span> Assets &amp; SSP
@@ -111,7 +101,7 @@
     <div id="sidebar-assets-list" class="sidebar-sub-list"></div>
   </div>
 
-  <div class="sidebar-section">
+  <div class="sidebar-section sidebar-advanced">
     <div class="sidebar-section-label">Libraries</div>
     <div class="sidebar-item" onclick="goToPolicyLibrary()" id="nav-policy-library">
       <span class="icon">📚</span> Policy library
@@ -127,7 +117,7 @@
     </div>
   </div>
 
-  <div class="sidebar-section">
+  <div class="sidebar-section sidebar-advanced">
     <div class="sidebar-section-label">Compliance</div>
     <div class="sidebar-item" onclick="showTab('frameworks')" id="nav-frameworks">
       <span class="icon">◇</span> Framework alignment
@@ -138,7 +128,7 @@
     </div>
   </div>
 
-  <div class="sidebar-section">
+  <div class="sidebar-section sidebar-advanced">
     <div class="sidebar-section-label">Reporting</div>
     <div class="sidebar-item" onclick="showTab('reports')" id="nav-reports">
       <span class="icon">📊</span> Reports &amp; Dashboard
@@ -146,7 +136,7 @@
     </div>
   </div>
 
-  <div class="sidebar-section" id="sidebar-users-section">
+  <div class="sidebar-section sidebar-advanced" id="sidebar-users-section">
     <div class="sidebar-section-label">Administration</div>
     <div class="sidebar-item" onclick="showTab('users')" id="nav-users">
       <span class="icon">👥</span> Users &amp; roles
@@ -167,10 +157,10 @@
 <div id="app-persist-toolbar" role="toolbar" aria-label="Program persistence">
   <span id="saveIndicator" role="status" aria-live="polite">✓ Saved</span>
   <button type="button" class="btn btn-secondary persist-btn" onclick="saveToStorage()" title="Write current program to this browser (auto-saves after edits)" aria-label="Save program to this browser">💾 Save now</button>
-  <button type="button" class="btn btn-secondary persist-btn" onclick="exportProgramJson()" title="Download all program data as JSON" aria-label="Export program as JSON">⬇ Export</button>
-  <button type="button" class="btn btn-secondary persist-btn" onclick="document.getElementById('importProgramInput').click()" title="Restore from a previously exported JSON file" aria-label="Import program JSON file">⬆ Import</button>
+  <button type="button" class="btn btn-secondary persist-btn persist-advanced" onclick="exportProgramJson()" title="Download all program data as JSON" aria-label="Export program as JSON">⬇ Export</button>
+  <button type="button" class="btn btn-secondary persist-btn persist-advanced" onclick="document.getElementById('importProgramInput').click()" title="Restore from a previously exported JSON file" aria-label="Import program JSON file">⬆ Import</button>
   <input type="file" id="importProgramInput" accept="application/json,.json" style="display:none;" onchange="importProgramFromFile(event)" aria-hidden="true">
-  <button type="button" class="btn btn-secondary persist-btn" onclick="renderSnapshotsModal()" title="Save, load, or restore demo program snapshots" aria-label="Open snapshots modal">📸 Snapshots</button>
+  <button type="button" class="btn btn-secondary persist-btn persist-advanced" onclick="renderSnapshotsModal()" title="Save, load, or restore demo program snapshots" aria-label="Open snapshots modal">📸 Snapshots</button>
 </div>
 
 <!-- RESET BUTTON (top-right corner) -->
@@ -180,7 +170,7 @@
 <main class="main" id="main-content" role="main" aria-label="Main content">
 
   <!-- COMMAND CENTER -->
-  <div class="tab-panel" id="tab-home">
+  <div class="tab-panel active" id="tab-home">
     <div class="page-header">
       <div class="role-badge">◆ Command Center</div>
       <h1>Your program at a glance</h1>
@@ -192,25 +182,29 @@
   <!-- ============================================================ -->
   <!-- CISO TAB -->
   <!-- ============================================================ -->
-  <div class="tab-panel active" id="tab-ciso">
-    <div class="page-header">
+  <div class="tab-panel" id="tab-ciso">
+    <div class="page-header setup-page-header">
       <div class="page-header-row">
-        <h1>Information Security Program Setup</h1>
+        <h1>Program setup</h1>
         <button type="button" class="btn btn-secondary wizard-video-trigger"
           onclick="openWizardVideo('assets/videos/01-program-setup.mp4', 'Program Setup walkthrough')">
-          ▶ Watch 4-min walkthrough
+          ▶ Walkthrough
         </button>
       </div>
-      <p>Configure your NIST 800-53 baseline, assign program ownership, and set policy deadlines.</p>
+      <p id="ciso-setup-header-desc">One decision per screen — organization, baseline, integrations, then policy and owners.</p>
     </div>
     <div class="wizard-container">
-      <div class="step-nav">
+      <div class="ciso-setup-progress" id="ciso-setup-progress">
+        <div class="ciso-setup-progress-track"><div class="ciso-setup-progress-fill" id="ciso-setup-progress-fill"></div></div>
+        <div class="ciso-setup-progress-label" id="ciso-setup-progress-label">Step 1 of 7 · Organization</div>
+      </div>
+      <div class="step-nav" id="ciso-step-nav-panel">
         <div class="step-nav-title">Program Setup Steps</div>
         <div class="step-item active" onclick="goToStep('ciso',1)" id="ciso-step-item-1">
           <div class="step-circle active" id="ciso-circle-1">1</div>
           <div class="step-info">
             <div class="step-num">Step 1</div>
-            <div class="step-name">Select Baseline</div>
+            <div class="step-name">Organization</div>
           </div>
         </div>
         <div class="step-connector" id="ciso-conn-1"></div>
@@ -218,7 +212,7 @@
           <div class="step-circle pending" id="ciso-circle-2">2</div>
           <div class="step-info">
             <div class="step-num">Step 2</div>
-            <div class="step-name">PM Controls</div>
+            <div class="step-name">Baseline</div>
           </div>
         </div>
         <div class="step-connector" id="ciso-conn-2"></div>
@@ -226,7 +220,7 @@
           <div class="step-circle pending" id="ciso-circle-3">3</div>
           <div class="step-info">
             <div class="step-num">Step 3</div>
-            <div class="step-name">InfoSec Policy</div>
+            <div class="step-name">Integrations</div>
           </div>
         </div>
         <div class="step-connector" id="ciso-conn-3"></div>
@@ -234,7 +228,7 @@
           <div class="step-circle pending" id="ciso-circle-4">4</div>
           <div class="step-info">
             <div class="step-num">Step 4</div>
-            <div class="step-name">Consolidate</div>
+            <div class="step-name">PM Controls</div>
           </div>
         </div>
         <div class="step-connector" id="ciso-conn-4"></div>
@@ -242,6 +236,22 @@
           <div class="step-circle pending" id="ciso-circle-5">5</div>
           <div class="step-info">
             <div class="step-num">Step 5</div>
+            <div class="step-name">InfoSec Policy</div>
+          </div>
+        </div>
+        <div class="step-connector" id="ciso-conn-5"></div>
+        <div class="step-item" onclick="goToStep('ciso',6)" id="ciso-step-item-6">
+          <div class="step-circle pending" id="ciso-circle-6">6</div>
+          <div class="step-info">
+            <div class="step-num">Step 6</div>
+            <div class="step-name">Consolidate</div>
+          </div>
+        </div>
+        <div class="step-connector" id="ciso-conn-6"></div>
+        <div class="step-item" onclick="goToStep('ciso',7)" id="ciso-step-item-7">
+          <div class="step-circle pending" id="ciso-circle-7">7</div>
+          <div class="step-info">
+            <div class="step-num">Step 7</div>
             <div class="step-name">Assign Owners</div>
           </div>
         </div>
@@ -252,34 +262,48 @@
           <div class="wizard-step-body" id="ciso-step-1-body"></div>
           <div class="wizard-step-footer">
             <span></span>
-            <button class="btn btn-primary" onclick="cisoNext(1)">Next: PM Controls →</button>
+            <button class="btn btn-primary" onclick="cisoNext(1)">Next: Baseline →</button>
           </div>
         </div>
         <div class="wizard-step" id="ciso-step-2">
           <div class="wizard-step-body" id="ciso-step-2-body"></div>
           <div class="wizard-step-footer">
             <button class="btn btn-secondary" onclick="goToStep('ciso',1)">← Back</button>
-            <button class="btn btn-primary" onclick="cisoNext(2)">Next: InfoSec Policy →</button>
+            <button class="btn btn-primary" onclick="cisoNext(2)">Next: Integrations →</button>
           </div>
         </div>
         <div class="wizard-step" id="ciso-step-3">
           <div class="wizard-step-body" id="ciso-step-3-body"></div>
           <div class="wizard-step-footer">
             <button class="btn btn-secondary" onclick="goToStep('ciso',2)">← Back</button>
-            <button class="btn btn-primary" onclick="cisoNext(3)">Next: Consolidate &amp; Prioritize →</button>
+            <button class="btn btn-primary" onclick="cisoNext(3)">Next: PM Controls →</button>
           </div>
         </div>
         <div class="wizard-step" id="ciso-step-4">
           <div class="wizard-step-body" id="ciso-step-4-body"></div>
           <div class="wizard-step-footer">
             <button class="btn btn-secondary" onclick="goToStep('ciso',3)">← Back</button>
-            <button class="btn btn-primary" onclick="cisoNext(4)">Next: Assign Owners →</button>
+            <button class="btn btn-primary" onclick="cisoNext(4)">Next: InfoSec Policy →</button>
           </div>
         </div>
         <div class="wizard-step" id="ciso-step-5">
           <div class="wizard-step-body" id="ciso-step-5-body"></div>
           <div class="wizard-step-footer">
             <button class="btn btn-secondary" onclick="goToStep('ciso',4)">← Back</button>
+            <button class="btn btn-primary" onclick="cisoNext(5)">Next: Consolidate →</button>
+          </div>
+        </div>
+        <div class="wizard-step" id="ciso-step-6">
+          <div class="wizard-step-body" id="ciso-step-6-body"></div>
+          <div class="wizard-step-footer">
+            <button class="btn btn-secondary" onclick="goToStep('ciso',5)">← Back</button>
+            <button class="btn btn-primary" onclick="cisoNext(6)">Next: Assign Owners →</button>
+          </div>
+        </div>
+        <div class="wizard-step" id="ciso-step-7">
+          <div class="wizard-step-body" id="ciso-step-7-body"></div>
+          <div class="wizard-step-footer">
+            <button class="btn btn-secondary" onclick="goToStep('ciso',6)">← Back</button>
             <button class="btn btn-navy" id="ciso-finalise-btn" onclick="cisoFinish()">✓ Finalize Program Setup</button>
           </div>
         </div>
