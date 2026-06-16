@@ -559,7 +559,8 @@ function resetApp() {
 // Tab IDs, showTab, role-view routing, CISO wizard shell
 // (step dispatch, toast, cisoFinish, sidebar badges).
 // ============================================================
-const TAB_IDS = ['ciso','policy','control','asset','frameworks','reports','users'];
+const TAB_IDS = ['home','ciso','policy','control','asset','frameworks','poam','reports','users'];
+try { window.TAB_IDS = TAB_IDS; } catch (e) {}
 
 
 function showProgramOverviewTab() {
@@ -625,7 +626,7 @@ function getPersonVisibleTabIds(user) {
 }
 
 function goToProgramSetupOrDashboard() {
-  if (state.cisoComplete) showTab('reports');
+  if (state.cisoComplete) showTab('home');
   else showTab('ciso');
 }
 
@@ -679,11 +680,13 @@ function showTab(tabId) {
   var targetNav = document.getElementById('nav-' + tabId);
   if (targetTab) targetTab.classList.add('active');
   if (targetNav) targetNav.classList.add('active');
+  if (tabId === 'home')      renderHomeTab();
   if (tabId === 'ciso')     renderCISOTab();
   if (tabId === 'policy')   renderPolicyTab();
   if (tabId === 'control')  renderControlTab();
   if (tabId === 'asset')    renderAssetTab();
   if (tabId === 'frameworks') renderFrameworksTab();
+  if (tabId === 'poam')     renderPoamTab();
   if (tabId === 'reports')    renderReports();
   if (tabId === 'users')    renderUsersTab();
   updateNotificationBadges();
@@ -1129,8 +1132,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!entraSignedIn) {
       try { applyRoleView('admin'); } catch (e) { console.warn('applyRoleView:', e); }
     }
-    try { showTab('ciso'); } catch (e) { console.warn('showTab:', e); }
-    try { goToStep('ciso', 1); } catch (e) { console.warn('goToStep:', e); }
+    try { renderSidebarBadges(); } catch (e) { console.warn('renderSidebarBadges:', e); }
+    try {
+      if (state.cisoComplete) showTab('home');
+      else showTab('ciso');
+    } catch (e) { console.warn('showTab:', e); }
+    try {
+      if (!state.cisoComplete) goToStep('ciso', 1);
+    } catch (e) { console.warn('goToStep:', e); }
   });
   try { setupMobileNav(); } catch (e) { console.warn('setupMobileNav:', e); }
   try { maybeShowWelcomeIntro(); } catch (e) { console.warn('maybeShowWelcomeIntro:', e); }

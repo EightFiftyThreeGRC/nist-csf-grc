@@ -1,27 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <script>
-  /* GitHub Pages project URLs are /repo/; without a trailing slash, relative css/js resolve to the wrong path. */
-  (function () {
-    try {
-      var p = String(location.pathname || '/');
-      // Strip any .html filename (index.html, app.html, etc.) so relative assets resolve to the directory.
-      if (/\/[^/]+\.html?$/i.test(p)) {
-        p = p.replace(/\/[^/]+\.html?$/i, '/');
-      } else if (p !== '/' && !p.endsWith('/')) {
-        p += '/';
-      }
-      var b = document.createElement('base');
-      b.href = p;
-      document.head.insertBefore(b, document.head.firstChild);
-    } catch (e) {}
-  })();
-  </script>
+  <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="EightFiftyThree GRC — NIST SP 800-53 Rev. 5 program management">
-  <title>EightFiftyThree GRC</title>
+  <title>EightFiftyThree GRC — Application</title>
 
     <link rel="stylesheet" href="css/app.css">
 
@@ -36,10 +20,15 @@
     <div class="welcome-intro-brand">EightFiftyThree <span class="welcome-intro-brand-sub">GRC</span></div>
     <h1 id="welcomeIntroTitle" class="welcome-intro-title">Welcome</h1>
     <p id="welcomeIntroDesc" class="welcome-intro-lead">
-      This tool helps you stand up a practical <strong>NIST SP 800-53 Rev. 5</strong> governance program in the browser.
-      Start by choosing your security <strong>baseline</strong> and shaping your organization’s <strong>information security program</strong> (policies, ownership, and priorities).
-      From there, the wizards guide you through domain policies, control implementation, assets and SSP-style attestations, reporting, and snapshots you can export.
+      Stand up a practical <strong>NIST SP 800-53</strong> program — with crosswalks to <strong>ISO 27001</strong>, <strong>SOC 2</strong>, and <strong>HIPAA</strong> built in.
+      Choose your baseline, shape policies and ownership, link evidence from SharePoint, and export when you're ready.
     </p>
+    <div class="welcome-intro-video" style="margin:14px 0;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;background:#0b1120;">
+      <video controls preload="metadata" playsinline style="display:block;width:100%;height:auto;" aria-label="Orientation video: NIST 800-53, RMF, and how this tool maps to both">
+        <source src="assets/videos/00-orientation.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="welcome-intro-footnote" style="margin-top:-4px;font-style:italic;">New here? Watch the 4-minute orientation above — what NIST 800-53 is, how RMF wraps around it, and how this tool maps to both.</p>
     <ul class="welcome-intro-list" aria-label="What you will do first">
       <li><span class="welcome-intro-num">1</span> Program setup — baseline, PM controls, and ISP structure</li>
       <li><span class="welcome-intro-num">2</span> Domain policies and control ownership</li>
@@ -49,6 +38,18 @@
     <div class="welcome-intro-actions">
       <button type="button" class="btn btn-primary welcome-intro-proceed" onclick="dismissWelcomeIntro()">Proceed to program setup</button>
     </div>
+  </div>
+</div>
+
+<!-- Reusable wizard walkthrough modal — populated by openWizardVideo(src, title) in app.js -->
+<div id="wizardVideoOverlay" role="dialog" aria-modal="true" aria-labelledby="wizardVideoTitle" aria-hidden="true">
+  <div class="wizard-video-card">
+    <button type="button" class="wizard-video-close" aria-label="Close walkthrough" onclick="closeWizardVideo()">×</button>
+    <h2 id="wizardVideoTitle" class="wizard-video-title">Walkthrough</h2>
+    <div class="wizard-video-frame">
+      <video id="wizardVideoEl" controls preload="metadata" playsinline></video>
+    </div>
+    <p class="wizard-video-caption">What this wizard covers and why.</p>
   </div>
 </div>
 
@@ -70,6 +71,12 @@
     </button>
   </div>
 
+  <div class="sidebar-section" id="sidebar-home-section">
+    <div class="sidebar-item" onclick="showTab('home')" id="nav-home">
+      <span class="icon">◆</span> Command Center
+    </div>
+  </div>
+
   <div class="sidebar-section">
     <div class="sidebar-section-label">Program overview</div>
     <div class="sidebar-item active" onclick="showTab('ciso')" id="nav-ciso">
@@ -77,17 +84,31 @@
     </div>
   </div>
 
-  <div class="sidebar-section">
-    <div class="sidebar-section-label">Workspaces</div>
+  <div class="sidebar-section" id="sidebar-policies-section">
+    <div class="sidebar-section-label">Policies</div>
     <div class="sidebar-item" onclick="goToPoliciesHome()" id="nav-policy">
       <span class="icon">📋</span> Domain policies
+      <span class="sidebar-item-badge" id="badge-policy" style="display:none;"></span>
     </div>
+    <div id="sidebar-policies-list" class="sidebar-sub-list"></div>
+  </div>
+
+  <div class="sidebar-section" id="sidebar-controls-section">
+    <div class="sidebar-section-label">Controls</div>
     <div class="sidebar-item" onclick="goToControlWorkspace()" id="nav-control">
       <span class="icon">🔧</span> Control implementation
+      <span class="sidebar-item-badge" id="badge-control" style="display:none;"></span>
     </div>
+    <div id="sidebar-controls-list" class="sidebar-sub-list"></div>
+  </div>
+
+  <div class="sidebar-section" id="sidebar-assets-section">
+    <div class="sidebar-section-label">Assets</div>
     <div class="sidebar-item" onclick="goToAssetWorkspace()" id="nav-asset">
       <span class="icon">🖥️</span> Assets &amp; SSP
+      <span class="sidebar-item-badge" id="badge-asset" style="display:none;"></span>
     </div>
+    <div id="sidebar-assets-list" class="sidebar-sub-list"></div>
   </div>
 
   <div class="sidebar-section">
@@ -111,12 +132,17 @@
     <div class="sidebar-item" onclick="showTab('frameworks')" id="nav-frameworks">
       <span class="icon">◇</span> Framework alignment
     </div>
+    <div class="sidebar-item" onclick="showTab('poam')" id="nav-poam">
+      <span class="icon">📝</span> Findings &amp; POA&amp;M
+      <span class="sidebar-item-badge warn" id="badge-poam" style="display:none;"></span>
+    </div>
   </div>
 
   <div class="sidebar-section">
     <div class="sidebar-section-label">Reporting</div>
     <div class="sidebar-item" onclick="showTab('reports')" id="nav-reports">
       <span class="icon">📊</span> Reports &amp; Dashboard
+      <span class="sidebar-item-badge" id="badge-reports" style="display:none;"></span>
     </div>
   </div>
 
@@ -129,7 +155,7 @@
 
   <div class="sidebar-section" style="margin-top:auto; border-bottom:none; padding:16px 18px;">
     <div class="sidebar-footer">
-      <a href="index.html" title="Return to the EightFiftyThree GRC overview page">← Back to overview</a><br>
+      <a href="index.html" title="Return to overview">← Overview</a><br>
       NIST SP 800-53 Rev. 5<br>
       © EightFiftyThree GRC<br>
       <a href="mailto:nistcsftool@gmail.com">Contact</a>
@@ -153,12 +179,28 @@
 <!-- MAIN CONTENT -->
 <main class="main" id="main-content" role="main" aria-label="Main content">
 
+  <!-- COMMAND CENTER -->
+  <div class="tab-panel" id="tab-home">
+    <div class="page-header">
+      <div class="role-badge">◆ Command Center</div>
+      <h1>Your program at a glance</h1>
+      <p>Next actions, posture metrics, and quick paths into every workspace.</p>
+    </div>
+    <div style="padding:24px 36px;" id="home-body"></div>
+  </div>
+
   <!-- ============================================================ -->
   <!-- CISO TAB -->
   <!-- ============================================================ -->
   <div class="tab-panel active" id="tab-ciso">
     <div class="page-header">
-      <h1>Information Security Program Setup</h1>
+      <div class="page-header-row">
+        <h1>Information Security Program Setup</h1>
+        <button type="button" class="btn btn-secondary wizard-video-trigger"
+          onclick="openWizardVideo('assets/videos/01-program-setup.mp4', 'Program Setup walkthrough')">
+          ▶ Watch 4-min walkthrough
+        </button>
+      </div>
       <p>Configure your NIST 800-53 baseline, assign program ownership, and set policy deadlines.</p>
     </div>
     <div class="wizard-container">
@@ -253,9 +295,15 @@
     <!-- LIST VIEW: policy domain landing page -->
     <div id="policy-list-panel" style="height:100%; overflow-y:auto;">
       <div class="page-header">
-        <div class="role-badge">📋 Policy Owner</div>
-        <h1>Domain Policy Builder</h1>
-        <p>Select a policy domain below to begin building your domain-specific security policy.</p>
+        <div class="page-header-row">
+          <div>
+            <div class="role-badge">📋 Policy Owner</div>
+            <h1>Domain Policy Builder</h1>
+            <p>Select a policy domain below to begin building your domain-specific security policy.</p>
+          </div>
+          <button type="button" class="btn btn-secondary wizard-video-trigger"
+            onclick="openWizardVideo('assets/videos/02-domain-policies.mp4', 'Domain policies walkthrough')">▶ Walkthrough</button>
+        </div>
       </div>
       <div id="policy-list-body" style="padding:0 32px 32px;"></div>
     </div>
@@ -363,9 +411,15 @@
     </div>
     <div id="control-workspace-panel">
       <div class="page-header">
-        <div class="role-badge">🔧 Control Owner</div>
-        <h1>Control Implementation Design</h1>
-        <p>Design how each assigned control is implemented, identify asset scope, and define what asset owners must do to comply.</p>
+        <div class="page-header-row">
+          <div>
+            <div class="role-badge">🔧 Control Owner</div>
+            <h1>Control Implementation Design</h1>
+            <p>Design how each assigned control is implemented, identify asset scope, and define what asset owners must do to comply.</p>
+          </div>
+          <button type="button" class="btn btn-secondary wizard-video-trigger"
+            onclick="openWizardVideo('assets/videos/03-control-implementation.mp4', 'Control implementation walkthrough')">▶ Walkthrough</button>
+        </div>
       </div>
       <div class="wizard-container">
         <div class="step-nav">
@@ -444,9 +498,15 @@
     </div>
     <div id="asset-workspace-panel">
       <div class="page-header">
-        <div class="role-badge">🖥️ Asset Owner / Control Performer</div>
-        <h1>System Security Plan (SSP) — Asset Owner</h1>
-        <p>Register systems, document categorization, boundary, interconnections, and control attestations for a defensible SSP.</p>
+        <div class="page-header-row">
+          <div>
+            <div class="role-badge">🖥️ Asset Owner / Control Performer</div>
+            <h1>System Security Plan (SSP) — Asset Owner</h1>
+            <p>Register systems, document categorization, boundary, interconnections, and control attestations for a defensible SSP.</p>
+          </div>
+          <button type="button" class="btn btn-secondary wizard-video-trigger"
+            onclick="openWizardVideo('assets/videos/04-assets-ssp.mp4', 'Assets and SSP walkthrough')">▶ Walkthrough</button>
+        </div>
       </div>
       <div class="wizard-container">
         <div class="step-nav">
@@ -516,7 +576,15 @@
        state.atoDecisions) is preserved; AOs can still record decisions via
        openAtoDecisionModal() launched from the Reports dashboard. -->
 
-  <!-- ============================================================ -->
+  <div class="tab-panel" id="tab-poam">
+    <div class="page-header">
+      <div class="role-badge">📝 Findings &amp; POA&amp;M</div>
+      <h1>Plan of Action &amp; Milestones</h1>
+      <p>Track assessment findings, control gaps, and remediation through closure — aligned to NIST CA-5 and PM-4.</p>
+    </div>
+    <div style="padding:24px 36px;" id="poam-body"></div>
+  </div>
+
   <!-- ============================================================ -->
   <!-- FRAMEWORK ALIGNMENT TAB -->
   <!-- ============================================================ -->
@@ -529,6 +597,7 @@
     <div style="padding:24px 32px;" id="frameworks-body"></div>
   </div>
 
+  <!-- ============================================================ -->
   <!-- REPORTS TAB -->
   <!-- ============================================================ -->
   <div class="tab-panel" id="tab-reports">
@@ -538,7 +607,11 @@
         <h1>Program Status Dashboard</h1>
         <p>Overview of your NIST 800-53 program posture, policy status, and control coverage.</p>
       </div>
-      <button id="reportsPrintBtn" class="btn btn-navy" onclick="printReport()" style="margin-top:8px;">🖨️ Print Report</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-secondary wizard-video-trigger"
+          onclick="openWizardVideo('assets/videos/05-reports-and-ato.mp4', 'Reports and authorization walkthrough')">▶ Walkthrough</button>
+        <button id="reportsPrintBtn" class="btn btn-navy" onclick="printReport()">🖨️ Print Report</button>
+      </div>
     </div>
     <div style="padding:24px 32px;" id="reports-body"></div>
   </div>
@@ -586,6 +659,8 @@
 <script src="js/authorization.js"></script>
 <script src="js/frameworks.js"></script>
 <script src="js/entra-auth.js"></script>
+<script src="js/poam.js"></script>
+<script src="js/hub.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/app.js"></script>

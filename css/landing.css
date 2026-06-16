@@ -1,0 +1,164 @@
+/* EightFiftyThree GRC — marketing landing page */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #fbfbfd;
+  --text: #1d1d1f;
+  --muted: #86868b;
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --card: #ffffff;
+  --border: #d2d2d7;
+  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #0071e3 100%);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: rgba(251, 251, 253, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.landing-logo { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.landing-logo span { color: var(--muted); font-weight: 600; font-size: 14px; margin-left: 6px; }
+
+.landing-nav-actions { display: flex; gap: 12px; align-items: center; }
+
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 980px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.landing-btn:hover { transform: translateY(-1px); }
+
+.landing-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 113, 227, 0.35);
+}
+
+.landing-btn-primary:hover { background: var(--accent-hover); }
+
+.landing-btn-ghost {
+  background: transparent;
+  color: var(--accent);
+}
+
+.landing-hero {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 72px 32px 48px;
+  text-align: center;
+}
+
+.landing-hero h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  margin-bottom: 20px;
+}
+
+.landing-hero-lead {
+  font-size: clamp(18px, 2.5vw, 22px);
+  color: var(--muted);
+  max-width: 640px;
+  margin: 0 auto 36px;
+  line-height: 1.45;
+}
+
+.landing-hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+
+.landing-video-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+.landing-video-wrap video { display: block; width: 100%; height: auto; }
+
+.landing-features {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 64px 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.landing-feature {
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+}
+
+.landing-feature-icon { font-size: 28px; margin-bottom: 12px; }
+.landing-feature h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+.landing-feature p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+.landing-frameworks {
+  text-align: center;
+  padding: 48px 32px 64px;
+  background: linear-gradient(180deg, transparent, rgba(0,113,227,0.04));
+}
+
+.landing-frameworks h2 { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 12px; }
+.landing-frameworks p { color: var(--muted); margin-bottom: 28px; }
+
+.landing-fw-chips { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+.landing-fw-chip {
+  padding: 10px 20px;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.landing-footer {
+  text-align: center;
+  padding: 32px;
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.landing-footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+@media (max-width: 600px) {
+  .landing-nav { padding: 12px 16px; }
+  .landing-hero { padding: 48px 20px 32px; }
+}

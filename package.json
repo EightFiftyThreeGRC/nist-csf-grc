@@ -1,0 +1,13 @@
+{
+  "name": "eightfiftythree-grc",
+  "private": true,
+  "description": "Browser-based NIST 800-53 GRC program management",
+  "scripts": {
+    "check:js": "node scripts/check-all.js",
+    "test:e2e": "playwright test",
+    "serve": "npx --yes serve . -p 4173"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

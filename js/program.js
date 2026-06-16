@@ -134,7 +134,7 @@ function renderCISOTab() {
           + '<span style="font-size:20px;">\u2705</span>'
           + '<div><div style="font-size:14px;font-weight:700;color:#166534;">Program Setup Complete</div>'
           + '<div style="font-size:12px;color:#15803d;">All changes are auto-saved. You can edit any step below.</div></div></div>'
-          + '<button class="btn btn-sm" style="background:#166534;color:white;border:none;white-space:nowrap;" onclick="showTab(\'reports\')">Go to Dashboard \u2192</button>';
+          + '<button class="btn btn-sm" style="background:#166534;color:white;border:none;white-space:nowrap;" onclick="showTab(\'home\')">Go to Command Center \u2192</button>';
         container.parentNode.insertBefore(banner, container);
       }
     }
@@ -182,8 +182,8 @@ function updateCISOFinishBtn() {
   if (state.cisoComplete) {
     btn.style.display = '';
     btn.disabled = false;
-    btn.innerHTML = '✓ Setup Complete &nbsp;·&nbsp; View Dashboard →';
-    btn.onclick = function(){ showTab('reports'); };
+    btn.innerHTML = '✓ Setup Complete &nbsp;·&nbsp; Command Center →';
+    btn.onclick = function(){ showTab('home'); };
     btn.style.background = 'var(--teal)';
     btn.style.opacity = '1';
     btn.style.cursor = 'pointer';
@@ -378,8 +378,8 @@ function cisoFinish() {
   addAuditEntry('program', null, 'Program setup completed by CISO');
   renderSidebarBadges();
   updateCISOFinishBtn();
-  showTab('reports');
-  showToast('✅ Program setup complete! All role tabs are now active.');
+  showTab('home');
+  showToast('✅ Program setup complete! Command Center is your new home base.');
 }
 
 function renderSidebarBadges() {
@@ -435,7 +435,7 @@ function renderSidebarBadges() {
     const ispLabel = (state.infoSecPolicy && (state.infoSecPolicy.title || '').trim()) || getDefaultISPTitle();
     const ispEntry = showISP ? `<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="goToCISOPolicyEditor()">
       <span style="font-size:12px;margin-right:5px;">\uD83D\uDCCB</span>
-      <span style="font-weight:600;color:${ispDone?'#4ade80':'rgba(255,255,255,0.55)'};">${escapeHTML(ispLabel)} (Tier 1)</span>
+      <span style="font-weight:600;color:${ispDone?'var(--green)':'var(--text-muted)'};">${escapeHTML(ispLabel)} (Tier 1)</span>
     </div>` : '';
 
     // Pure Tier-1 ISP approver: no Tier-2 domain shortcuts in the sidebar (ISSM/CUST/CISO see domains)
@@ -451,11 +451,11 @@ function renderSidebarBadges() {
       if ((userRole === 'issm' || userRole === 'custodian') && !isOwned) return '';
 
       const ownerMarker = (userRole === 'issm' || userRole === 'custodian') && isOwned
-        ? '<span style="margin-left:4px;font-size:9px;color:#4ade80;" title="Your policy">\u2605</span>' : '';
+        ? '<span style="margin-left:4px;font-size:9px;color:var(--green);" title="Your policy">\u2605</span>' : '';
 
       return `<div class="sidebar-item" style="padding-left:28px;font-size:12px;" onclick="openPolicyDoc('${fam}')">
-        <span style="font-family:monospace;font-weight:700;color:${done?'#4ade80':'rgba(255,255,255,0.5)'};">${famGroup.join('+')}</span>
-        <span style="margin-left:6px;color:rgba(255,255,255,0.7);">${mergedTitle}</span>${ownerMarker}
+        <span style="font-family:monospace;font-weight:700;color:${done?'var(--green)':'var(--text-muted)'};">${famGroup.join('+')}</span>
+        <span style="margin-left:6px;color:var(--text-muted);">${mergedTitle}</span>${ownerMarker}
       </div>`;
     }).join('');
 
@@ -474,24 +474,17 @@ function renderSidebarBadges() {
     const label = isScoped ? 'My Controls' : 'All Controls';
     const count = scopedControls.length;
     cList.innerHTML = `<div class="sidebar-item" style="padding-left:28px;font-size:12px;" onclick="showTab('control');goToStep('control',1);">
-      <span style="font-weight:600;color:rgba(255,255,255,0.85);">${label}</span>
-      ${count ? `<span style="margin-left:6px;color:rgba(255,255,255,0.45);font-size:11px;">(${count} in scope)</span>` : ''}
+      <span style="font-weight:600;color:var(--text);">${label}</span>
+      ${count ? `<span style="margin-left:6px;color:var(--text-muted);font-size:11px;">(${count} in scope)</span>` : ''}
     </div>`;
   }
 
   // Update notification badges and asset sidebar whenever sidebar is rendered
-  if(state.tasks) {
-       var cu = state.users && state.users.find(function(u){return u.id===state.currentUserId});
-       var myName = cu ? cu.name : state.currentUserId;
-       var pending = state.tasks.filter(function(t){return t.assigneeName === myName && t.status === 'Pending';}).length;
-       var b = document.getElementById('tasks-badge');
-       if(b) {
-           b.style.display = pending > 0 ? 'inline-block' : 'none';
-           b.innerText = pending;
-       }
-    }
   setTimeout(updateNotificationBadges, 50);
   setTimeout(renderSidebarAssets, 60);
+  setTimeout(function() {
+    if (typeof enhanceKeyboardAccessibility === 'function') enhanceKeyboardAccessibility();
+  }, 80);
 }
 
 function updateNotificationBadges() {
@@ -565,6 +558,10 @@ function updateNotificationBadges() {
     });
   }
   setBadge('badge-asset', assetCount);
+
+  if (typeof getPoamOverdueCount === 'function') {
+    setBadge('badge-poam', getPoamOverdueCount());
+  }
 }
 
 function renderSidebarAssets() {
@@ -592,7 +589,7 @@ function renderSidebarAssets() {
 
   if (!assets.length) {
     list.innerHTML = '<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="showTab(\'asset\')">'
-      + '<span style="color:rgba(255,255,255,0.45);font-style:italic;">No assigned assets yet</span>'
+      + '<span style="color:var(--text-muted);font-style:italic;">No assigned assets yet</span>'
       + '</div>';
     return;
   }
@@ -602,14 +599,14 @@ function renderSidebarAssets() {
     var attests = (state.sspAttestations||{})[a.id] || {};
     var controls = getAssetSSPControls(a);
     var done = controls.filter(function(c){ return (attests[c.id]||{}).status; }).length;
-    var statusDot = signoff.status === 'Approved'  ? '#4ade80'
-                  : signoff.status === 'Submitted' ? '#60a5fa'
-                  : done > 0                       ? '#fbbf24'
-                  :                                  'rgba(255,255,255,0.3)';
+    var statusDot = signoff.status === 'Approved'  ? 'var(--green)'
+                  : signoff.status === 'Submitted' ? 'var(--accent)'
+                  : done > 0                       ? '#f59e0b'
+                  :                                  'var(--border)';
     return '<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="openAssetWizardFromLibrary(\'' + a.id + '\')">'
       + '<span style="width:7px;height:7px;border-radius:50%;background:' + statusDot + ';display:inline-block;margin-right:6px;flex-shrink:0;"></span>'
-      + '<span style="color:rgba(255,255,255,0.8);font-weight:500;">' + _esc(a.name) + '</span>'
-      + '<span style="margin-left:4px;color:rgba(255,255,255,0.35);font-size:10px;">' + _esc(a.type||'') + '</span>'
+      + '<span style="color:var(--text);font-weight:500;">' + _esc(a.name) + '</span>'
+      + '<span style="margin-left:4px;color:var(--text-muted);font-size:10px;">' + _esc(a.type||'') + '</span>'
       + '</div>';
   }).join('')
     + '<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="showTab(\'asset\');openAddAssetModal()">'

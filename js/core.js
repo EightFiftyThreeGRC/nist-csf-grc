@@ -1077,15 +1077,14 @@ const ROLE_TABS = {
   // AOs still record decisions through openAtoDecisionModal() launched from the
   // Reports dashboard. Asssessors no longer have a dedicated workspace —
   // assessment data persists in state but is not edited via UI.
-  'ciso':          ['ciso','policy','asset','frameworks','reports'],
-  'issm':          ['policy','asset','frameworks','reports'],
-  'control-owner': ['control','frameworks','reports'],
-  'asset-owner':   ['asset','reports'],
-  'custodian':     ['policy','reports'],
-  'assessor':      ['reports'],
-  'ao':            ['asset','reports','users'],
-  // ISP / Tier 1 approver: control catalog + reports; Tier 1 ISP is opened from sidebar "Policies" or the reports queue (no Domain policies / ISSM wizard tab)
-  'approver':      ['control','asset','reports'],
+  'ciso':          ['home','ciso','policy','asset','frameworks','poam','reports'],
+  'issm':          ['home','policy','asset','frameworks','poam','reports'],
+  'control-owner': ['home','control','frameworks','poam','reports'],
+  'asset-owner':   ['home','asset','poam','reports'],
+  'custodian':     ['home','policy','reports'],
+  'assessor':      ['home','poam','reports'],
+  'ao':            ['home','asset','poam','reports','users'],
+  'approver':      ['home','control','asset','reports'],
 };
 
 // Default program-owner title (CISO wizard Step 1). Privacy overlay implies combined security + privacy leadership.
@@ -1194,8 +1193,10 @@ const state = {
   sharePointConfig: { enabled: false, siteUrl: '', libraryName: 'Evidence', defaultFolder: 'GRC/Evidence' },
   entraConfig: { enabled: false, clientId: '', tenantId: 'organizations', redirectUri: '' },
   entraSession: null, // { email, name, oid, matchedUserId, signedInAt } when signed in via Entra
-  _frameworkFilter: '',   // UI: filter mapping table to one framework
-  _frameworkSearch: '',   // UI: search in framework mapping table
+  _frameworkFilter: '',
+  _frameworkSearch: '',
+  _poamFilter: 'open',
+  _poamSearch: '',
 };
 const STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
 const STATE_ALLOWED_KEYS = Object.keys(STATE_DEFAULTS);

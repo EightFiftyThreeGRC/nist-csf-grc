@@ -99,19 +99,21 @@ Policies
 Controls
 - `controlOwners`, `controlStatus`, `controlDeadlines`, `controlWorkflowState`
 - `controlReviewQueue`, `controlEvidence`, `controlTestResults`, `testAdequacy`
+- `controlDesignSubmission` — last submission record `{ submittedAt, submitterName, designedCount, totalCount, notes }`
 - `_ctrlEvidenceFilter` — UI filter on evidence panel
 
 Assets / SSP
 - `assets`, `processes`
-- `sspAttestations`, `sspSignoffs`
+- `sspAttestations`, `sspSignoffs`, `sspInterconnections` — keyed by scope id (asset or process)
 - `customAssetTypes`, `customAssetTypeGroups`, `customAssetTypeHeaders`, `assetTypeRequests`
+- `removedBuiltInAssetTypeKeys`, `removedBuiltInAssetTypeGroups` — built-ins the user has removed (persisted)
 - `assetMappings` — `{ 'AC-1': ['asset-1', ...] }`
 
 Assessment & Authorization
 - `authBoundaries` — `[{ id, name, assetIds[], assetTypes[], processIds[], aoUserId, atoStatus, ... }]`
 - `assessmentPlans` — `{ [boundaryId]: { inScopeControlIds[], controlPlans, sarFinalizedAt? } }`
 - `atoDecisions` — `{ [boundaryId]: { decision, conditions[], expiresAt, residualRiskNarrative, signature, ... } }`
-- `_selectedAtoBoundaryId` — UI selection shared by Control Assessment and Authorization tabs
+- `_atoLibraryFilter` — UI filter object for the AO/authorization library views
 
 Users / auth
 - `users` — `[{ id, name, email, role, families[], controls[], note, isDemoPlaceholder? }]`
@@ -125,9 +127,12 @@ POA&M / accountability
 
 UI-only flags (transient)
 - `_policyDomain`, `_policyWizardMode`, `_policyDocView`, `_policyLibraryMode`, `_policyOwnerFilter`
-- `_controlLibraryMode`, `_controlLibrary{Family,Status,AssetType,Search}Filter`
-- `_assetLibraryMode`, `_assetTypeLibraryMode`
-- `_atoLibraryFilter`, `_selectedAtoBoundaryId`
+- `_controlLibraryMode`, `_controlLibrary{Family,Status,AssetType,Search}Filter`, `_controlLibraryColFilters`
+- `_assetLibraryMode`, `_assetTypeLibraryMode`, `_sspReviewerReadOnly`, `_sspReadOnlyExitTab`
+- `_atoLibraryFilter`
+- `_selectedAssetId`, `_selectedProcessId`, `_selectedCtrl` — wizard selections
+- `_auditTrailUiMode`, `_auditTrailEventCatFilter`, `_changeLogUserFilter`, `_changeLogDateFilter`
+- `_reportsProgramReadinessHidden`, `_reportsMySummaryHidden`, `_reportsPhase1BannerHidden`, `_reportsMyView`
 
 ### Persistence Helpers
 
@@ -252,7 +257,8 @@ When `privacyOverlay` is true, the ISP auto-injects tiered privacy requirements 
 ## Reference Documents
 
 - `CONTROL_OWNER_SPEC.md` — combined compliance + UX specification for the Control Owner wizard (NIST SP 800-53A alignment, status taxonomy, data schema, attestation workflow, and UX patterns)
-- `NOTEBOOKLM_IMPLEMENTATION_PLAN.md` — prioritized task list from the 2026-04 NotebookLM review (phantom owners, field-level change log, snapshot safety, etc.)
 - `README.md` — public project overview and operator smoke-test runbook
 
 Legacy audit artifacts (`missing-controls.js`, `nist-controls-audit.xlsx`, `acme_grc_state.json`) and one-off repair scripts (`repair.js`, `fix_encoding.js`) remain in the tree for historical reference only.
+
+Local helper scripts used during the 2026-04 monolith-to-module refactor are kept under `tools/` (`extract-app-modules-4-8.mjs`, `step1-extract-core.mjs`, etc.). They are not part of the runtime and are not loaded by `index.html`.

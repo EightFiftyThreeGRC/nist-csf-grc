@@ -71,12 +71,12 @@ function removeCustomProgramRole(slug) {
 
 // Role-specific default workspaces
 const ROLE_DEFAULT_TAB = {
-  'ciso':          'ciso',
-  'issm':          'policy',
+  'ciso':          'home',
+  'issm':          'home',
   'control-owner': 'control',
   'asset-owner':   'asset',
-  'assessor':      'tester',
-  'ao':            'tester',
+  'assessor':      'home',
+  'ao':            'home',
   'custodian':     'policy',
   'approver':      'reports',
 };
@@ -299,6 +299,9 @@ function applyRoleView(userId) {
     } catch (e) {}
   }
   if (!defaultTab) defaultTab = visible[0] || 'reports';
+  if (state.cisoComplete && visible.indexOf('home') !== -1) {
+    defaultTab = 'home';
+  }
   if (visible.indexOf(defaultTab) === -1) {
     defaultTab = visible.indexOf('reports') !== -1 ? 'reports' : (visible[0] || 'reports');
   }

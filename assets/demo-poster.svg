@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="EightFiftyThree GRC demo preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1120"/>
+      <stop offset="100%" stop-color="#1a3260"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <!-- grid lines -->
+  <g stroke="rgba(255,255,255,0.04)" stroke-width="1">
+    <line x1="0" y1="120" x2="1280" y2="120"/>
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="0" y1="360" x2="1280" y2="360"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="600" x2="1280" y2="600"/>
+  </g>
+
+  <!-- sidebar mock -->
+  <rect x="0" y="0" width="220" height="720" fill="rgba(11,17,32,0.85)"/>
+  <text x="24" y="56" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="700" fill="#0ea5e9" letter-spacing="1">EIGHTFIFTYTHREE</text>
+  <text x="24" y="80" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="700" fill="#ffffff">GRC</text>
+  <text x="24" y="98" font-family="Inter, system-ui, sans-serif" font-size="10" fill="rgba(255,255,255,0.5)" letter-spacing="0.5">CYBER GRC</text>
+
+  <g font-family="Inter, system-ui, sans-serif" font-size="13" fill="rgba(255,255,255,0.75)">
+    <text x="24" y="160">🏛️  Program setup</text>
+    <text x="24" y="200">📋  Domain policies</text>
+    <text x="24" y="240">🔧  Control implementation</text>
+    <text x="24" y="280">🖥️  Assets &amp; SSP</text>
+    <text x="24" y="340">📚  Policy library</text>
+    <text x="24" y="380">🧾  Control library</text>
+    <text x="24" y="440">📊  Reports &amp; Dashboard</text>
+    <text x="24" y="500">👥  Users &amp; roles</text>
+  </g>
+
+  <!-- main content mock -->
+  <g transform="translate(260,60)">
+    <text x="0" y="0" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#ffffff">Information Security Program Setup</text>
+    <text x="0" y="32" font-family="Inter, system-ui, sans-serif" font-size="14" fill="rgba(255,255,255,0.6)">NIST SP 800-53 Rev. 5 · Moderate baseline · Privacy overlay on</text>
+
+    <!-- step nav -->
+    <g transform="translate(0,72)" font-family="Inter, system-ui, sans-serif">
+      <rect x="0" y="0" width="960" height="64" rx="12" fill="url(#card)" stroke="rgba(255,255,255,0.08)"/>
+      <g>
+        <circle cx="40" cy="32" r="16" fill="#0ea5e9"/>
+        <text x="40" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1120">1</text>
+        <text x="64" y="36" font-size="13" fill="#ffffff" font-weight="600">Baseline</text>
+      </g>
+      <g>
+        <circle cx="220" cy="32" r="16" fill="#0ea5e9"/>
+        <text x="220" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1120">2</text>
+        <text x="244" y="36" font-size="13" fill="#ffffff" font-weight="600">PM Controls</text>
+      </g>
+      <g>
+        <circle cx="420" cy="32" r="16" fill="#14b8a6"/>
+        <text x="420" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1120">3</text>
+        <text x="444" y="36" font-size="13" fill="#ffffff" font-weight="600">InfoSec Policy</text>
+      </g>
+      <g>
+        <circle cx="630" cy="32" r="16" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.3)"/>
+        <text x="630" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="rgba(255,255,255,0.7)">4</text>
+        <text x="654" y="36" font-size="13" fill="rgba(255,255,255,0.7)">Consolidate</text>
+      </g>
+      <g>
+        <circle cx="800" cy="32" r="16" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.3)"/>
+        <text x="800" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="rgba(255,255,255,0.7)">5</text>
+        <text x="824" y="36" font-size="13" fill="rgba(255,255,255,0.7)">Assign Owners</text>
+      </g>
+    </g>
+
+    <!-- card row -->
+    <g transform="translate(0,168)" font-family="Inter, system-ui, sans-serif">
+      <rect x="0" y="0" width="304" height="180" rx="12" fill="url(#card)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="20" y="32" font-size="11" font-weight="700" fill="#0ea5e9" letter-spacing="0.5">FAMILY</text>
+      <text x="20" y="58" font-size="18" font-weight="700" fill="#ffffff">AC — Access Control</text>
+      <text x="20" y="86" font-size="12" fill="rgba(255,255,255,0.6)">22 controls · Owner: Jordan Patel</text>
+      <rect x="20" y="110" width="264" height="6" rx="3" fill="rgba(255,255,255,0.08)"/>
+      <rect x="20" y="110" width="200" height="6" rx="3" fill="#14b8a6"/>
+      <text x="20" y="140" font-size="11" fill="rgba(255,255,255,0.55)">Implementation 76%</text>
+      <text x="20" y="160" font-size="11" fill="#fbbf24">⏱ Review due May 30</text>
+
+      <rect x="328" y="0" width="304" height="180" rx="12" fill="url(#card)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="348" y="32" font-size="11" font-weight="700" fill="#0ea5e9" letter-spacing="0.5">FAMILY</text>
+      <text x="348" y="58" font-size="18" font-weight="700" fill="#ffffff">SC — System &amp; Comm.</text>
+      <text x="348" y="86" font-size="12" fill="rgba(255,255,255,0.6)">35 controls · Owner: Alex Rivera</text>
+      <rect x="348" y="110" width="264" height="6" rx="3" fill="rgba(255,255,255,0.08)"/>
+      <rect x="348" y="110" width="120" height="6" rx="3" fill="#0ea5e9"/>
+      <text x="348" y="140" font-size="11" fill="rgba(255,255,255,0.55)">Implementation 45%</text>
+      <text x="348" y="160" font-size="11" fill="#a3e635">✓ Policy approved</text>
+
+      <rect x="656" y="0" width="304" height="180" rx="12" fill="url(#card)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="676" y="32" font-size="11" font-weight="700" fill="#a855f7" letter-spacing="0.5">PRIVACY</text>
+      <text x="676" y="58" font-size="18" font-weight="700" fill="#ffffff">PT — PII Processing</text>
+      <text x="676" y="86" font-size="12" fill="rgba(255,255,255,0.6)">11 controls · Owner: Sam Chen</text>
+      <rect x="676" y="110" width="264" height="6" rx="3" fill="rgba(255,255,255,0.08)"/>
+      <rect x="676" y="110" width="50" height="6" rx="3" fill="#a855f7"/>
+      <text x="676" y="140" font-size="11" fill="rgba(255,255,255,0.55)">Implementation 18%</text>
+      <text x="676" y="160" font-size="11" fill="#f87171">⚠ Findings open</text>
+    </g>
+  </g>
+
+  <!-- play button overlay -->
+  <g filter="url(#glow)">
+    <circle cx="640" cy="380" r="64" fill="url(#play)"/>
+    <polygon points="618,348 618,412 678,380" fill="#0b1120"/>
+  </g>
+  <text x="640" y="490" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="600" fill="#ffffff" opacity="0.9">Watch the demo</text>
+  <text x="640" y="514" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" fill="rgba(255,255,255,0.6)">A short walkthrough of the program setup wizard, policy library, and dashboard</text>
+</svg>
