@@ -1409,6 +1409,36 @@ function logFieldChange(path, oldVal, newVal) {
   markDirty();
 }
 
+function normalizeOwnerEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isValidOwnerEmail(email) {
+  var em = normalizeOwnerEmail(email);
+  return em.length > 3 && em.indexOf('@') > 0 && em.indexOf('@') < em.length - 1;
+}
+
+function getOwnerDisplayName(owner) {
+  if (!owner) return '—';
+  var name = (owner.name || '').trim();
+  if (name) return name;
+  var email = (owner.email || '').trim();
+  if (email) return email.split('@')[0] || email;
+  return '—';
+}
+
+function userNeedsProfileSetup(user) {
+  if (!user || user.isDemoPlaceholder) return false;
+  if (user.profileComplete === true) return false;
+  if (user.profileComplete === false) return true;
+  var email = normalizeOwnerEmail(user.email);
+  if (!email) return false;
+  var name = (user.name || '').trim();
+  if (!name) return true;
+  if (name.toLowerCase() === email.split('@')[0]) return true;
+  return name === 'Pending user';
+}
+
 function getDemoPlaceholderNames() {
   var names = [];
   var seen = {};

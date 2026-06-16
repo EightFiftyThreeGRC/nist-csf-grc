@@ -126,7 +126,8 @@ function applyEntraSignIn(account, silent) {
   if (typeof applyRoleView === 'function') applyRoleView(matched.id);
   var overlay = document.getElementById('rolePickerOverlay');
   if (overlay) overlay.style.display = 'none';
-  if (!silent) showToast('Signed in with Microsoft as ' + matched.name);
+  if (typeof maybePromptProfileSetup === 'function') maybePromptProfileSetup(matched);
+  if (!silent) showToast('Signed in with Microsoft as ' + getOwnerDisplayName(matched));
   return true;
 }
 

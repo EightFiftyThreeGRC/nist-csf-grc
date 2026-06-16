@@ -673,6 +673,32 @@
   </div>
 </div>
 
+<!-- FIRST-LOGIN PROFILE SETUP -->
+<div id="profileSetupOverlay" role="dialog" aria-modal="true" aria-labelledby="profileSetupHeading" style="display:none;">
+  <div class="profile-setup-card">
+    <div class="profile-setup-head">
+      <div class="profile-setup-eyebrow">First sign-in</div>
+      <div class="profile-setup-title" id="profileSetupHeading">Complete your profile</div>
+      <p class="profile-setup-sub">Your program admin added you by email. Add your name and title so policies and attestations show the right accountable official.</p>
+    </div>
+    <div class="profile-setup-email-row">
+      <span class="profile-setup-label">Work email</span>
+      <strong id="profileSetupEmail">—</strong>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="profileSetupName">Full name <span class="required">*</span></label>
+      <input class="form-input" id="profileSetupName" placeholder="e.g., Jane Smith" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="profileSetupTitleInput">Title / role <span class="required">*</span></label>
+      <input class="form-input" id="profileSetupTitleInput" placeholder="e.g., IAM Lead, Security Engineer" autocomplete="organization-title">
+    </div>
+    <div class="profile-setup-actions">
+      <button type="button" class="btn btn-primary" onclick="saveProfileSetup()">Save and continue</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/nist-control-text.js"></script>
 <script src="js/core.js"></script>
 <script src="js/program.js"></script>

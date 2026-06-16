@@ -81,8 +81,27 @@ const ROLE_DEFAULT_TAB = {
   'approver':      'reports',
 };
 
+function getPersonRecordsForUser(user) {
+  if (!user) return [];
+  var emailKey = normalizeOwnerEmail(user.email);
+  var nameKey = (user.name || '').trim().toLowerCase();
+  return (state.users || []).filter(function(u) {
+    if (u.id === user.id) return true;
+    if (emailKey && normalizeOwnerEmail(u.email) === emailKey) return true;
+    if (nameKey && u.name && u.name.trim().toLowerCase() === nameKey) return true;
+    return false;
+  });
+}
+
+function getPersonIdentityKey(user) {
+  var emailKey = normalizeOwnerEmail(user.email);
+  if (emailKey) return 'email:' + emailKey;
+  var nameKey = (user.name || '').trim().toLowerCase();
+  return nameKey ? 'name:' + nameKey : 'id:' + user.id;
+}
+
 function renderProfileButtonContent(user) {
-  var displayName = user ? user.name : 'Admin mode';
+  var displayName = user ? (userNeedsProfileSetup(user) ? (user.email || user.name) : getOwnerDisplayName(user)) : 'Admin mode';
   var icon = user ? (state.entraSession ? '◆' : '👤') : '🔑';
   var sub = state.entraSession ? 'Microsoft · Switch profile' : 'Switch role / impersonate';
   return ''
@@ -117,19 +136,20 @@ function renderRolePickerProfiles() {
     return;
   }
 
-  // ── Group users by PERSON (name), merging roles ──
+  // ── Group users by PERSON (email preferred, else name), merging roles ──
   var roleOrder = ['ciso','ao','assessor','issm','control-owner','asset-owner','custodian','approver'];
   var byPerson = {};
   var personOrder = [];
   state.users.forEach(function(u) {
-    var key = (u.name || '').trim().toLowerCase();
-    if (!key) return;
+    var key = getPersonIdentityKey(u);
+    if (!key || key === 'id:' + u.id && !u.email && !u.name) return;
     if (!byPerson[key]) {
-      byPerson[key] = { name: u.name, records: [], roles: [], primaryId: u.id };
+      byPerson[key] = { name: getOwnerDisplayName(u), email: u.email || '', records: [], roles: [], primaryId: u.id, needsProfile: userNeedsProfileSetup(u) };
       personOrder.push(key);
     }
     byPerson[key].records.push(u);
     if (byPerson[key].roles.indexOf(u.role) === -1) byPerson[key].roles.push(u.role);
+    if (userNeedsProfileSetup(u)) byPerson[key].needsProfile = true;
   });
 
   // Sort people: CISO first, then by role priority
@@ -172,7 +192,8 @@ function renderRolePickerProfiles() {
       + 'onmouseenter="this.style.background=\'rgba(255,255,255,0.12)\';this.style.borderColor=\'' + pm.color + '\';" '
       + 'onmouseleave="this.style.background=\'rgba(255,255,255,0.06)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';">'
       + '<div style="font-size:24px;margin-bottom:10px;">' + pm.icon + '</div>'
-      + '<div style="color:white;font-weight:600;font-size:15px;margin-bottom:8px;">' + _esc(person.name) + '</div>'
+      + '<div style="color:white;font-weight:600;font-size:15px;margin-bottom:8px;">' + _esc(person.needsProfile ? (person.email || person.name) : person.name) + '</div>'
+      + (person.needsProfile ? '<div style="color:rgba(255,255,255,0.45);font-size:11px;margin:-4px 0 8px;">Complete profile on first sign-in</div>' : '')
       + '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">';
     // Show a badge for each role this person holds
     person.roles.forEach(function(role) {
@@ -220,7 +241,10 @@ function selectUserProfile(userId) {
     showToast('🔑 Admin mode');
   } else {
     const u = state.users.find(function(x){ return x.id === userId; });
-    if (u) showToast('👤 Signed in as ' + u.name);
+    if (u) {
+      showToast('👤 Signed in as ' + getOwnerDisplayName(u));
+      maybePromptProfileSetup(u);
+    }
   }
 }
 
@@ -259,11 +283,7 @@ function applyRoleView(userId) {
   if (adminSection) adminSection.style.display = '';
 
   // ── Merge tabs from ALL roles this person holds ──
-  // Find every user record with the same name (case-insensitive)
-  var nameKey = (user.name || '').trim().toLowerCase();
-  var allRecords = (state.users || []).filter(function(u) {
-    return u.name && u.name.trim().toLowerCase() === nameKey;
-  });
+  var allRecords = getPersonRecordsForUser(user);
   // Store sibling IDs so other code can check all roles for this person
   state._currentPersonIds = allRecords.map(function(u){ return u.id; });
 
@@ -332,6 +352,100 @@ function applyRoleView(userId) {
   }
 }
 
+function showProfileSetupModal(user) {
+  var overlay = document.getElementById('profileSetupOverlay');
+  if (!overlay || !user) return;
+  var emailEl = document.getElementById('profileSetupEmail');
+  var nameEl = document.getElementById('profileSetupName');
+  var titleEl = document.getElementById('profileSetupTitleInput');
+  if (emailEl) emailEl.textContent = user.email || '—';
+  if (nameEl) {
+    nameEl.value = (user.name && user.name !== 'Pending user') ? user.name : '';
+    nameEl.focus();
+  }
+  if (titleEl) titleEl.value = user.note || '';
+  overlay.dataset.userId = user.id;
+  overlay.style.display = 'flex';
+}
+
+function hideProfileSetupModal() {
+  var overlay = document.getElementById('profileSetupOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    delete overlay.dataset.userId;
+  }
+}
+
+function saveProfileSetup() {
+  var overlay = document.getElementById('profileSetupOverlay');
+  var userId = overlay && overlay.dataset.userId;
+  if (!userId) return;
+  var user = (state.users || []).find(function(u) { return u.id === userId; });
+  if (!user) return;
+  var nameEl = document.getElementById('profileSetupName');
+  var titleEl = document.getElementById('profileSetupTitleInput');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var title = titleEl ? titleEl.value.trim() : '';
+  if (!name) {
+    showToast('Enter your full name to continue.', true);
+    if (nameEl) nameEl.focus();
+    return;
+  }
+  if (!title) {
+    showToast('Enter your title or role to continue.', true);
+    if (titleEl) titleEl.focus();
+    return;
+  }
+  completeUserProfile(user, name, title);
+}
+
+function completeUserProfile(user, name, title) {
+  var emailKey = normalizeOwnerEmail(user.email);
+  var records = getPersonRecordsForUser(user);
+  records.forEach(function(u) {
+    u.name = name;
+    u.note = title;
+    u.profileComplete = true;
+  });
+
+  if (emailKey) {
+    Object.keys(state.domainOwners || {}).forEach(function(fam) {
+      var o = state.domainOwners[fam];
+      if (o && normalizeOwnerEmail(o.email) === emailKey) {
+        o.name = name;
+        if (title) o.role = title;
+      }
+    });
+    Object.keys(state.controlOwners || {}).forEach(function(cid) {
+      var o = state.controlOwners[cid];
+      if (o && normalizeOwnerEmail(o.email) === emailKey) {
+        o.name = name;
+        if (title) o.role = title;
+      }
+    });
+  }
+
+  if (user.role === 'ciso' || (user.roles && user.roles.indexOf('ciso') !== -1)) {
+    state.programOwner = name;
+    state.programOwnerTitle = title;
+    if (user.email) state.programOwnerEmail = user.email;
+  }
+
+  markDirty();
+  hideProfileSetupModal();
+  applyRoleView(user.id);
+  var btn = document.getElementById('profileBtn');
+  if (btn) {
+    btn.innerHTML = renderProfileButtonContent((state.users || []).find(function(u) { return u.id === user.id; }));
+  }
+  showToast('Profile saved — welcome, ' + name + '.');
+}
+
+function maybePromptProfileSetup(user) {
+  if (!user || !userNeedsProfileSetup(user)) return;
+  showProfileSetupModal(user);
+}
+
 function isUsersReadOnlyForCurrentUser() {
   if (!state.currentUserId) return false;
   var me = (state.users || []).find(function(u) { return u.id === state.currentUserId; });
@@ -350,37 +464,65 @@ function isUsersReadOnlyForCurrentUser() {
 
 // ---- User Sync ----
 
-// Upsert a user by name (case-insensitive). If the person already exists:
+// Upsert a user by email (preferred) or name (case-insensitive). If the person already exists:
 //   - merges family/control assignments if the role matches
-//   - fills in missing email
+//   - fills in missing email or name
 //   - marks as auto-generated
 // If they don't exist, creates a new record.
 function upsertUser(data) {
   if (!state.users) state.users = [];
-  var nName = data.name.trim().toLowerCase();
-  
-  var existing = state.users.find(function(u) {
-    return u.name.trim().toLowerCase() === nName;
-  });
+  var emailKey = normalizeOwnerEmail(data.email);
+  var nameKey = (data.name || '').trim().toLowerCase();
+  var existing = null;
+
+  if (emailKey) {
+    existing = state.users.find(function(u) {
+      return normalizeOwnerEmail(u.email) === emailKey && u.role === data.role;
+    });
+    if (!existing) {
+      existing = state.users.find(function(u) { return normalizeOwnerEmail(u.email) === emailKey; });
+    }
+  }
+  if (!existing && nameKey) {
+    existing = state.users.find(function(u) {
+      return u.name && u.name.trim().toLowerCase() === nameKey && u.role === data.role;
+    });
+    if (!existing) {
+      existing = state.users.find(function(u) { return u.name && u.name.trim().toLowerCase() === nameKey; });
+    }
+  }
+
+  var displayName = (data.name || '').trim();
+  if (!displayName && emailKey) displayName = emailKey.split('@')[0] || 'Pending user';
+  var profileComplete = data.profileComplete;
+  if (profileComplete === undefined) {
+    profileComplete = !!(displayName && displayName !== 'Pending user' && (data.note || '').trim());
+  }
 
   if (existing) {
     if (data.email && !existing.email) existing.email = data.email;
+    if (displayName && displayName !== 'Pending user' && (!existing.name || existing.name === 'Pending user' || userNeedsProfileSetup(existing))) {
+      existing.name = displayName;
+    }
+    if (data.note && !existing.note) existing.note = data.note;
+    if (profileComplete) existing.profileComplete = true;
+    else if (existing.profileComplete !== true && data.profileComplete === false) existing.profileComplete = false;
     if (!existing.families) existing.families = [];
     if (!existing.controls) existing.controls = [];
     if (!existing.assets)   existing.assets   = [];
-    
+
     if(!existing.roles) existing.roles = [existing.role];
     if(data.role && !existing.roles.includes(data.role)) existing.roles.push(data.role);
-    
+
     (data.families || []).forEach(function(f) { if (!existing.families.includes(f)) existing.families.push(f); });
     (data.controls || []).forEach(function(c) { if (!existing.controls.includes(c)) existing.controls.push(c); });
-    if (data.assets && data.assets.length>0) existing.assets = data.assets; 
-    
+    if (data.assets && data.assets.length>0) existing.assets = data.assets;
+
     existing._autoGenerated = true;
   } else {
     state.users.push({
       id: 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-      name: data.name.trim(),
+      name: displayName || 'Pending user',
       email: data.email || '',
       role: data.role,
       roles: [data.role],
@@ -388,6 +530,7 @@ function upsertUser(data) {
       controls: data.controls || [],
       assets: data.assets || [],
       note: data.note || '',
+      profileComplete: profileComplete,
       _autoGenerated: true,
     });
   }
@@ -398,26 +541,41 @@ function upsertUser(data) {
 // is always up to date without needing explicit save hooks everywhere.
 function syncUsersFromState() {
   // 1. Program Owner → CISO (include any domains they own directly)
-  if (state.programOwner && state.programOwner.trim()) {
+  if (state.programOwnerEmail && state.programOwnerEmail.trim()) {
     var cisoFamilies = [];
+    var cisoEmailKey = normalizeOwnerEmail(state.programOwnerEmail);
+    Object.keys(state.domainOwners || {}).forEach(function(fam) {
+      var o = state.domainOwners[fam];
+      if (o && normalizeOwnerEmail(o.email) === cisoEmailKey) cisoFamilies.push(fam);
+    });
+    upsertUser({
+      name: state.programOwner || '',
+      email: state.programOwnerEmail || '',
+      role: 'ciso',
+      families: cisoFamilies,
+      note: state.programOwnerTitle || '',
+      profileComplete: !!(state.programOwner && state.programOwner.trim() && state.programOwnerTitle && state.programOwnerTitle.trim()),
+    });
+  } else if (state.programOwner && state.programOwner.trim()) {
+    var cisoFamiliesByName = [];
     var cisoNameKey = state.programOwner.trim().toLowerCase();
     Object.keys(state.domainOwners || {}).forEach(function(fam) {
       var o = state.domainOwners[fam];
-      if (o && o.name && o.name.trim().toLowerCase() === cisoNameKey) cisoFamilies.push(fam);
+      if (o && o.name && o.name.trim().toLowerCase() === cisoNameKey) cisoFamiliesByName.push(fam);
     });
     upsertUser({
       name: state.programOwner,
       email: state.programOwnerEmail || '',
       role: 'ciso',
-      families: cisoFamilies,
+      families: cisoFamiliesByName,
       note: state.programOwnerTitle || '',
+      profileComplete: !!(state.programOwnerTitle && state.programOwnerTitle.trim()),
     });
   }
 
-  // 2. Domain Owners → ISSM (aggregate multi-domain owners by name)
-  //    Skip if this person is already the CISO (same name) to avoid duplicates
-  //    First, clear auto-generated ISSM family assignments so reassignments take effect cleanly
-  var cisoKey = (state.programOwner || '').trim().toLowerCase();
+  // 2. Domain Owners → ISSM (aggregate multi-domain owners by email)
+  var cisoEmailKey = normalizeOwnerEmail(state.programOwnerEmail);
+  var cisoNameKey = (state.programOwner || '').trim().toLowerCase();
   if (state.users) {
     state.users.forEach(function(u) {
       if (u.role === 'issm' && u._autoGenerated) {
@@ -425,18 +583,26 @@ function syncUsersFromState() {
       }
     });
   }
-  var issmByName = {};
+  var issmByEmail = {};
   Object.keys(state.domainOwners || {}).forEach(function(fam) {
     var o = state.domainOwners[fam];
-    if (!o || !o.name) return;
-    var key = o.name.trim().toLowerCase();
-    if (key === cisoKey) return;  // CISO already synced above — don't create a second entry
-    if (!issmByName[key]) issmByName[key] = { name: o.name.trim(), email: o.email || '', families: [] };
-    if (!issmByName[key].families.includes(fam)) issmByName[key].families.push(fam);
+    if (!o || !isValidOwnerEmail(o.email)) return;
+    var key = normalizeOwnerEmail(o.email);
+    if (key === cisoEmailKey) return;
+    if (o.name && o.name.trim().toLowerCase() === cisoNameKey && cisoNameKey) return;
+    if (!issmByEmail[key]) issmByEmail[key] = { name: (o.name || '').trim(), email: o.email.trim(), families: [] };
+    if (o.name && !issmByEmail[key].name) issmByEmail[key].name = o.name.trim();
+    if (!issmByEmail[key].families.includes(fam)) issmByEmail[key].families.push(fam);
   });
-  Object.keys(issmByName).forEach(function(k) {
-    var d = issmByName[k];
-    upsertUser({ name: d.name, email: d.email, role: 'issm', families: d.families });
+  Object.keys(issmByEmail).forEach(function(k) {
+    var d = issmByEmail[k];
+    upsertUser({
+      name: d.name,
+      email: d.email,
+      role: 'issm',
+      families: d.families,
+      profileComplete: !!(d.name && d.name.trim()),
+    });
   });
 
   // 3a. ISP Custodian (Tier 1 policy) → custodian
@@ -491,7 +657,7 @@ function syncUsersFromState() {
     // Only create a user entry if the approver differs from the default
     var currentApproverName = rc.approvedBy.trim();
     var approverKey = currentApproverName.toLowerCase();
-    if (approverKey === defaultApproverName.toLowerCase() || approverKey === cisoKey) return;
+    if (approverKey === defaultApproverName.toLowerCase() || approverKey === cisoNameKey) return;
 
     upsertUser({ name: currentApproverName, email: rc.approverEmail || '', role: 'approver', families: [policyKey] });
   });
