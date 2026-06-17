@@ -681,6 +681,19 @@ function showTab(tabId) {
     var navEl = document.getElementById(id);
     if (navEl) navEl.classList.remove('active');
   });
+  // Library modes still highlight parent workspace nav
+  if (tabId === 'policy' && state._policyLibraryMode) {
+    var polNav = document.getElementById('nav-policy');
+    if (polNav) polNav.classList.add('active');
+  }
+  if (tabId === 'control' && state._controlLibraryMode) {
+    var ctrlNav = document.getElementById('nav-control');
+    if (ctrlNav) ctrlNav.classList.add('active');
+  }
+  if (tabId === 'asset' && (state._assetLibraryMode || state._assetTypeLibraryMode)) {
+    var assetNav = document.getElementById('nav-asset');
+    if (assetNav) assetNav.classList.add('active');
+  }
   var targetTab = document.getElementById('tab-' + tabId);
   var targetNav = document.getElementById('nav-' + tabId);
   if (targetTab) targetTab.classList.add('active');
@@ -1023,6 +1036,7 @@ var WELCOME_INTRO_STORAGE_KEY = 'eightfiftythree-grc-welcome-dismissed';
 function applySetupFocusMode() {
   var inSetup = !state.cisoComplete;
   document.body.classList.toggle('setup-focus-mode', inSetup);
+  if (typeof applyPostSetupNav === 'function') applyPostSetupNav();
 }
 
 function dismissWelcomeIntro() {

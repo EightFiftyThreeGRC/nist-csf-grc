@@ -8,9 +8,7 @@ function renderControlTab() {
   var workspace = document.getElementById('control-workspace-panel');
   var library = document.getElementById('control-library-panel');
   var controlNav = document.getElementById('nav-control');
-  var controlLibNav = document.getElementById('nav-control-library');
   if (controlNav) controlNav.classList.toggle('active', !state._controlLibraryMode);
-  if (controlLibNav) controlLibNav.classList.toggle('active', !!state._controlLibraryMode);
   if (state._controlLibraryMode) {
     if (workspace) workspace.style.display = 'none';
     if (library) library.style.display = '';

@@ -53,8 +53,8 @@ function renderOnboardingHome() {
       : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes. Integrations (SharePoint, Entra, ISO/SOC 2/HIPAA) are optional.</p>')
     + '</div>'
     + '<div class="onboard-features">'
-    + '<div class="onboard-feature"><span>📋</span><div><strong>Domain policies</strong><p>Build AC, AU, SC, and the rest after setup.</p></div></div>'
-    + '<div class="onboard-feature"><span>🔧</span><div><strong>Control implementation</strong><p>Design obligations and link SharePoint evidence.</p></div></div>'
+    + '<div class="onboard-feature"><span>📋</span><div><strong>Policies</strong><p>Build AC, AU, SC, and the rest after setup.</p></div></div>'
+    + '<div class="onboard-feature"><span>🔧</span><div><strong>Controls</strong><p>Design obligations and link SharePoint evidence.</p></div></div>'
     + '<div class="onboard-feature"><span>🖥️</span><div><strong>Assets &amp; SSP</strong><p>Inventory systems and submit attestation packages.</p></div></div>'
     + '</div>';
 }
@@ -99,6 +99,14 @@ function getNextActions() {
   return actions.slice(0, 8);
 }
 
+function updateCommandCenterPageHeader() {
+  var subtitle = document.getElementById('home-page-subtitle');
+  if (!subtitle || !state.cisoComplete) return;
+  var org = (state.orgName || '').trim() || 'Your organization';
+  var baseline = state.baseline ? (state.baseline === 'L' ? 'Low' : state.baseline === 'M' ? 'Moderate' : 'High') : '—';
+  subtitle.textContent = org + ' · ' + baseline + ' baseline · posture and next actions';
+}
+
 function renderHomeTab() {
   var body = document.getElementById('home-body');
   if (!body) return;
@@ -110,9 +118,8 @@ function renderHomeTab() {
 
   var pageHeader = document.querySelector('#tab-home .page-header');
   if (pageHeader) pageHeader.style.display = '';
+  updateCommandCenterPageHeader();
 
-  var org = escapeHTML(state.orgName || 'Your organization');
-  var baseline = state.baseline ? (state.baseline === 'L' ? 'Low' : state.baseline === 'M' ? 'Moderate' : 'High') : '—';
   var ctrlTotal = typeof getActiveControls === 'function' ? getActiveControls().length : 0;
   var implemented = 0;
   if (typeof getActiveControls === 'function') {
@@ -135,34 +142,37 @@ function renderHomeTab() {
         + '<div class="hub-action-desc">' + escapeHTML(a.desc) + '</div></div>'
         + '<span class="hub-action-arrow">→</span></button>';
     }).join('')
-    : '<div class="hub-empty-actions">You\'re caught up — explore the dashboard or libraries.</div>';
+    : '<div class="hub-empty-actions">You\'re caught up — open a workspace from the sidebar or the cards below.</div>';
 
-  var quickLinks = [
-    { icon: '📋', label: 'Domain policies', fn: 'goToPoliciesHome()' },
-    { icon: '🔧', label: 'Controls', fn: 'goToControlWorkspace()' },
-    { icon: '🖥️', label: 'Assets & SSP', fn: 'goToAssetWorkspace()' },
-    { icon: '◇', label: 'Frameworks', fn: "showTab('frameworks')" },
-    { icon: '📝', label: 'POA&M', fn: "showTab('poam')" },
-    { icon: '📊', label: 'Reports', fn: "showTab('reports')" }
+  var workspaces = [
+    { icon: '📋', label: 'Policies', desc: 'Domain policy builder & catalog', fn: 'goToPoliciesHome()' },
+    { icon: '🔧', label: 'Controls', desc: 'Implementation design', fn: 'goToControlWorkspace()' },
+    { icon: '🖥️', label: 'Assets & SSP', desc: 'Inventory & attestations', fn: 'goToAssetWorkspace()' },
+    { icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')" },
+    { icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / HIPAA', fn: "showTab('frameworks')" },
+    { icon: '📝', label: 'POA&M', desc: 'Findings & remediation', fn: "showTab('poam')" }
   ];
 
   body.innerHTML = ''
-    + '<div class="hub-hero">'
-    + '<h2 class="hub-greeting">Command Center</h2>'
-    + '<p class="hub-org">' + org + ' · ' + baseline + ' baseline</p>'
-    + '</div>'
+    + '<div class="hub-dashboard">'
     + '<div class="hub-kpi-grid">'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + implPct + '%</div><div class="hub-kpi-label">Controls implemented</div><div class="hub-kpi-sub">' + implemented + ' / ' + ctrlTotal + '</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + ownerCount + '</div><div class="hub-kpi-label">Policy owners</div><div class="hub-kpi-sub">' + domainsAssigned + ' / ' + domainTotal + ' domains rostered</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + getPoamOpenCount() + '</div><div class="hub-kpi-label">Open POA&M items</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + getPoamOpenCount() + '</div><div class="hub-kpi-label">Open POA&amp;M items</div></div>'
     + '</div>'
     + (typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : '')
-    + (typeof renderPoamSummaryHtml === 'function' ? renderPoamSummaryHtml() : '')
-    + '<div class="hub-section"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
-    + '<div class="hub-section"><h3 class="hub-section-title">Quick links</h3><div class="hub-quick-grid">'
-    + quickLinks.map(function(l) {
-      return '<button type="button" class="hub-quick-card" onclick="' + l.fn + '"><span>' + l.icon + '</span>' + escapeHTML(l.label) + '</button>';
+    + '<div class="hub-lower-grid">'
+    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
+    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'
+    + workspaces.map(function(w) {
+      return '<button type="button" class="hub-workspace-card" onclick="' + w.fn + '">'
+        + '<span class="hub-workspace-icon">' + w.icon + '</span>'
+        + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
+        + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
     }).join('')
-    + '</div></div>';
+    + '</div></div>'
+    + '</div>'
+    + (typeof renderPoamSummaryHtml === 'function' ? renderPoamSummaryHtml() : '')
+    + '</div>';
 }

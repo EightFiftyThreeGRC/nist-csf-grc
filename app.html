@@ -67,59 +67,37 @@
     </div>
   </div>
 
-  <div class="sidebar-section" id="sidebar-setup-section">
-    <div class="sidebar-section-label">Program overview</div>
-    <div class="sidebar-item" onclick="showTab('ciso')" id="nav-ciso">
-      <span class="icon">🏛️</span> Program setup
-    </div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced" id="sidebar-policies-section">
-    <div class="sidebar-section-label">Policies</div>
+  <div class="sidebar-section sidebar-advanced" id="sidebar-workspaces-section">
+    <div class="sidebar-section-label">Workspaces</div>
     <div class="sidebar-item sidebar-item--expandable" onclick="goToPoliciesHome()" id="nav-policy">
-      <button type="button" class="sidebar-expand-btn" id="sidebar-policies-toggle" onclick="event.stopPropagation();toggleSidebarPoliciesList();" aria-expanded="false" aria-controls="sidebar-policies-list" title="Show domain list">▸</button>
-      <span class="icon">📋</span> Domain policies
+      <button type="button" class="sidebar-expand-btn" id="sidebar-policies-toggle" onclick="event.stopPropagation();toggleSidebarPoliciesList();" aria-expanded="false" aria-controls="sidebar-policies-list" title="Show domains">▸</button>
+      <span class="icon">📋</span> Policies
       <span class="sidebar-item-badge" id="badge-policy" style="display:none;"></span>
     </div>
     <div id="sidebar-policies-list" class="sidebar-sub-list sidebar-sub-list--collapsed"></div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced" id="sidebar-controls-section">
-    <div class="sidebar-section-label">Controls</div>
-    <div class="sidebar-item" onclick="goToControlWorkspace()" id="nav-control">
-      <span class="icon">🔧</span> Control implementation
+    <div class="sidebar-item sidebar-item--expandable" onclick="goToControlWorkspace()" id="nav-control">
+      <button type="button" class="sidebar-expand-btn" id="sidebar-controls-toggle" onclick="event.stopPropagation();toggleSidebarControlsList();" aria-expanded="false" aria-controls="sidebar-controls-list" title="Show controls">▸</button>
+      <span class="icon">🔧</span> Controls
       <span class="sidebar-item-badge" id="badge-control" style="display:none;"></span>
     </div>
-    <div id="sidebar-controls-list" class="sidebar-sub-list"></div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced" id="sidebar-assets-section">
-    <div class="sidebar-section-label">Assets</div>
-    <div class="sidebar-item" onclick="goToAssetWorkspace()" id="nav-asset">
+    <div id="sidebar-controls-list" class="sidebar-sub-list sidebar-sub-list--collapsed"></div>
+    <div class="sidebar-item sidebar-item--expandable" onclick="goToAssetWorkspace()" id="nav-asset">
+      <button type="button" class="sidebar-expand-btn" id="sidebar-assets-toggle" onclick="event.stopPropagation();toggleSidebarAssetsList();" aria-expanded="false" aria-controls="sidebar-assets-list" title="Show assets">▸</button>
       <span class="icon">🖥️</span> Assets &amp; SSP
       <span class="sidebar-item-badge" id="badge-asset" style="display:none;"></span>
     </div>
-    <div id="sidebar-assets-list" class="sidebar-sub-list"></div>
+    <div id="sidebar-assets-list" class="sidebar-sub-list sidebar-sub-list--collapsed"></div>
   </div>
 
-  <div class="sidebar-section sidebar-advanced">
-    <div class="sidebar-section-label">Libraries</div>
-    <div class="sidebar-item" onclick="goToPolicyLibrary()" id="nav-policy-library">
-      <span class="icon">📚</span> Policy library
+  <div class="sidebar-section sidebar-advanced" id="sidebar-program-section">
+    <div class="sidebar-section-label">Program</div>
+    <div class="sidebar-item" onclick="showTab('ciso')" id="nav-ciso">
+      <span class="icon">🏛️</span> Program setup
     </div>
-    <div class="sidebar-item" onclick="goToControlLibrary()" id="nav-control-library">
-      <span class="icon">🧾</span> Control library
+    <div class="sidebar-item" onclick="showTab('reports')" id="nav-reports">
+      <span class="icon">📊</span> Reports
+      <span class="sidebar-item-badge" id="badge-reports" style="display:none;"></span>
     </div>
-    <div class="sidebar-item" onclick="goToAssetLibrary()" id="nav-asset-library">
-      <span class="icon">🖥️</span> Asset library
-    </div>
-    <div class="sidebar-item" onclick="goToAssetTypeLibrary()" id="nav-asset-type-library">
-      <span class="icon">🗂️</span> Asset type library
-    </div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced">
-    <div class="sidebar-section-label">Compliance</div>
     <div class="sidebar-item" onclick="showTab('frameworks')" id="nav-frameworks">
       <span class="icon">◇</span> Framework alignment
     </div>
@@ -127,18 +105,6 @@
       <span class="icon">📝</span> Findings &amp; POA&amp;M
       <span class="sidebar-item-badge warn" id="badge-poam" style="display:none;"></span>
     </div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced">
-    <div class="sidebar-section-label">Reporting</div>
-    <div class="sidebar-item" onclick="showTab('reports')" id="nav-reports">
-      <span class="icon">📊</span> Reports &amp; Dashboard
-      <span class="sidebar-item-badge" id="badge-reports" style="display:none;"></span>
-    </div>
-  </div>
-
-  <div class="sidebar-section sidebar-advanced" id="sidebar-users-section">
-    <div class="sidebar-section-label">Administration</div>
     <div class="sidebar-item" onclick="showTab('users')" id="nav-users">
       <span class="icon">👥</span> Users &amp; roles
     </div>
@@ -172,12 +138,12 @@
 
   <!-- COMMAND CENTER -->
   <div class="tab-panel active" id="tab-home">
-    <div class="page-header">
+    <div class="page-header hub-page-header">
       <div class="role-badge">◆ Command Center</div>
-      <h1>Your program at a glance</h1>
-      <p>Next actions, posture metrics, and quick paths into every workspace.</p>
+      <h1 id="home-page-title">Your program at a glance</h1>
+      <p id="home-page-subtitle">Next actions, posture metrics, and quick paths into every workspace.</p>
     </div>
-    <div style="padding:24px 36px;" id="home-body"></div>
+    <div class="page-body" id="home-body"></div>
   </div>
 
   <!-- ============================================================ -->
@@ -326,8 +292,11 @@
             <h1>Domain Policy Builder</h1>
             <p>Select a policy domain below to begin building your domain-specific security policy.</p>
           </div>
-          <button type="button" class="btn btn-secondary wizard-video-trigger"
-            onclick="openWizardVideo('assets/videos/02-domain-policies.mp4', 'Domain policies walkthrough')">▶ Walkthrough</button>
+          <div class="page-header-actions">
+            <button type="button" class="btn btn-secondary wizard-video-trigger"
+              onclick="openWizardVideo('assets/videos/02-domain-policies.mp4', 'Domain policies walkthrough')">▶ Walkthrough</button>
+            <button type="button" class="btn btn-secondary" onclick="goToPolicyLibrary()">Browse catalog</button>
+          </div>
         </div>
       </div>
       <div id="policy-list-body" style="padding:0 32px 32px;"></div>
@@ -442,8 +411,11 @@
             <h1>Control Implementation Design</h1>
             <p>Design how each assigned control is implemented, identify asset scope, and define what asset owners must do to comply.</p>
           </div>
-          <button type="button" class="btn btn-secondary wizard-video-trigger"
-            onclick="openWizardVideo('assets/videos/03-control-implementation.mp4', 'Control implementation walkthrough')">▶ Walkthrough</button>
+          <div class="page-header-actions">
+            <button type="button" class="btn btn-secondary wizard-video-trigger"
+              onclick="openWizardVideo('assets/videos/03-control-implementation.mp4', 'Control implementation walkthrough')">▶ Walkthrough</button>
+            <button type="button" class="btn btn-secondary" onclick="goToControlLibrary()">Browse catalog</button>
+          </div>
         </div>
       </div>
       <div class="wizard-container">
@@ -529,8 +501,11 @@
             <h1>System Security Plan (SSP) — Asset Owner</h1>
             <p>Register systems, document categorization, boundary, interconnections, and control attestations for a defensible SSP.</p>
           </div>
-          <button type="button" class="btn btn-secondary wizard-video-trigger"
-            onclick="openWizardVideo('assets/videos/04-assets-ssp.mp4', 'Assets and SSP walkthrough')">▶ Walkthrough</button>
+          <div class="page-header-actions">
+            <button type="button" class="btn btn-secondary wizard-video-trigger"
+              onclick="openWizardVideo('assets/videos/04-assets-ssp.mp4', 'Assets and SSP walkthrough')">▶ Walkthrough</button>
+            <button type="button" class="btn btn-secondary" onclick="goToAssetLibrary()">Browse catalog</button>
+          </div>
         </div>
       </div>
       <div class="wizard-container">

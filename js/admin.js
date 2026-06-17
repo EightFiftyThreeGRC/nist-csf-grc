@@ -279,7 +279,7 @@ function applyRoleView(userId) {
       const nav = document.getElementById('nav-' + id);
       if (nav) nav.style.display = '';
     });
-    const adminSection = document.getElementById('sidebar-users-section');
+    const adminSection = document.getElementById('sidebar-program-section');
     if (adminSection) adminSection.style.display = '';
     if (typeof applySetupFocusMode === 'function') applySetupFocusMode();
     if (typeof renderSidebarBadges === 'function') renderSidebarBadges();
@@ -287,7 +287,7 @@ function applyRoleView(userId) {
   }
 
   // Non-admin: hide Users & Roles nav and admin sidebar section
-  const adminSection = document.getElementById('sidebar-users-section');
+  const adminSection = document.getElementById('sidebar-program-section');
   if (adminSection) adminSection.style.display = '';
 
   // ── Merge tabs from ALL roles this person holds ──

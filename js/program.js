@@ -423,6 +423,39 @@ function toggleSidebarPoliciesList(forceOpen) {
   }
 }
 
+function toggleSidebarControlsList(forceOpen) {
+  if (typeof state._sidebarControlsExpanded !== 'boolean') state._sidebarControlsExpanded = false;
+  if (forceOpen === true) state._sidebarControlsExpanded = true;
+  else if (forceOpen === false) state._sidebarControlsExpanded = false;
+  else state._sidebarControlsExpanded = !state._sidebarControlsExpanded;
+  var list = document.getElementById('sidebar-controls-list');
+  var btn = document.getElementById('sidebar-controls-toggle');
+  if (list) list.classList.toggle('sidebar-sub-list--collapsed', !state._sidebarControlsExpanded);
+  if (btn) {
+    btn.textContent = state._sidebarControlsExpanded ? '▾' : '▸';
+    btn.setAttribute('aria-expanded', state._sidebarControlsExpanded ? 'true' : 'false');
+  }
+}
+
+function toggleSidebarAssetsList(forceOpen) {
+  if (typeof state._sidebarAssetsExpanded !== 'boolean') state._sidebarAssetsExpanded = false;
+  if (forceOpen === true) state._sidebarAssetsExpanded = true;
+  else if (forceOpen === false) state._sidebarAssetsExpanded = false;
+  else state._sidebarAssetsExpanded = !state._sidebarAssetsExpanded;
+  var list = document.getElementById('sidebar-assets-list');
+  var btn = document.getElementById('sidebar-assets-toggle');
+  if (list) list.classList.toggle('sidebar-sub-list--collapsed', !state._sidebarAssetsExpanded);
+  if (btn) {
+    btn.textContent = state._sidebarAssetsExpanded ? '▾' : '▸';
+    btn.setAttribute('aria-expanded', state._sidebarAssetsExpanded ? 'true' : 'false');
+  }
+}
+
+function applyPostSetupNav() {
+  var cisoNav = document.getElementById('nav-ciso');
+  if (cisoNav) cisoNav.style.display = state.cisoComplete ? 'none' : '';
+}
+
 function renderSidebarBadges() {
   const families = getActiveFamilies();
   const merges = state.policyMerges || {};
@@ -463,12 +496,11 @@ function renderSidebarBadges() {
 
   // Populate Policies sidebar
   const pList = document.getElementById('sidebar-policies-list');
-  const pSection = document.getElementById('sidebar-policies-section');
+  const wsSection = document.getElementById('sidebar-workspaces-section');
   if (pList) {
-    // Show collapsible "Policies" list for: admin, policy tab, CISO tab, or Tier 1 ISP approver (ISP link only — not the Domain policies workspace)
     var showPolicySidebar = !user || visibleTabs.includes('policy') || visibleTabs.includes('ciso') || hasApprover;
-    if (pSection) {
-      pSection.style.display = showPolicySidebar ? '' : 'none';
+    if (wsSection) {
+      wsSection.style.display = showPolicySidebar || visibleTabs.includes('control') || visibleTabs.includes('asset') ? '' : 'none';
     }
 
     const ispDone = !!(state.infoSecPolicy && state.infoSecPolicy.title);
@@ -511,24 +543,30 @@ function renderSidebarBadges() {
     }
   }
 
-  // Populate Controls sidebar — role-aware count (always visible, non-collapsible)
+  // Populate Controls sidebar — collapsed by default
   const cList = document.getElementById('sidebar-controls-list');
-  const cSection = document.getElementById('sidebar-controls-section');
   if (cList) {
-    cList.style.display = ''; // always expanded
-    if (cSection) cSection.style.display = '';
-
     const scopedControls = getScopedControls();
     const isScoped = user && userRole === 'control-owner';
-    const label = isScoped ? 'My Controls' : 'All Controls';
+    const label = isScoped ? 'My controls' : 'All controls';
     const count = scopedControls.length;
-    cList.innerHTML = `<div class="sidebar-item" style="padding-left:28px;font-size:12px;" onclick="showTab('control');goToStep('control',1);">
-      <span style="font-weight:600;color:var(--text);">${label}</span>
-      ${count ? `<span style="margin-left:6px;color:var(--text-muted);font-size:11px;">(${count} in scope)</span>` : ''}
-    </div>`;
+    cList.innerHTML = count
+      ? '<div class="sidebar-item" style="padding-left:28px;font-size:12px;" onclick="showTab(\'control\');goToStep(\'control\',1);">'
+        + '<span style="font-weight:600;color:var(--text);">' + label + '</span>'
+        + '<span style="margin-left:6px;color:var(--text-muted);font-size:11px;">(' + count + ')</span></div>'
+      : '';
+    if (typeof state._sidebarControlsExpanded !== 'boolean') state._sidebarControlsExpanded = false;
+    cList.classList.toggle('sidebar-sub-list--collapsed', !state._sidebarControlsExpanded);
+    var ctrlToggle = document.getElementById('sidebar-controls-toggle');
+    if (ctrlToggle) {
+      ctrlToggle.textContent = state._sidebarControlsExpanded ? '▾' : '▸';
+      ctrlToggle.setAttribute('aria-expanded', state._sidebarControlsExpanded ? 'true' : 'false');
+      ctrlToggle.style.visibility = count ? 'visible' : 'hidden';
+    }
   }
 
   // Update notification badges and asset sidebar whenever sidebar is rendered
+  applyPostSetupNav();
   setTimeout(updateNotificationBadges, 50);
   setTimeout(renderSidebarAssets, 60);
   setTimeout(function() {
@@ -615,20 +653,16 @@ function updateNotificationBadges() {
 
 function renderSidebarAssets() {
   var list = document.getElementById('sidebar-assets-list');
-  var section = document.getElementById('sidebar-assets-section');
   if (!list) return;
 
   var assets = state.assets || [];
 
-  // Optionally hide for roles that don't use asset tab
   var user = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
   var role = user ? user.role : 'admin';
   var visibleTabs = (typeof getRoleTabs === 'function') ? getRoleTabs(role) : (ROLE_TABS[role] || TAB_IDS);
-  if (section && !visibleTabs.includes('asset') && role !== 'admin') {
-    section.style.display = 'none';
+  var wsSection = document.getElementById('sidebar-workspaces-section');
+  if (wsSection && !visibleTabs.includes('asset') && role !== 'admin' && user) {
     return;
-  } else if (section) {
-    section.style.display = '';
   }
 
   var scopedIds = getCurrentPersonAssetIds();
@@ -637,9 +671,11 @@ function renderSidebarAssets() {
   }
 
   if (!assets.length) {
-    list.innerHTML = '<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="showTab(\'asset\')">'
-      + '<span style="color:var(--text-muted);font-style:italic;">No assigned assets yet</span>'
-      + '</div>';
+    list.innerHTML = '';
+    var assetToggle = document.getElementById('sidebar-assets-toggle');
+    if (assetToggle) assetToggle.style.visibility = 'hidden';
+    if (typeof state._sidebarAssetsExpanded !== 'boolean') state._sidebarAssetsExpanded = false;
+    list.classList.add('sidebar-sub-list--collapsed');
     return;
   }
 
@@ -661,6 +697,15 @@ function renderSidebarAssets() {
     + '<div class="sidebar-item" style="padding-left:28px;font-size:12px;cursor:pointer;" onclick="showTab(\'asset\');openAddAssetModal()">'
     + '<span style="color:var(--teal);font-weight:600;">+ Add Asset</span>'
     + '</div>';
+
+  if (typeof state._sidebarAssetsExpanded !== 'boolean') state._sidebarAssetsExpanded = false;
+  list.classList.toggle('sidebar-sub-list--collapsed', !state._sidebarAssetsExpanded);
+  var assetsToggle = document.getElementById('sidebar-assets-toggle');
+  if (assetsToggle) {
+    assetsToggle.textContent = state._sidebarAssetsExpanded ? '▾' : '▸';
+    assetsToggle.setAttribute('aria-expanded', state._sidebarAssetsExpanded ? 'true' : 'false');
+    assetsToggle.style.visibility = 'visible';
+  }
 }
 
 /** Policy tab landing: library / role workspace — not doc viewer or domain wizard. */

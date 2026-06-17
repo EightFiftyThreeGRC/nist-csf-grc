@@ -127,9 +127,7 @@ function getPolicyPendingReviewerDisplay(policyKey) {
 // ============================================================
 function renderPolicyTab() {
   var policyNav = document.getElementById('nav-policy');
-  var policyLibNav = document.getElementById('nav-policy-library');
   if (policyNav) policyNav.classList.toggle('active', !state._policyLibraryMode);
-  if (policyLibNav) policyLibNav.classList.toggle('active', !!state._policyLibraryMode);
   if (state._policyLibraryMode) {
     renderPolicyLibraryCatalog();
     return;
