@@ -13,6 +13,7 @@ var __cloudLocked = false;        // true once signed in -> impersonation disabl
 var __cloudRealtimeChannel = null;
 var __cloudPushTimer = null;
 var __cloudLastPushedFingerprint = null;
+var __cloudSuppressRealtimeUntil = 0;
 var __sbLoadPromise = null;
 var __cloudEntered = false;   // true once a program is loaded for the session
 var __cloudEntering = false;  // re-entrancy guard for enterCloudWithSession
@@ -492,16 +493,40 @@ function cloudPushDebounced() {
   }, 1000);
 }
 
-function cloudStateFingerprint(payload) {
-  try { return JSON.stringify(payload || {}); } catch (e) { return ''; }
+function cloudNormalizedPayload(raw) {
+  var payload = {};
+  if (typeof STATE_ALLOWED_KEYS === 'undefined' || !STATE_ALLOWED_KEYS) return raw || {};
+  STATE_ALLOWED_KEYS.forEach(function(k) {
+    payload[k] = raw ? raw[k] : undefined;
+  });
+  return payload;
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return '[' + value.map(function(item) { return stableStringify(item); }).join(',') + ']';
+  }
+  return '{' + Object.keys(value).sort().map(function(key) {
+    return JSON.stringify(key) + ':' + stableStringify(value[key]);
+  }).join(',') + '}';
+}
+
+function cloudStateFingerprint(raw) {
+  try { return stableStringify(cloudNormalizedPayload(raw || {})); } catch (e) { return ''; }
 }
 
 function rememberCloudLocalFingerprint() {
-  try {
-    if (typeof buildPersistedPayload === 'function') {
-      __cloudLastPushedFingerprint = cloudStateFingerprint(buildPersistedPayload());
-    }
-  } catch (e) { /* ignore */ }
+  try { __cloudLastPushedFingerprint = cloudStateFingerprint(state); } catch (e) { /* ignore */ }
+}
+
+function cloudRefreshUiAfterRemoteUpdate() {
+  try { if (typeof renderSidebarBadges === 'function') renderSidebarBadges(); } catch (e) { /* ignore */ }
+  try { if (typeof applySetupFocusMode === 'function') applySetupFocusMode(); } catch (e) { /* ignore */ }
+  var active = document.querySelector('.tab-panel.active');
+  if (!active || !active.id) return;
+  var tabId = active.id.replace(/^tab-/, '');
+  if (typeof showTab === 'function') showTab(tabId);
 }
 
 async function cloudPushNow() {
@@ -511,7 +536,8 @@ async function cloudPushNow() {
   try {
     var payload = typeof buildPersistedPayload === 'function' ? buildPersistedPayload() : null;
     if (!payload) return;
-    __cloudLastPushedFingerprint = cloudStateFingerprint(payload);
+    __cloudSuppressRealtimeUntil = Date.now() + 4000;
+    __cloudLastPushedFingerprint = cloudStateFingerprint(state);
     var res = await sb.from('programs')
       .update({ state: payload, name: (state.orgName || 'GRC Program') })
       .eq('id', __cloudProgramId);
@@ -534,15 +560,16 @@ function subscribeCloudRealtime() {
           // Only refresh when this browser has no unsaved edits, so we never
           // clobber in-progress work with a remote update.
           if (window.isDirty) return;
+          if (Date.now() < __cloudSuppressRealtimeUntil) return;
           if (!(payload && payload.new && payload.new.state && typeof applyLoadedState === 'function')) return;
           var incoming = payload.new.state;
           var incomingFp = cloudStateFingerprint(incoming);
           if (incomingFp === __cloudLastPushedFingerprint) return;
-          var localFp = cloudStateFingerprint(typeof buildPersistedPayload === 'function' ? buildPersistedPayload() : null);
+          var localFp = cloudStateFingerprint(state);
           if (incomingFp === localFp) return;
           applyLoadedState(incoming);
           rememberCloudLocalFingerprint();
-          if (typeof bootAfterStateReady === 'function') bootAfterStateReady();
+          cloudRefreshUiAfterRemoteUpdate();
           if (typeof showToast === 'function') showToast('Program updated by another user.');
         })
       .subscribe();
