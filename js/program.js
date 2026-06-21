@@ -1323,6 +1323,99 @@ function selectAllPM(val) {
 // Org-wide ISP editor: purpose, scope, roles, requirements,
 // documents, revision history. Drag-and-drop sections.
 // ============================================================
+function getDefaultISPEnforcementContent(orgNameVal) {
+  var org = orgNameVal || state.orgName || 'the organization';
+  return org + ' shall enforce this policy through documented procedures, monitoring, and corrective action. Violations may result in disciplinary action up to and including termination of employment or contract, civil or criminal penalties where applicable, and revocation of access to information systems. The CISO (or designee) shall investigate reported violations and coordinate remediation with Human Resources and legal counsel as appropriate.';
+}
+
+function getDefaultISPExceptionsContent(orgNameVal) {
+  var org = orgNameVal || state.orgName || 'the organization';
+  return org + ' may grant exceptions to this policy when business necessity, technical constraints, or risk acceptance warrants a deviation. All exceptions shall be documented in writing, approved by the CISO or executive leadership based on residual risk, assigned an expiration date, and tracked in the organization\'s risk register or POA&M. Exceptions shall not reduce baseline security controls below the authorized impact level without formal risk acceptance.';
+}
+
+function buildDefaultISPRoles(ownerTitle) {
+  var roles = [
+    { name:'Executive Leadership', responsibilities:['Approve and endorse the organization information security policy at the highest organizational level','Allocate resources (budget, personnel, technology) sufficient to execute the information security program','Accept enterprise-level risk on behalf of the organization and communicate risk tolerance to the CISO','Champion a security-aware culture across the organization'] },
+    { name: ownerTitle, responsibilities:['Draft, approve, and maintain this Tier 1 organizational information security policy','Report to executive leadership on security posture and program effectiveness','Oversee the information security program, including risk management, compliance, and continuous monitoring','Accept and formally document cyber risk decisions within delegated authority','Coordinate incident response at the program level and ensure lessons learned are integrated into policy'] },
+  ];
+  if (state.privacyOverlay) {
+    roles.push({ name:'Senior Agency Official for Privacy (SAOP)', responsibilities:['Lead the organization privacy program and serve as the accountable official for privacy compliance','Review and approve privacy policies, notices, and PII processing activities','Coordinate with the CISO on integrated security and privacy control implementation','Report to executive leadership on privacy program effectiveness and risk'] });
+  }
+  roles.push(
+    { name:'Information System Security Managers (ISSMs)', responsibilities:['Draft, approve, and maintain Tier 2 domain-level policies for assigned NIST 800-53 control families','Provide program-level oversight of ISSOs and ensure consistent application of this policy across the system portfolio','Review and approve SSPs, POA&Ms, and significant change requests before escalation to the AO','Coordinate common control identification and inheritance documentation across managed systems'] },
+    { name:'All Personnel', responsibilities:['Comply with this policy and all subordinate domain policies applicable to their role','Complete security awareness training within required timeframes','Report suspected security incidents, policy violations, or vulnerabilities to the designated reporting channel'] }
+  );
+  return roles;
+}
+
+function ensureISPSectionMigrations() {
+  var isp = state.infoSecPolicy;
+  if (!isp || !isp.sections) return;
+  var orgNameVal = state.orgName || 'the organization';
+  function insertAfter(afterType, section) {
+    if (isp.sections.some(function(s) { return s.type === section.type; })) return;
+    var idx = isp.sections.findIndex(function(s) { return s.type === afterType; });
+    var insertAt = idx >= 0 ? idx + 1 : isp.sections.length;
+    isp.sections.splice(insertAt, 0, section);
+  }
+  insertAfter('requirements', { type:'compliance', title:'Compliance & Applicable Requirements' });
+  insertAfter('compliance', { type:'enforcement', title:'Enforcement & Violations', content: getDefaultISPEnforcementContent(orgNameVal) });
+  insertAfter('enforcement', { type:'exceptions', title:'Exceptions & Waivers', content: getDefaultISPExceptionsContent(orgNameVal) });
+  isp.sections.forEach(function(sec) {
+    if (sec.type === 'enforcement' && !sec.content) sec.content = getDefaultISPEnforcementContent(orgNameVal);
+    if (sec.type === 'exceptions' && !sec.content) sec.content = getDefaultISPExceptionsContent(orgNameVal);
+  });
+}
+
+function ensureISPPrivacyRoles() {
+  var isp = state.infoSecPolicy;
+  if (!isp || !isp.roles || !state.privacyOverlay) return;
+  var hasSaop = isp.roles.some(function(r) { return /saop|senior agency official for privacy|privacy officer/i.test(r.name || ''); });
+  if (hasSaop) return;
+  var insertAt = Math.min(2, isp.roles.length);
+  isp.roles.splice(insertAt, 0, {
+    name:'Senior Agency Official for Privacy (SAOP)',
+    responsibilities:['Lead the organization privacy program and serve as the accountable official for privacy compliance','Review and approve privacy policies, notices, and PII processing activities','Coordinate with the CISO on integrated security and privacy control implementation','Report to executive leadership on privacy program effectiveness and risk']
+  });
+}
+
+function draftUnmappedPMRequirements(rerender) {
+  var isp = state.infoSecPolicy;
+  if (!isp || !isp.requirements) return 0;
+  var allActivePM = Object.keys(state.pmControls || {}).filter(function(id) { return state.pmControls[id]; });
+  var mapped = isp.requirements.flatMap(function(r) { return r.controls || []; });
+  var unmapped = allActivePM.filter(function(id) { return mapped.indexOf(id) < 0; });
+  if (!unmapped.length) return 0;
+  var orgNameVal = state.orgName || 'the organization';
+  var stmts = {
+    'PM-1': orgNameVal + ' shall develop, document, and disseminate an organization-wide information security program plan. [NIST 800-53: PM-1]',
+    'PM-2': orgNameVal + ' shall appoint a senior information security official with the mission and resources to coordinate the program. [NIST 800-53: PM-2]',
+    'PM-3': orgNameVal + ' shall include information security and privacy resources in capital planning and investment requests. [NIST 800-53: PM-3]',
+    'PM-4': orgNameVal + ' shall implement a process to ensure plans of action and milestones are developed and maintained. [NIST 800-53: PM-4]',
+    'PM-5': orgNameVal + ' shall develop and maintain an inventory of organizational information systems. [NIST 800-53: PM-5]',
+    'PM-6': orgNameVal + ' shall develop, monitor, and report on information security measures of performance. [NIST 800-53: PM-6]',
+    'PM-7': orgNameVal + ' shall develop an enterprise architecture with consideration for information security. [NIST 800-53: PM-7]',
+    'PM-8': orgNameVal + ' shall develop and implement a Critical Infrastructure Protection plan. [NIST 800-53: PM-8]',
+    'PM-9': orgNameVal + ' shall develop an enterprise-wide risk management strategy for information security. [NIST 800-53: PM-9]',
+    'PM-10': orgNameVal + ' shall ensure an adequate security authorization process is established for information systems. [NIST 800-53: PM-10]',
+    'PM-11': orgNameVal + ' shall define mission and business processes with consideration for information security and privacy. [NIST 800-53: PM-11]',
+    'PM-12': orgNameVal + ' shall implement an insider threat program. [NIST 800-53: PM-12]',
+    'PM-13': orgNameVal + ' shall establish an information security workforce development program. [NIST 800-53: PM-13]',
+    'PM-14': orgNameVal + ' shall periodically test plans of action and milestones. [NIST 800-53: PM-14]',
+    'PM-15': orgNameVal + ' shall establish contacts with security groups and associations. [NIST 800-53: PM-15]',
+    'PM-16': orgNameVal + ' shall implement a threat awareness program with cross-organization sharing. [NIST 800-53: PM-16]',
+    'PM-17': orgNameVal + ' shall authenticate information before taking protective action on security reports. [NIST 800-53: PM-17]'
+  };
+  unmapped.forEach(function(pmId) {
+    var n = isp.requirements.length + 1;
+    isp.requirements.push({ id:'IS-REQ-' + n, text: stmts[pmId] || (orgNameVal + ' shall implement ' + pmId + ' per NIST 800-53 Rev. 5. [NIST 800-53: ' + pmId + ']'), controls:[pmId] });
+  });
+  renumberReqs();
+  if (typeof markDirty === 'function') markDirty();
+  if (rerender !== false && typeof renderCISOStep3 === 'function') renderCISOStep3();
+  return unmapped.length;
+}
+
 function renderCISOStep3() {
   const body = document.getElementById('ciso-step-5-body');
   if (!body) return;
@@ -1345,16 +1438,12 @@ function renderCISOStep3() {
         { type:'roles', title:'Roles & Responsibilities' },
         { type:'requirements', title:'Policy Requirements' },
         { type:'compliance', title:'Compliance & Applicable Requirements' },
+        { type:'enforcement', title:'Enforcement & Violations', content: getDefaultISPEnforcementContent(orgNameVal) },
+        { type:'exceptions', title:'Exceptions & Waivers', content: getDefaultISPExceptionsContent(orgNameVal) },
         { type:'documents', title:'Related Documents & Standards' },
         { type:'revision-history', title:'Revision History' },
-        { type:'controls', title:'Related Controls' },
       ],
-      roles: [
-        { name:'Executive Leadership', responsibilities:['Approve and endorse the organization information security policy at the highest organizational level','Allocate resources (budget, personnel, technology) sufficient to execute the information security program','Accept enterprise-level risk on behalf of the organization and communicate risk tolerance to the CISO','Champion a security-aware culture across the organization'] },
-        { name: ownerTitle, responsibilities:['Draft, approve, and maintain this Tier 1 organizational information security policy','Report to executive leadership on security posture and program effectiveness','Oversee the information security program, including risk management, compliance, and continuous monitoring','Accept and formally document cyber risk decisions within delegated authority','Coordinate incident response at the program level and ensure lessons learned are integrated into policy'] },
-        { name:'Information System Security Managers (ISSMs)', responsibilities:['Draft, approve, and maintain Tier 2 domain-level policies for assigned NIST 800-53 control families','Provide program-level oversight of ISSOs and ensure consistent application of this policy across the system portfolio','Review and approve SSPs, POA&Ms, and significant change requests before escalation to the AO','Coordinate common control identification and inheritance documentation across managed systems'] },
-        { name:'All Personnel', responsibilities:['Comply with this policy and all subordinate domain policies applicable to their role','Complete security awareness training within required timeframes','Report suspected security incidents, policy violations, or vulnerabilities to the designated reporting channel'] },
-      ],
+      roles: buildDefaultISPRoles(ownerTitle),
       requirements: [
         { id:'IS-REQ-1', text:`${orgNameVal} shall develop, document, disseminate, review, and update an organization-wide information security program plan that provides an overview of the security requirements for the organization and a description of the security program controls and common controls in place or planned. The plan shall be reviewed and updated at least annually. [NIST 800-53: PM-1]`, controls:['PM-1'] },
         { id:'IS-REQ-2', text:`${orgNameVal} shall designate a senior official with the authority, mission, and resources to coordinate, develop, implement, and maintain an organization-wide information security program. Clear ownership shall be established at the program level, domain level, control level, and asset level. [NIST 800-53: PM-2]`, controls:['PM-2'] },
@@ -1391,9 +1480,10 @@ function renderCISOStep3() {
       { type:'roles', title:'Roles & Responsibilities' },
       { type:'requirements', title:'Policy Requirements' },
       { type:'compliance', title:'Compliance & Applicable Requirements' },
+      { type:'enforcement', title:'Enforcement & Violations' },
+      { type:'exceptions', title:'Exceptions & Waivers' },
       { type:'documents', title:'Related Documents & Standards' },
       { type:'revision-history', title:'Revision History' },
-      { type:'controls', title:'Related Controls' },
     ];
     if (!state.infoSecPolicy.documents) {
       state.infoSecPolicy.documents = [
@@ -1410,11 +1500,12 @@ function renderCISOStep3() {
   // Ensure custodian object exists (migration for old saves)
   if (!state.infoSecPolicy.custodian) state.infoSecPolicy.custodian = { name: '', role: '', email: '' };
 
-  // Insert compliance section for saves created before it was added to defaults
-  if (state.infoSecPolicy.sections && !state.infoSecPolicy.sections.some(function(s) { return s.type === 'compliance'; })) {
-    var _reqIdx = state.infoSecPolicy.sections.findIndex(function(s) { return s.type === 'requirements'; });
-    var _insertAt = _reqIdx >= 0 ? _reqIdx + 1 : state.infoSecPolicy.sections.length;
-    state.infoSecPolicy.sections.splice(_insertAt, 0, { type: 'compliance', title: 'Compliance & Applicable Requirements' });
+  ensureISPSectionMigrations();
+  ensureISPPrivacyRoles();
+
+  if (state.infoSecPolicy && !state.infoSecPolicy._pmAutoSeeded) {
+    draftUnmappedPMRequirements(false);
+    state.infoSecPolicy._pmAutoSeeded = true;
   }
 
   // Keep CISO role name in sync with Step 1 title
@@ -1444,10 +1535,19 @@ function renderCISOStep3() {
       </div>`;
 
     let content = '';
-    if (sec.type === 'purpose' || sec.type === 'scope') {
+    if (sec.type === 'purpose' || sec.type === 'scope' || sec.type === 'enforcement' || sec.type === 'exceptions') {
       const hint = sec.type === 'purpose'
         ? 'Define the strategic intent and rationale for this information security policy.'
-        : 'Define who and what this policy covers — people, systems, data, and organizational boundaries.';
+        : sec.type === 'scope'
+        ? 'Define who and what this policy covers — people, systems, data, and organizational boundaries.'
+        : sec.type === 'enforcement'
+        ? 'Describe consequences for policy violations and the investigation process.'
+        : 'Document how exceptions and waivers are requested, approved, tracked, and expired.';
+      if ((sec.type === 'enforcement' || sec.type === 'exceptions') && !sec.content) {
+        sec.content = sec.type === 'enforcement'
+          ? getDefaultISPEnforcementContent(state.orgName || 'the organization')
+          : getDefaultISPExceptionsContent(state.orgName || 'the organization');
+      }
       content = `
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${hint}</div>
         <textarea class="form-input" rows="6" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:120px;" oninput="setISPSectionContent(${si}, this.value);">${escapeHTML(sec.content||'')}</textarea>`;
@@ -1810,18 +1910,14 @@ function renderDocumentsSection() {
 
 function renderComplianceSection(si) {
   const isp = state.infoSecPolicy;
-  const defaultCompliance = `Legal, regulatory, and contractual compliance requirements applicable to this information security program include:\n\n` +
-    `• Federal Information Security Modernization Act (FISMA) — requires agencies to implement information security programs consistent with NIST standards.\n` +
-    `• OMB Circular A-130 — establishes policy for the management of Federal information resources.\n` +
-    `• NIST SP 800-53 Rev. 5 — provides the catalog of security and privacy controls selected as part of this program.\n` +
-    `• NIST SP 800-37 Rev. 2 (RMF) — governs the lifecycle process for authorizing systems to operate.\n` +
-    (state.privacyOverlay ? `• Privacy Act of 1974 / E-Government Act of 2002 — governs the collection, maintenance, use, and dissemination of personally identifiable information (PII).\n` : '') +
-    `\nAll personnel must comply with the above requirements as implemented through this policy and its subordinate domain policies.`;
+  var defaultCompliance = typeof buildDefaultISPComplianceNotes === 'function'
+    ? buildDefaultISPComplianceNotes()
+    : '';
   if (!isp.complianceNotes || !String(isp.complianceNotes).trim()) {
     isp.complianceNotes = defaultCompliance;
   }
   return `
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Enumerate the laws, regulations, standards, and contractual obligations this program must satisfy.</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Enumerate the laws, regulations, standards, and contractual obligations this program must satisfy. Pre-filled from your organization profile and Step 3 reg mapping — edit as needed.</div>
     <textarea class="form-input" rows="10" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:180px;" oninput="state.infoSecPolicy.complianceNotes=this.value; window.markDirty();" placeholder="List applicable laws, regulations, and standards…">${escapeHTML(isp.complianceNotes)}</textarea>`;
 }
 
@@ -1893,35 +1989,7 @@ function renderControlsSection(activeControls, mappedControls, allActivePM) {
 
 // Auto-draft unmapped PM controls
 function autoDraftUnmappedPM() {
-  const isp = state.infoSecPolicy;
-  const allActivePM = Object.keys(state.pmControls).filter(id => state.pmControls[id]);
-  const mapped = isp.requirements.flatMap(r => r.controls);
-  const unmapped = allActivePM.filter(id => !mapped.includes(id));
-  if (unmapped.length === 0) return;
-  const stmts = {
-    'PM-1':'The organization shall develop, document, and disseminate an organization-wide information security program plan.',
-    'PM-2':'The organization shall appoint a senior information security official with the mission and resources to coordinate the program.',
-    'PM-3':'The organization shall include information security and privacy resources in capital planning and investment requests.',
-    'PM-4':'The organization shall implement a process to ensure plans of action and milestones are developed and maintained.',
-    'PM-5':'The organization shall develop and maintain an inventory of organizational information systems.',
-    'PM-6':'The organization shall develop, monitor, and report on information security measures of performance.',
-    'PM-7':'The organization shall develop an enterprise architecture with consideration for information security.',
-    'PM-8':'The organization shall develop and implement a Critical Infrastructure Protection plan.',
-    'PM-9':'The organization shall develop an enterprise-wide risk management strategy for information security.',
-    'PM-10':'The organization shall ensure an adequate security authorisation process is established for information systems.',
-    'PM-11':'The organization shall define mission and business processes with consideration for information security and privacy.',
-    'PM-12':'The organization shall implement an insider threat program.',
-    'PM-13':'The organization shall establish an information security workforce development program.',
-    'PM-14':'The organization shall periodically test plans of action and milestones.',
-    'PM-15':'The organization shall establish contacts with security groups and associations.',
-    'PM-16':'The organization shall implement a threat awareness program with cross-organization sharing.',
-    'PM-17':'The organization shall authenticate information before taking protective action on security reports.',
-  };
-  unmapped.forEach(pmId => {
-    const n = isp.requirements.length + 1;
-    isp.requirements.push({ id:`IS-REQ-${n}`, text: stmts[pmId]||`The organization shall implement ${pmId} per NIST 800-53 Rev. 5.`, controls:[pmId] });
-  });
-  renderCISOStep3();
+  draftUnmappedPMRequirements(true);
 }
 
 
