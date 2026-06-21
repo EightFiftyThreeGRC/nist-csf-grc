@@ -2392,6 +2392,170 @@
       .page-body { padding: 0 20px 28px; }
     }
 
+    /* Step 6 — consolidate priority roadmap */
+    .priority-roadmap {
+      background: var(--white);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 14px;
+      padding: 18px 20px 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+    }
+    .priority-roadmap-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .priority-roadmap-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .priority-roadmap-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .priority-roadmap-today {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 12px;
+      white-space: nowrap;
+    }
+    .priority-roadmap-track {
+      display: flex;
+      gap: 3px;
+      height: 34px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+    }
+    .priority-roadmap-segment {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      color: white;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+      min-width: 0;
+    }
+    .priority-roadmap-segment span {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .priority-roadmap-segment small {
+      font-size: 9px;
+      font-weight: 600;
+      opacity: 0.92;
+    }
+    .priority-roadmap-lanes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .priority-roadmap-lane {
+      min-width: 0;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .priority-roadmap-lane-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      border-top: 3px solid;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .priority-roadmap-lane-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .priority-roadmap-lane-label {
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .priority-roadmap-lane-count {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .priority-roadmap-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      min-height: 72px;
+    }
+    .priority-roadmap-card {
+      background: white;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-left: 3px solid;
+      border-radius: 10px;
+      padding: 10px 11px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .priority-roadmap-card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .priority-roadmap-badge {
+      font-size: 10px !important;
+      padding: 1px 6px !important;
+    }
+    .priority-roadmap-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.35;
+      margin-bottom: 4px;
+    }
+    .priority-roadmap-card-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .priority-roadmap-empty {
+      font-size: 11px;
+      color: #94a3b8;
+      font-style: italic;
+      text-align: center;
+      padding: 18px 8px;
+    }
+    @media (max-width: 900px) {
+      .priority-roadmap-head { flex-direction: column; }
+      .priority-roadmap-lanes { grid-template-columns: 1fr; }
+      .priority-roadmap-track { height: auto; flex-direction: column; }
+      .priority-roadmap-segment {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        padding: 8px 10px;
+      }
+    }
+
     /* Step 7 — assign owners */
     .owner-step-hero {
       background: var(--white);

@@ -2109,6 +2109,89 @@ function deadlineFromPriority(fam) {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0,10);
 }
 
+function formatRoadmapDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderPolicyPriorityRoadmapHTML(masters, merges, families, controls) {
+  var byTier = { now: [], soon: [], later: [] };
+  masters.forEach(function(fam) {
+    var tier = getPriority(fam);
+    var merged = families.filter(function(f) { return merges[f] === fam; });
+    var ctrlCount = controls.filter(function(c) { return c.f === fam; }).length +
+      merged.reduce(function(s, mf) {
+        return s + controls.filter(function(c) { return c.f === mf; }).length;
+      }, 0);
+    byTier[tier].push({
+      fam: fam,
+      title: getPolicyMergedTitle(fam),
+      badges: [fam].concat(merged),
+      ctrlCount: ctrlCount,
+      deadline: deadlineFromPriority(fam)
+    });
+  });
+  ['now', 'soon', 'later'].forEach(function(t) {
+    byTier[t].sort(function(a, b) {
+      return a.deadline.localeCompare(b.deadline) || a.fam.localeCompare(b.fam);
+    });
+  });
+
+  var todayLabel = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  var trackSegments = [
+    { tier: 'now', width: '22%' },
+    { tier: 'soon', width: '39%' },
+    { tier: 'later', width: '39%' }
+  ];
+
+  return `
+    <div class="priority-roadmap" aria-label="Policy implementation roadmap by priority">
+      <div class="priority-roadmap-head">
+        <div>
+          <div class="priority-roadmap-title">Implementation roadmap</div>
+          <div class="priority-roadmap-sub">Policy documents grouped by urgency — updates as you change priorities below.</div>
+        </div>
+        <div class="priority-roadmap-today">Starts ${escapeHTML(todayLabel)}</div>
+      </div>
+      <div class="priority-roadmap-track" role="presentation">
+        ${trackSegments.map(function(seg) {
+          var m = PRIORITY_META[seg.tier];
+          return '<div class="priority-roadmap-segment priority-roadmap-segment--' + seg.tier + '" style="flex:0 0 ' + seg.width + ';background:' + m.bar + ';" title="' + escapeHTML(m.label + ' · ' + m.hint) + '"><span>' + m.label + '</span><small>' + m.hint + '</small></div>';
+        }).join('')}
+      </div>
+      <div class="priority-roadmap-lanes">
+        ${['now', 'soon', 'later'].map(function(tier) {
+          var m = PRIORITY_META[tier];
+          var items = byTier[tier];
+          return `
+          <div class="priority-roadmap-lane priority-roadmap-lane--${tier}">
+            <div class="priority-roadmap-lane-head" style="border-color:${m.bar};color:${m.fg};">
+              <span class="priority-roadmap-lane-dot" style="background:${m.bar};"></span>
+              <span class="priority-roadmap-lane-label">${m.label}</span>
+              <span class="priority-roadmap-lane-count">${items.length}</span>
+            </div>
+            <div class="priority-roadmap-cards">
+              ${items.length ? items.map(function(item) {
+                return `
+                <div class="priority-roadmap-card" style="border-left-color:${m.bar};">
+                  <div class="priority-roadmap-card-badges">
+                    ${item.badges.map(function(b) {
+                      return '<span class="family-badge priority-roadmap-badge">' + escapeHTML(b) + '</span>';
+                    }).join('')}
+                  </div>
+                  <div class="priority-roadmap-card-title">${escapeHTML(item.title)}</div>
+                  <div class="priority-roadmap-card-meta">${item.ctrlCount} control${item.ctrlCount !== 1 ? 's' : ''} · target ${escapeHTML(formatRoadmapDate(item.deadline))}</div>
+                </div>`;
+              }).join('') : '<div class="priority-roadmap-empty">No domains in this window</div>'}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
 function setDomainDeadline(fam, date) {
   var prev = state.domainDeadlines[fam];
   state.domainDeadlines[fam] = date;
@@ -2196,7 +2279,7 @@ function renderCISOStep4a() {
     <div class="section-subtitle">First, merge any domains that belong in a single policy document. Then set the urgency for each — this drives the draft deadlines in the next step.</div>
 
     <!-- Priority summary pills -->
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
       ${Object.entries(PRIORITY_META).map(([tier,m]) => `
       <div style="background:${m.bg};border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;">
         <div style="width:8px;height:8px;border-radius:50%;background:${m.bar};"></div>
@@ -2204,6 +2287,8 @@ function renderCISOStep4a() {
         <span style="font-size:12px;color:${m.fg};opacity:0.8;">${priorityCounts[tier]} domain${priorityCounts[tier]!==1?'s':''} · ${m.hint}</span>
       </div>`).join('')}
     </div>
+
+    ${renderPolicyPriorityRoadmapHTML(masters, merges, families, controls)}
 
     <!-- Common merges callout -->
     <div style="border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;padding:14px 18px;margin-bottom:20px;">
