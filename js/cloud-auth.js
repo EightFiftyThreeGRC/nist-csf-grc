@@ -265,7 +265,7 @@ async function signInWithPassword() {
     }
   } catch (err) {
     console.warn('signInWithPassword', err);
-    showCloudGateError('Sign-in failed: ' + ((err && err.message) || 'check your email and password.'));
+    showCloudGateError('Sign-in failed: ' + formatCloudAuthError(err, 'check your email and password.'));
   } finally {
     setCloudGateBusy(false);
   }
@@ -308,7 +308,7 @@ async function signUpWithPassword() {
     showCloudGateInfo('Account created for ' + creds.email + '. Check your inbox if email confirmation is enabled, then sign in.');
   } catch (err) {
     console.warn('signUpWithPassword', err);
-    showCloudGateError('Could not create account: ' + ((err && err.message) || 'unknown error'));
+    showCloudGateError(formatCloudAuthError(err, 'Could not create account.'));
   } finally {
     setCloudGateBusy(false);
   }
@@ -445,6 +445,7 @@ function applyCloudProgramRow(row) {
   // Mirror into localStorage as an offline cache for this browser.
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(buildPersistedPayload())); } catch (e) {}
   __cloudLocked = true;
+  try { document.body.classList.add('cloud-session-active'); } catch (e) { /* ignore */ }
   mapCloudIdentityToRoleView();
   subscribeCloudRealtime();
 }

@@ -15,7 +15,13 @@ function startProgramSetup() {
 function renderOnboardingHome() {
   var body = document.getElementById('home-body');
   var pageHeader = document.querySelector('#tab-home .page-header');
-  if (pageHeader) pageHeader.style.display = 'none';
+  if (pageHeader) {
+    pageHeader.style.display = '';
+    var title = document.getElementById('home-page-title');
+    var subtitle = document.getElementById('home-page-subtitle');
+    if (title) title.textContent = 'Welcome — let\u2019s set up your program';
+    if (subtitle) subtitle.textContent = 'Seven short steps to stand up NIST 800-53. You can return here anytime from Command Center.';
+  }
   if (!body) return;
 
   var progress = getSetupProgressSummary();
