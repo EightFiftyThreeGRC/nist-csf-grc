@@ -142,6 +142,25 @@ function showCloudGateInfo(text) {
   msg.style.background = '#d1fae5';
 }
 
+// Errors must appear inside the gate — global showToast sits behind #cloudSignInGate.
+function showCloudGateError(text) {
+  var msg = document.getElementById('cloudGateMessage');
+  if (!msg) return;
+  msg.textContent = text;
+  msg.style.display = '';
+  msg.style.color = '#991b1b';
+  msg.style.background = '#fee2e2';
+}
+
+function clearCloudGateMessage() {
+  var msg = document.getElementById('cloudGateMessage');
+  if (!msg) return;
+  msg.textContent = '';
+  msg.style.display = 'none';
+  msg.style.color = '';
+  msg.style.background = '';
+}
+
 function hideCloudSignInGate() {
   var gate = document.getElementById('cloudSignInGate');
   if (gate) gate.style.display = 'none';
@@ -149,9 +168,15 @@ function hideCloudSignInGate() {
 
 function setCloudGateBusy(busy, label) {
   var wrap = document.getElementById('cloudGateButtons');
-  if (wrap) wrap.style.opacity = busy ? '0.5' : '';
+  if (wrap) {
+    wrap.style.opacity = busy ? '0.5' : '';
+    wrap.style.pointerEvents = busy ? 'none' : '';
+  }
   var form = document.getElementById('cloudGatePasswordForm');
-  if (form) form.style.opacity = busy ? '0.5' : '';
+  if (form) {
+    form.style.opacity = busy ? '0.5' : '';
+    form.style.pointerEvents = busy ? 'none' : '';
+  }
   var status = document.getElementById('cloudGateStatus');
   if (status) {
     status.textContent = busy ? (label || 'Working…') : '';
@@ -201,19 +226,20 @@ function signInWithGoogle() { return signInWithProvider('google'); }
 async function signInWithPassword() {
   var sb = getCloudClient();
   if (!sb) {
-    if (typeof showToast === 'function') showToast('Cloud sign-in is not configured.', true);
+    showCloudGateError('Cloud sign-in is not configured.');
     return;
   }
   var creds = getCloudGateCredentials();
   if (!validateCloudGateEmail(creds.email)) {
-    if (typeof showToast === 'function') showToast('Enter a valid email address.', true);
+    showCloudGateError('Enter a valid email address.');
     return;
   }
   if (!creds.password) {
-    if (typeof showToast === 'function') showToast('Enter your password.', true);
+    showCloudGateError('Enter your password.');
     return;
   }
   try {
+    clearCloudGateMessage();
     setCloudGateBusy(true, 'Signing in…');
     var res = await sb.auth.signInWithPassword({ email: creds.email, password: creds.password });
     if (res && res.error) throw res.error;
@@ -224,9 +250,7 @@ async function signInWithPassword() {
     }
   } catch (err) {
     console.warn('signInWithPassword', err);
-    if (typeof showToast === 'function') {
-      showToast('Sign-in failed: ' + ((err && err.message) || 'check your email and password.'), true);
-    }
+    showCloudGateError('Sign-in failed: ' + ((err && err.message) || 'check your email and password.'));
   } finally {
     setCloudGateBusy(false);
   }
@@ -235,34 +259,43 @@ async function signInWithPassword() {
 async function signUpWithPassword() {
   var sb = getCloudClient();
   if (!sb) {
-    if (typeof showToast === 'function') showToast('Cloud sign-in is not configured.', true);
+    showCloudGateError('Cloud sign-in is not configured.');
     return;
   }
   var creds = getCloudGateCredentials();
   if (!validateCloudGateEmail(creds.email)) {
-    if (typeof showToast === 'function') showToast('Enter a valid email address.', true);
+    showCloudGateError('Enter a valid email address.');
     return;
   }
   if (creds.password.length < 6) {
-    if (typeof showToast === 'function') showToast('Choose a password with at least 6 characters.', true);
+    showCloudGateError('Choose a password with at least 6 characters.');
     return;
   }
   try {
+    clearCloudGateMessage();
     setCloudGateBusy(true, 'Creating your account…');
-    var res = await sb.auth.signUp({ email: creds.email, password: creds.password });
+    var res = await sb.auth.signUp({
+      email: creds.email,
+      password: creds.password,
+      options: { emailRedirectTo: getCloudRedirectUri() }
+    });
     if (res && res.error) throw res.error;
+    var user = res && res.data ? res.data.user : null;
+    var identities = user && user.identities ? user.identities : null;
+    if (user && (!identities || identities.length === 0)) {
+      showCloudGateError('An account with this email already exists. Sign in instead, or check your inbox if you still need to confirm your email.');
+      return;
+    }
     if (res && res.data && res.data.session) {
       await enterCloudWithSession(res.data.session);
       return;
     }
-    setCloudGateBusy(false);
-    showCloudGateInfo('Account created for ' + creds.email + '. If email confirmation is enabled in Supabase, check your inbox first, then sign in.');
+    showCloudGateInfo('Account created for ' + creds.email + '. Check your inbox if email confirmation is enabled, then sign in.');
   } catch (err) {
-    setCloudGateBusy(false);
     console.warn('signUpWithPassword', err);
-    if (typeof showToast === 'function') {
-      showToast('Could not create account: ' + ((err && err.message) || 'unknown error'), true);
-    }
+    showCloudGateError('Could not create account: ' + ((err && err.message) || 'unknown error'));
+  } finally {
+    setCloudGateBusy(false);
   }
 }
 
@@ -276,7 +309,7 @@ async function sendMagicLink() {
   var input = document.getElementById('cloudGateEmail');
   var email = String((input && input.value) || '').trim();
   if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) {
-    if (typeof showToast === 'function') showToast('Enter a valid email address.', true);
+    showCloudGateError('Enter a valid email address.');
     return;
   }
   try {
@@ -291,9 +324,7 @@ async function sendMagicLink() {
   } catch (err) {
     setCloudGateBusy(false);
     console.warn('sendMagicLink', err);
-    if (typeof showToast === 'function') {
-      showToast('Could not send the link: ' + ((err && err.message) || 'unknown error'), true);
-    }
+    showCloudGateError('Could not send the link: ' + ((err && err.message) || 'unknown error'));
   }
 }
 
