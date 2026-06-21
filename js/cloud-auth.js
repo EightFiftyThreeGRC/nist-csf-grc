@@ -351,6 +351,7 @@ async function signOutCloud() {
   __cloudProgramId = null;
   __cloudProgramOwnerId = null;
   __cloudLocked = false;
+  try { document.body.classList.remove('cloud-session-active'); } catch (e) { /* ignore */ }
   // Close any open account/role menu, then reload to a clean gate.
   var overlay = document.getElementById('rolePickerOverlay');
   if (overlay) overlay.style.display = 'none';
