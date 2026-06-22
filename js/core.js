@@ -1511,8 +1511,19 @@ function getOwnerDisplayName(owner) {
   var name = (owner.name || '').trim();
   if (name && !isSuggestedRoleBucketLabel(name)) return name;
   var email = (owner.email || '').trim();
-  if (email) return email.split('@')[0] || email;
+  if (email) return email;
   return '—';
+}
+
+/** Policy domain owner for tables — name, else email, else em dash. */
+function getDomainOwnerLabel(fam) {
+  var owner = (state.domainOwners || {})[fam];
+  return getOwnerDisplayName(owner);
+}
+
+function getDomainOwnerLabelOr(fam, fallback) {
+  var label = getDomainOwnerLabel(fam);
+  return label === '—' ? (fallback || '—') : label;
 }
 
 function hasRealControlOwner(co) {

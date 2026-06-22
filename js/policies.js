@@ -252,7 +252,7 @@ function renderCustodianWorkspace(user) {
     var dp = (state.domainPolicies||{})[fam];
     var version = dp ? (dp.version || '1.0') : '—';
     var reviewCycle = dp ? (dp.reviewCycle || 'Annual') : 'Annual';
-    var owner = (state.domainOwners[fam]||{}).name || 'Unassigned';
+    var owner = getDomainOwnerLabelOr(fam, 'Unassigned');
     var isOverdue = deadline && deadline < today;
     var isDueSoon = deadline && !isOverdue && deadline <= new Date(Date.now() + 14*86400000).toISOString().slice(0,10);
     var title = getPolicyMergedTitle(fam);
@@ -572,7 +572,7 @@ function renderISSMWorkspace(user) {
   masterFams.forEach(function(mf) {
     var domainSlaves = slavesOf[mf] || [];
     var st = (state.policyStatus[mf]||{}).status || 'Not Started';
-    var ownerName = (state.domainOwners[mf]||{}).name || '—';
+    var ownerName = getDomainOwnerLabel(mf);
     var title = getPolicyMergedTitle(mf);
     var isMyDomain = assignedFams.includes(mf);
     var badgeStr = [mf].concat(domainSlaves).map(function(f){ return '<span style="font-family:monospace;font-size:10px;font-weight:700;background:rgba(30,58,95,0.08);color:var(--navy);padding:1px 5px;border-radius:3px;">' + f + '</span>'; }).join(' ');
@@ -662,7 +662,7 @@ function renderPolicyLibraryCatalog() {
     rows += '<tr onclick="openPolicyDoc(\'' + fam + '\')" style="cursor:pointer;" onmouseover="this.style.background=\'rgba(13,148,136,0.03)\'" onmouseout="this.style.background=\'\'">'
       + '<td>' + badgeStr + '</td>'
       + '<td style="font-weight:600;font-size:13px;color:var(--navy);">' + _esc(getPolicyMergedTitle(fam)) + '</td>'
-      + '<td style="font-size:12px;color:var(--text-muted);">' + _esc((state.domainOwners[fam] || {}).name || '—') + '</td>'
+      + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(getDomainOwnerLabel(fam)) + '</td>'
       + '<td style="font-size:12px;color:var(--text-muted);">' + _esc((getCustodian(fam) || {}).name || '—') + '</td>'
       + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(getApprover(fam)) + '</td>'
       + '<td>' + statusCell + '</td>'
@@ -729,7 +729,7 @@ function renderPolicyList() {
   // Build owner name → [masterFam, ...] map (using master families only)
   const ownerMap = {};
   masterFams.forEach(function(fam) {
-    const name = (state.domainOwners[fam]||{}).name || 'Unassigned';
+    const name = getDomainOwnerLabelOr(fam, 'Unassigned');
     if (!ownerMap[name]) ownerMap[name] = [];
     ownerMap[name].push(fam);
   });
@@ -889,7 +889,7 @@ function renderPolicyList() {
     + '<td><span style="font-family:monospace;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:4px;">ISP</span></td>'
     + '<td style="font-weight:600;font-size:13px;color:var(--navy);">Information Security Policy</td>'
     + '<td style="font-size:12px;color:var(--text-muted);">Tier 1 — Organization</td>'
-    + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(state.programOwner||'—') + '</td>'
+    + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(state.programOwner || state.programOwnerEmail || '—') + '</td>'
     + '<td><span style="background:' + ispStyle.bg + ';border:1px solid ' + ispStyle.border + ';color:' + ispStyle.text + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + ispStatus + '</span></td>'
     + '</tr>';
 
@@ -897,7 +897,7 @@ function renderPolicyList() {
     var slaves = slavesOf[fam] || [];
     var status = (state.policyStatus[fam]||{}).status || 'Not Started';
     var ss = statusStyle(status);
-    var owner = (state.domainOwners[fam]||{}).name || '—';
+    var owner = getDomainOwnerLabel(fam);
     var mergedTitle = getPolicyMergedTitle(fam);
     var badgeStr = [fam].concat(slaves).map(function(f){ return '<span style="font-family:monospace;font-size:10px;font-weight:700;background:rgba(30,58,95,0.08);color:var(--navy);padding:1px 5px;border-radius:3px;">' + f + '</span>'; }).join(' ');
     var canOpen = status !== 'Not Started';
@@ -1320,7 +1320,7 @@ function renderPolicyDocViewer(fam) {
     // Title
     + '<h1 style="font-size:22px;font-weight:800;color:var(--navy);margin:0 0 6px;">' + escapeHTML(title) + '</h1>'
     + '<div style="font-size:13px;color:var(--text-muted);">'
-    +   'Owner: <strong>' + escapeHTML((state.domainOwners[fam]||{}).name || 'Unassigned') + '</strong>'
+    +   'Owner: <strong>' + escapeHTML(getDomainOwnerLabelOr(fam, 'Unassigned')) + '</strong>'
     +   (pSt.approvedAt ? ' &nbsp;·&nbsp; Approved: ' + escapeHTML(pSt.approvedAt) : '')
     +   (pSt.submittedAt ? ' &nbsp;·&nbsp; Submitted: ' + escapeHTML(pSt.submittedAt) : '')
     +   (status === 'Under Review' ? ' &nbsp;·&nbsp; Routed to: <strong>' + escapeHTML(getPolicyPendingReviewerDisplay(fam)) + '</strong>' : '')
