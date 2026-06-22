@@ -291,12 +291,17 @@ function cisoNext(fromStep) {
   }
   if (fromStep===5) {
     var ispRc = (state.policyReviewCycle || {}).ISP || {};
-    if (ispRc._customApprover) {
+    if (typeof validateISPApproverAssignment === 'function') {
+      if (!validateISPApproverAssignment(ispRc, false)) return;
+    } else if (ispRc._customApprover) {
       var approverEm = String(ispRc.approverEmail || '').trim();
       if (!isValidOwnerEmail(approverEm)) {
         showToast('Enter a valid approver email — they will receive a sign-up link to review the ISP.', true);
         return;
       }
+    } else {
+      showToast('Assign a different ISP approver (not the program owner) for separation of duties.', true);
+      return;
     }
     // Finalize the ISP and submit to the selected approver for review.
     try { submitISPForApproval(false, { forceEmail: true }); } catch (e) { console.warn('submitISPForApproval failed:', e); }
@@ -314,14 +319,28 @@ function submitISPForApproval(silent, options) {
   if (!state.policyReviewCycle) state.policyReviewCycle = {};
   var rc = state.policyReviewCycle.ISP || (state.policyReviewCycle.ISP = {});
 
-  // Determine approver. If the checkbox "Different approver" is on, use that; otherwise default to CISO/program owner.
-  var defaultApproverName = (state.programOwner || '').trim();
+  if (typeof validateISPApproverAssignment === 'function') {
+    if (!validateISPApproverAssignment(rc, silent)) return;
+  }
+
+  // Determine approver — ISP requires a different person than the program owner.
   var isCustom = !!rc._customApprover;
-  var approverName = isCustom
-    ? (rc.approvedBy || '').trim()
-    : defaultApproverName;
-  var approverRole  = isCustom ? (rc.approverRole  || '').trim() : (state.programOwnerTitle || 'CISO');
-  var approverEmail = isCustom ? (rc.approverEmail || '').trim() : (state.programOwnerEmail || '');
+  if (!isCustom) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('The ISP must be approved by someone other than the program owner. Turn on "Different approver" and assign a separate reviewer.', true);
+    }
+    return;
+  }
+  var approverName = (rc.approvedBy || '').trim();
+  var approverRole  = (rc.approverRole  || '').trim();
+  var approverEmail = (rc.approverEmail || '').trim();
+  if (typeof ispApproverViolatesSeparationOfDuties === 'function'
+      && ispApproverViolatesSeparationOfDuties(approverEmail, approverName)) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('The ISP approver must be a different person than the program owner (separation of duties).', true);
+    }
+    return;
+  }
 
   if (!approverName) {
     if (!silent) showToast('Tip: assign an ISP approver in the Policy Review card to route it for sign-off.', true);
@@ -385,7 +404,7 @@ function submitISPForApproval(silent, options) {
       return sendISPApprovalRequestEmail({
         approverEmail: approverEmail,
         approverName: approverName,
-        programOwnerName: state.programOwner || defaultApproverName,
+        programOwnerName: (state.programOwner || '').trim(),
         orgName: state.orgName || 'your organization'
       });
     }).then(function(res) {

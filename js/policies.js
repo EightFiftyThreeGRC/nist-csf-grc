@@ -2677,20 +2677,7 @@ function goToCISOPolicyEditor() {
     ispHTML += '</div>';
     var viewerUser = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
     var ispSt2 = ((state.policyStatus||{}).ISP || {}).status || 'Under Review';
-    var viewerCanApproveISP = false;
-    if (ispSt2 === 'Under Review') {
-      if (!state.currentUserId) {
-        viewerCanApproveISP = true;
-      } else if (viewerUser) {
-        var ur = viewerUser.role;
-        if (ur === 'ciso' || ur === 'admin') viewerCanApproveISP = true;
-        else if (ur === 'approver' && (viewerUser.families||[]).indexOf('ISP') !== -1) viewerCanApproveISP = true;
-        else {
-          var subTo = (((state.policyStatus || {}).ISP) || {}).submittedTo || '';
-          if (subTo && viewerUser.name && String(subTo).trim().toLowerCase() === String(viewerUser.name).trim().toLowerCase()) viewerCanApproveISP = true;
-        }
-      }
-    }
+    var viewerCanApproveISP = typeof canSessionApproveISP === 'function' && canSessionApproveISP();
     ispHTML += '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:flex-start;">';
     ispHTML += '<button class="btn btn-secondary btn-sm" onclick="renderPolicyTab()">← Back to Policies</button>';
     ispHTML += '<button class="btn btn-secondary btn-sm" onclick="printPolicyDocument(\'isp\')">🖨️ Print / Save PDF</button>';
@@ -2705,7 +2692,18 @@ function goToCISOPolicyEditor() {
         + '<div style="display:flex;gap:10px;">'
         + '<button class="btn btn-sm" style="background:white;border:1px solid rgba(239,68,68,0.4);color:#dc2626;font-weight:600;" onclick="returnISPToEditor()">↩ Return with Comments</button>'
         + '<button class="btn btn-primary btn-sm" onclick="approveISP()">✅ Approve Policy</button>'
-        + '</div>';
+        + '</div></div>';
+    } else {
+      ispHTML += '</div>';
+      if (ispSt2 === 'Under Review') {
+        var pendingApprover = typeof getISPDesignatedApproverName === 'function' ? getISPDesignatedApproverName() : '';
+        var pendingEmail = typeof getISPDesignatedApproverEmail === 'function' ? getISPDesignatedApproverEmail() : '';
+        ispHTML += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">'
+          + '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">'
+          + 'Awaiting approval from <strong>' + _esc(pendingApprover || 'the designated approver') + '</strong>'
+          + (pendingEmail ? ' (' + _esc(pendingEmail) + ')' : '')
+          + '. Sign in with that account to approve or return this policy.</div></div>';
+      }
     }
     // Annual review working draft (kickoff — promoted from approved suggestions)
     var ispDraft = state.infoSecPolicyReviewDraft;

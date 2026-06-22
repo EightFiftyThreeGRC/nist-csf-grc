@@ -644,7 +644,18 @@
       <button type="button" class="cloud-signin-btn cloud-signin-primary" onclick="signInWithPassword()">
         <span>Sign in</span>
       </button>
+      <button type="button" class="cloud-gate-link-btn" onclick="requestPasswordReset()">Forgot password?</button>
       <button type="button" class="cloud-gate-link-btn" onclick="signUpWithPassword()">Need an account? Create one</button>
+    </div>
+    <div id="cloudGateResetPasswordForm" class="cloud-gate-form" style="display:none;">
+      <div class="cloud-gate-title" style="font-size:18px;margin-bottom:4px;">Set a new password</div>
+      <p class="cloud-gate-sub" style="margin-bottom:8px;">Choose a new password for your account.</p>
+      <input type="password" id="cloudGateNewPassword" class="cloud-gate-email" placeholder="New password" autocomplete="new-password" onkeydown="if(event.key==='Enter')completePasswordReset()">
+      <input type="password" id="cloudGateConfirmPassword" class="cloud-gate-email" placeholder="Confirm new password" autocomplete="new-password" onkeydown="if(event.key==='Enter')completePasswordReset()">
+      <button type="button" class="cloud-signin-btn cloud-signin-primary" onclick="completePasswordReset()">
+        <span>Update password</span>
+      </button>
+      <button type="button" class="cloud-gate-link-btn" onclick="hideCloudPasswordResetForm()">Back to sign in</button>
     </div>
     <div id="cloudGateDivider" class="cloud-gate-divider" style="display:none;"><span>or</span></div>
     <div id="cloudGateButtons" class="cloud-gate-buttons" style="display:none;">

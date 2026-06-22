@@ -212,6 +212,13 @@ function toggleCustomApprover(policyKey, checkbox) {
   if (!state.policyReviewCycle[policyKey]) state.policyReviewCycle[policyKey] = {};
   var rc = state.policyReviewCycle[policyKey];
   var isCustom = checkbox.checked;
+  if (policyKey === 'ISP' && !isCustom) {
+    checkbox.checked = true;
+    if (typeof showToast === 'function') {
+      showToast('The ISP must be approved by someone other than the program owner (separation of duties).', true);
+    }
+    return;
+  }
   rc._customApprover = isCustom;
   if (!isCustom) {
     // Domain policies are drafted by the ISSM but formally approved by the program owner (CISO) unless "Different approver" is used.
@@ -239,6 +246,9 @@ function renderReviewCycleCard(policyKey, label) {
   if (!rc.approvedBy && !rc._customApprover) {
     rc.approvedBy = (state.programOwner || '').trim();
   }
+  if (policyKey === 'ISP' && !rc._customApprover) {
+    rc._customApprover = true;
+  }
 
   // Legacy: domain cards used ISSM name as "Approved By" while the badge said Program Owner — realign to program owner when still the old mistaken value.
   if (policyKey !== 'ISP' && !rc._customApprover) {
@@ -259,17 +269,29 @@ function renderReviewCycleCard(policyKey, label) {
   // Always render both the default badge and the custom fields — the checkbox
   // toggles display:none/block on the custom div. No innerHTML swap needed.
   var isCustom = !!rc._customApprover;
-  var approverHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;font-size:12px;font-weight:600;color:var(--navy);">'
-    + escapeHTML(defaultApproverName || 'CISO') + ' <span style="font-size:10px;color:#6366f1;font-weight:400;">(Program Owner)</span>'
-    + '</div>'
-    + '<label style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;font-size:11px;color:var(--text-muted);">'
-    + '<input type="checkbox" ' + (isCustom ? 'checked' : '') + ' style="accent-color:#6366f1;cursor:pointer;" onclick="toggleCustomApprover(\'' + escKey + '\', this)"> Different approver</label>'
-    + '<div id="custom-approver-' + policyKey + '" style="display:' + (isCustom ? 'block' : 'none') + ';margin-top:8px;">'
-    + '<div style="display:flex;gap:4px;">'
-    + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Approver name" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
-    + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
-    + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
-    + '</div>';
+  var approverHTML = '';
+  if (policyKey === 'ISP') {
+    approverHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">'
+      + 'The Tier 1 ISP must be approved by someone other than the program owner (separation of duties). Assign a senior reviewer below.</div>'
+      + '<div id="custom-approver-' + policyKey + '" style="display:block;margin-top:0;">'
+      + '<div style="display:flex;gap:4px;">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Approver name" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
+      + '</div>';
+  } else {
+    approverHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;font-size:12px;font-weight:600;color:var(--navy);">'
+      + escapeHTML(defaultApproverName || 'CISO') + ' <span style="font-size:10px;color:#6366f1;font-weight:400;">(Program Owner)</span>'
+      + '</div>'
+      + '<label style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;font-size:11px;color:var(--text-muted);">'
+      + '<input type="checkbox" ' + (isCustom ? 'checked' : '') + ' style="accent-color:#6366f1;cursor:pointer;" onclick="toggleCustomApprover(\'' + escKey + '\', this)"> Different approver</label>'
+      + '<div id="custom-approver-' + policyKey + '" style="display:' + (isCustom ? 'block' : 'none') + ';margin-top:8px;">'
+      + '<div style="display:flex;gap:4px;">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Approver name" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
+      + '</div>';
+  }
 
   return '<div style="border:1px solid ' + rs.border + ';border-radius:10px;padding:16px 18px;margin-bottom:16px;background:' + rs.bg + ';">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'

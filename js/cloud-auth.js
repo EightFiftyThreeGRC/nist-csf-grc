@@ -213,6 +213,101 @@ function getCloudSessionName() {
   } catch (e) { return 'User'; }
 }
 
+// ── ISP approver authorization (separation of duties) ─────────────────────────
+function getISPDesignatedApproverEmail() {
+  var ps = (state.policyStatus || {}).ISP || {};
+  var rc = (state.policyReviewCycle || {}).ISP || {};
+  var email = (ps.submittedToEmail || rc.approverEmail || '').trim();
+  return typeof normalizeOwnerEmail === 'function' ? normalizeOwnerEmail(email) : String(email).trim().toLowerCase();
+}
+
+function getISPDesignatedApproverName() {
+  var ps = (state.policyStatus || {}).ISP || {};
+  var rc = (state.policyReviewCycle || {}).ISP || {};
+  return (ps.submittedTo || rc.approvedBy || '').trim();
+}
+
+function getSessionEmailForApproval() {
+  if (isCloudSessionActive()) return typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(getCloudSessionEmail()) : String(getCloudSessionEmail() || '').trim().toLowerCase();
+  if (state.currentUserId && state.users) {
+    var u = state.users.find(function(x) { return x.id === state.currentUserId; });
+    if (u && u.email) {
+      return typeof normalizeOwnerEmail === 'function' ? normalizeOwnerEmail(u.email) : String(u.email).trim().toLowerCase();
+    }
+  }
+  if (state.entraSession && state.entraSession.email) {
+    return typeof normalizeOwnerEmail === 'function'
+      ? normalizeOwnerEmail(state.entraSession.email) : String(state.entraSession.email).trim().toLowerCase();
+  }
+  return '';
+}
+
+function ispApproverViolatesSeparationOfDuties(approverEmail, approverName) {
+  var ownerEmail = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(state.programOwnerEmail) : String(state.programOwnerEmail || '').trim().toLowerCase();
+  var ownerName = (state.programOwner || '').trim().toLowerCase();
+  var em = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(approverEmail) : String(approverEmail || '').trim().toLowerCase();
+  var nm = (approverName || '').trim().toLowerCase();
+  if (em && ownerEmail && em === ownerEmail) return true;
+  if (nm && ownerName && nm === ownerName) return true;
+  if (isCloudSessionActive()) {
+    var sessionEm = typeof normalizeOwnerEmail === 'function'
+      ? normalizeOwnerEmail(getCloudSessionEmail()) : String(getCloudSessionEmail() || '').trim().toLowerCase();
+    if (em && sessionEm && em === sessionEm) return true;
+  }
+  return false;
+}
+
+function canSessionApproveISP() {
+  var ispSt = ((state.policyStatus || {}).ISP || {}).status || '';
+  if (ispSt !== 'Under Review') return false;
+  var approverEmail = getISPDesignatedApproverEmail();
+  if (approverEmail) {
+    var sessionEmail = getSessionEmailForApproval();
+    return !!sessionEmail && sessionEmail === approverEmail;
+  }
+  // Legacy programs without approver email — local demo only, match rostered approver by name.
+  if (isCloudSessionActive()) return false;
+  if (!state.currentUserId) return false;
+  var user = (state.users || []).find(function(u) { return u.id === state.currentUserId; });
+  if (!user || user.role !== 'approver' || (user.families || []).indexOf('ISP') === -1) return false;
+  var approverName = getISPDesignatedApproverName().toLowerCase();
+  return approverName && user.name && user.name.trim().toLowerCase() === approverName;
+}
+
+function validateISPApproverAssignment(rc, silent) {
+  rc = rc || (state.policyReviewCycle || {}).ISP || {};
+  if (!rc._customApprover) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('The ISP must be approved by someone other than the program owner. Turn on "Different approver" and assign a separate reviewer.', true);
+    }
+    return false;
+  }
+  var email = (rc.approverEmail || '').trim();
+  var name = (rc.approvedBy || '').trim();
+  if (typeof isValidOwnerEmail === 'function' && !isValidOwnerEmail(email)) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('Enter a valid approver email — they will receive a sign-up link to review the ISP.', true);
+    }
+    return false;
+  }
+  if (!name) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('Enter the approver name in the Policy Review card.', true);
+    }
+    return false;
+  }
+  if (ispApproverViolatesSeparationOfDuties(email, name)) {
+    if (!silent && typeof showToast === 'function') {
+      showToast('The ISP approver must be a different person than the program owner (separation of duties).', true);
+    }
+    return false;
+  }
+  return true;
+}
+
 // ── sign-in gate UI ──────────────────────────────────────────────────────────
 // Show only the sign-in methods that are turned on in CLOUD_CONFIG.
 function renderCloudGateMethods() {
@@ -294,6 +389,11 @@ function setCloudGateBusy(busy, label) {
   if (form) {
     form.style.opacity = busy ? '0.5' : '';
     form.style.pointerEvents = busy ? 'none' : '';
+  }
+  var resetForm = document.getElementById('cloudGateResetPasswordForm');
+  if (resetForm) {
+    resetForm.style.opacity = busy ? '0.5' : '';
+    resetForm.style.pointerEvents = busy ? 'none' : '';
   }
   var status = document.getElementById('cloudGateStatus');
   if (status) {
@@ -384,6 +484,86 @@ async function signInWithPassword() {
   } catch (err) {
     console.warn('signInWithPassword', err);
     showCloudGateError('Sign-in failed: ' + formatCloudAuthError(err, 'check your email and password.'));
+  } finally {
+    setCloudGateBusy(false);
+  }
+}
+
+async function requestPasswordReset() {
+  var sb = getCloudClient();
+  if (!sb) {
+    showCloudGateError('Cloud sign-in is not configured.');
+    return;
+  }
+  var creds = getCloudGateCredentials();
+  if (!validateCloudGateEmail(creds.email)) {
+    showCloudGateError('Enter the email for your account, then choose Forgot password.');
+    return;
+  }
+  try {
+    clearCloudGateMessage();
+    setCloudGateBusy(true, 'Sending reset link…');
+    var res = await sb.auth.resetPasswordForEmail(creds.email, { redirectTo: getCloudRedirectUri() });
+    if (res && res.error) throw res.error;
+    showCloudGateInfo('Password reset link sent to ' + creds.email + '. Open the email on this device, then set a new password.');
+  } catch (err) {
+    console.warn('requestPasswordReset', err);
+    showCloudGateError('Could not send reset link: ' + formatCloudAuthError(err, 'try again in a minute.'));
+  } finally {
+    setCloudGateBusy(false);
+  }
+}
+
+function showCloudPasswordResetForm() {
+  var signInForm = document.getElementById('cloudGatePasswordForm');
+  var resetForm = document.getElementById('cloudGateResetPasswordForm');
+  if (signInForm) signInForm.style.display = 'none';
+  if (resetForm) resetForm.style.display = '';
+  clearCloudGateMessage();
+  var el = document.getElementById('cloudGateNewPassword');
+  if (el) el.focus();
+}
+
+function hideCloudPasswordResetForm() {
+  var signInForm = document.getElementById('cloudGatePasswordForm');
+  var resetForm = document.getElementById('cloudGateResetPasswordForm');
+  if (resetForm) resetForm.style.display = 'none';
+  if (signInForm && (typeof CLOUD_CONFIG === 'object' && CLOUD_CONFIG && CLOUD_CONFIG.enableEmailPassword)) {
+    signInForm.style.display = '';
+  }
+}
+
+async function completePasswordReset() {
+  var sb = getCloudClient();
+  if (!sb) {
+    showCloudGateError('Cloud sign-in is not configured.');
+    return;
+  }
+  var passEl = document.getElementById('cloudGateNewPassword');
+  var confirmEl = document.getElementById('cloudGateConfirmPassword');
+  var password = String((passEl && passEl.value) || '');
+  var confirm = String((confirmEl && confirmEl.value) || '');
+  if (password.length < 6) {
+    showCloudGateError('Choose a password with at least 6 characters.');
+    return;
+  }
+  if (password !== confirm) {
+    showCloudGateError('Passwords do not match.');
+    return;
+  }
+  try {
+    clearCloudGateMessage();
+    setCloudGateBusy(true, 'Updating password…');
+    var res = await sb.auth.updateUser({ password: password });
+    if (res && res.error) throw res.error;
+    hideCloudPasswordResetForm();
+    showCloudGateInfo('Password updated. Sign in with your new password.');
+    if (passEl) passEl.value = '';
+    if (confirmEl) confirmEl.value = '';
+    cleanCloudUrl();
+  } catch (err) {
+    console.warn('completePasswordReset', err);
+    showCloudGateError('Could not update password: ' + formatCloudAuthError(err, 'try the reset link again.'));
   } finally {
     setCloudGateBusy(false);
   }
@@ -754,6 +934,13 @@ async function initCloudAuth() {
   try {
     sb.auth.onAuthStateChange(function(event, session) {
       if (event === 'SIGNED_OUT') { __cloudSession = null; __cloudEntered = false; return; }
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        __cloudSession = session;
+        showCloudSignInGate();
+        showCloudPasswordResetForm();
+        showCloudGateInfo('Choose a new password for your account.');
+        return;
+      }
       if (session && !__cloudEntered) { enterCloudWithSession(session); }
     });
   } catch (e) { /* ignore */ }
@@ -761,7 +948,16 @@ async function initCloudAuth() {
   var got = null;
   try { got = await sb.auth.getSession(); } catch (e) { console.warn('getSession', e); }
   var session = got && got.data ? got.data.session : null;
-  if (session) return enterCloudWithSession(session);
+  if (session) {
+    if (/type=recovery/.test(window.location.href)) {
+      __cloudSession = session;
+      showCloudSignInGate();
+      showCloudPasswordResetForm();
+      showCloudGateInfo('Choose a new password for your account.');
+      return false;
+    }
+    return enterCloudWithSession(session);
+  }
 
   // No session yet, but if the URL carries auth params (just clicked the email
   // link) give detectSessionInUrl a moment to fire onAuthStateChange before we
@@ -803,4 +999,13 @@ if (typeof window !== 'undefined') {
   window.sendISPApprovalRequestEmail = sendISPApprovalRequestEmail;
   window.formatApproverEmailFailure = formatApproverEmailFailure;
   window.getCloudAppUrl = getCloudAppUrl;
+  window.getISPDesignatedApproverEmail = getISPDesignatedApproverEmail;
+  window.getISPDesignatedApproverName = getISPDesignatedApproverName;
+  window.canSessionApproveISP = canSessionApproveISP;
+  window.ispApproverViolatesSeparationOfDuties = ispApproverViolatesSeparationOfDuties;
+  window.validateISPApproverAssignment = validateISPApproverAssignment;
+  window.requestPasswordReset = requestPasswordReset;
+  window.completePasswordReset = completePasswordReset;
+  window.showCloudPasswordResetForm = showCloudPasswordResetForm;
+  window.hideCloudPasswordResetForm = hideCloudPasswordResetForm;
 }

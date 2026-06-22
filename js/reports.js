@@ -879,13 +879,21 @@ function toggleReportsView() {
 
 // ── ISP Approval actions (for 'approver' role) ────────────────────────────
 function approveISP() {
+  if (typeof canSessionApproveISP === 'function' && !canSessionApproveISP()) {
+    var approverEmail = typeof getISPDesignatedApproverEmail === 'function' ? getISPDesignatedApproverEmail() : '';
+    var msg = approverEmail
+      ? 'Only the designated ISP approver (' + approverEmail + ') can approve this policy. Sign in with that account.'
+      : 'Only the designated ISP approver can approve this policy.';
+    showToast(msg, true);
+    return;
+  }
   var notes = (document.getElementById('isp-approver-notes') || {}).value || '';
   if (!state.policyStatus) state.policyStatus = {};
   if (!state.policyReviewCycle) state.policyReviewCycle = {};
   var rc = state.policyReviewCycle.ISP || (state.policyReviewCycle.ISP = {});
   var prev = state.policyStatus.ISP || {};
   var approverUser = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
-  var approverName = approverUser ? approverUser.name : (rc.approvedBy || 'Approver');
+  var approverName = approverUser ? approverUser.name : (typeof getSessionActorName === 'function' ? getSessionActorName(rc.approvedBy || 'Approver') : (rc.approvedBy || 'Approver'));
   state.policyStatus.ISP = {
     status: 'Approved',
     approvedBy: approverName,
@@ -912,6 +920,14 @@ function approveISP() {
 }
 
 function returnISPToEditor() {
+  if (typeof canSessionApproveISP === 'function' && !canSessionApproveISP()) {
+    var approverEmail = typeof getISPDesignatedApproverEmail === 'function' ? getISPDesignatedApproverEmail() : '';
+    var msg = approverEmail
+      ? 'Only the designated ISP approver (' + approverEmail + ') can return this policy. Sign in with that account.'
+      : 'Only the designated ISP approver can return this policy.';
+    showToast(msg, true);
+    return;
+  }
   var notes = (document.getElementById('isp-approver-notes') || {}).value || '';
   if (!notes) { showToast('Please add return comments before returning the policy.', true); return; }
   if (!state.policyStatus) state.policyStatus = {};
@@ -1160,13 +1176,23 @@ function renderApproverDashboard(user) {
     html += '<button class="btn btn-secondary btn-sm" style="margin-bottom:16px;" onclick="showTab(\'policy\');goToCISOPolicyEditor();">📋 View Full Policy →</button>';
 
     if (ispSt === 'Under Review') {
-      html += '<div style="border-top:1px solid var(--border);padding-top:16px;">'
-        + '<div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px;">Review Notes (required to return, optional to approve)</div>'
-        + '<textarea id="isp-approver-notes" class="form-input" rows="3" style="font-size:13px;resize:vertical;margin-bottom:12px;" placeholder="Add any notes or conditions for approval…"></textarea>'
-        + '<div style="display:flex;gap:10px;">'
-        + '<button class="btn btn-sm" style="background:white;border:1px solid rgba(239,68,68,0.4);color:#dc2626;font-weight:600;" onclick="returnISPToEditor()">↩ Return with Comments</button>'
-        + '<button class="btn btn-primary btn-sm" onclick="approveISP()">✅ Approve Policy</button>'
-        + '</div></div>';
+      var canApprove = typeof canSessionApproveISP === 'function' && canSessionApproveISP();
+      html += '<div style="border-top:1px solid var(--border);padding-top:16px;">';
+      if (canApprove) {
+        html += '<div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px;">Review Notes (required to return, optional to approve)</div>'
+          + '<textarea id="isp-approver-notes" class="form-input" rows="3" style="font-size:13px;resize:vertical;margin-bottom:12px;" placeholder="Add any notes or conditions for approval…"></textarea>'
+          + '<div style="display:flex;gap:10px;">'
+          + '<button class="btn btn-sm" style="background:white;border:1px solid rgba(239,68,68,0.4);color:#dc2626;font-weight:600;" onclick="returnISPToEditor()">↩ Return with Comments</button>'
+          + '<button class="btn btn-primary btn-sm" onclick="approveISP()">✅ Approve Policy</button>'
+          + '</div>';
+      } else {
+        var approverEmail = typeof getISPDesignatedApproverEmail === 'function' ? getISPDesignatedApproverEmail() : '';
+        html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">'
+          + 'Awaiting approval from <strong>' + escapeHTML(getISPDesignatedApproverName() || 'the designated approver') + '</strong>'
+          + (approverEmail ? ' (' + escapeHTML(approverEmail) + ')' : '')
+          + '. Sign in with that account to approve or return this policy.</div>';
+      }
+      html += '</div>';
     } else if (ispSt === 'Approved') {
       html += '<div style="font-size:12px;color:var(--teal);font-weight:600;">\u2713 Approved' + (approvedDate ? ' on ' + approvedDate : '') + '</div>';
     } else if (ispSt === 'Returned') {
