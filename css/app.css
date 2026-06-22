@@ -2943,6 +2943,15 @@
       text-underline-offset: 2px;
     }
     .cloud-gate-link-btn:hover { color: #0b8076; }
+    .cloud-gate-forgot-row {
+      display: flex;
+      justify-content: flex-end;
+      margin: -4px 0 2px;
+    }
+    .cloud-gate-forgot-btn {
+      font-size: 13px;
+      margin-top: 0;
+    }
     .cloud-gate-email {
       width: 100%;
       padding: 12px 14px;

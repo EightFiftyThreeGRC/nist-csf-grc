@@ -641,10 +641,12 @@
     <div id="cloudGatePasswordForm" class="cloud-gate-form" style="display:none;">
       <input type="email" id="cloudGateEmail" class="cloud-gate-email" placeholder="you@company.com" autocomplete="email">
       <input type="password" id="cloudGatePassword" class="cloud-gate-email" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signInWithPassword()">
+      <div class="cloud-gate-forgot-row">
+        <button type="button" class="cloud-gate-link-btn cloud-gate-forgot-btn" onclick="requestPasswordReset()">Forgot password?</button>
+      </div>
       <button type="button" class="cloud-signin-btn cloud-signin-primary" onclick="signInWithPassword()">
         <span>Sign in</span>
       </button>
-      <button type="button" class="cloud-gate-link-btn" onclick="requestPasswordReset()">Forgot password?</button>
       <button type="button" class="cloud-gate-link-btn" onclick="signUpWithPassword()">Need an account? Create one</button>
     </div>
     <div id="cloudGateResetPasswordForm" class="cloud-gate-form" style="display:none;">
