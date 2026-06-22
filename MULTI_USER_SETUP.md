@@ -75,171 +75,91 @@ nothing on its own; all access is enforced by the RLS policies from step 2.
 
 Commit, push, and GitHub Pages redeploys. Done.
 
-### 5. ISP approver emails (Resend — production setup)
+### 5. ISP approver email (no domain required)
 
-When a CISO picks **Different approver** and advances past ISP Step 3, the app emails that
-person a **sign-in link** to create an account and approve the Tier-1 ISP. For **any real email
-address** (not just your own), you must send through **Resend using a domain you control**.
-The default `onboarding@resend.dev` sender cannot deliver to arbitrary approvers.
+When a CISO picks **Different approver** and advances past ISP Step 3, the app emails that person a **magic sign-in link** so they can create an account and approve the Tier-1 ISP.
 
-#### What you are setting up
+**You do not need to buy a domain.** The default path uses **Supabase built-in auth mail**, which delivers to any real address (Gmail, work mail, etc.).
 
-| Piece | Purpose |
-|--------|---------|
-| [Resend](https://resend.com) | Sends the email (any recipient, once domain is verified) |
-| Verified domain in Resend | Proves you may send as `noreply@yourdomain.com` |
-| `RESEND_API_KEY` (GitHub secret) | Edge functions call Resend API |
-| `EMAIL_FROM` (GitHub variable) | From line, must use your verified domain |
-| Supabase edge functions | `auth-send-email` hook + `send-isp-approval-request` |
-| Send Email auth hook | Intercepts magic-link mail and applies branded copy |
+| Path | Setup | Branded subject? |
+|------|--------|------------------|
+| **Default — Supabase** | `SUPABASE_ACCESS_TOKEN` only | Generic (“Sign up to review…”) but works everywhere |
+| **Optional — SendGrid** | Verify your existing Gmail (free single-sender) | Yes — “Approve [Org]'s Info Sec Policy” |
+| **Optional — Resend** | Only if you already own a verified domain | Yes |
 
-Branded message:
+Resend’s sandbox sender (`onboarding@resend.dev`) **cannot** mail external approvers — do not use it for this flow.
 
-- **Subject:** `Approve [Your Org]'s Info Sec Policy`
-- **Body:** `[CISO name] requested you to approve. Sign up to review.` + button link
+#### Step 1 — Supabase redirect URL (one-time)
 
----
+**Authentication → URL configuration**
 
-#### Step 1 — Domain you control
-
-You need a domain whose DNS you can edit (e.g. `yourcompany.com`, or a subdomain like
-`mail.yourcompany.com`). You **cannot** use `github.io` for Resend verification.
-
-In Resend: **Domains** → **Add Domain** → enter the domain → Resend shows DNS records (SPF,
-DKIM, optional DMARC).
-
-Add those records at your DNS host (Cloudflare, Route53, Google Domains, etc.). Wait until
-Resend shows the domain as **Verified** (often 5–30 minutes, sometimes longer).
-
----
-
-#### Step 2 — Resend API key
-
-1. Resend → **API Keys** → **Create API Key**
-2. Name: `eightfiftythree-grc-production`
-3. Permission: **Sending access** (or Full access)
-4. Copy the key (`re_...`) — shown once
-
----
-
-#### Step 3 — GitHub repo configuration
-
-Open **https://github.com/EightFiftyThreeGRC/eightfiftythree-grc** → **Settings** →
-**Secrets and variables** → **Actions**
-
-**Secrets** (encrypted):
-
-| Name | Value |
-|------|--------|
-| `SUPABASE_ACCESS_TOKEN` | Supabase personal token from [Account → Tokens](https://supabase.com/dashboard/account/tokens) (`sbp_...`) |
-| `RESEND_API_KEY` | `re_...` from Step 2 |
-
-**Variables** (not secret):
-
-| Name | Example value |
-|------|----------------|
-| `EMAIL_FROM` | `EightFiftyThree GRC <noreply@yourdomain.com>` |
-
-The address after `@` must match your **verified** Resend domain. Display name before `<` is optional.
-
-Optional: `ENABLE_BRANDED_AUTH_HOOK` = `true` forces the branded hook even if you need to
-override auto-detection (normally setting `EMAIL_FROM` on a non-`resend.dev` domain is enough).
-
----
-
-#### Step 4 — Supabase redirect URL (one-time)
-
-Supabase project **mdysqwcbgfizzojqojwu** (or yours) → **Authentication** → **URL configuration**
-
-Ensure **Redirect URLs** includes:
-
-```text
-https://eightfiftythreegrc.github.io/eightfiftythree-grc/app.html
-```
-
-Add a wildcard if you use preview URLs:
-
-```text
-https://eightfiftythreegrc.github.io/eightfiftythree-grc/**
-```
-
-**Site URL** can be the same `app.html` URL.
+| Field | Value |
+|-------|--------|
+| **Site URL** | `https://eightfiftythreegrc.github.io/eightfiftythree-grc/app.html` |
+| **Redirect URLs** | Same URL (add if missing) |
 
 Without this, magic links in the email may not return users to the app.
 
----
+#### Step 2 — Configure mail (GitHub Actions)
 
-#### Step 5 — Deploy edge functions + enable branded hook
+1. GitHub **Settings → Secrets and variables → Actions**
+2. Secret **`SUPABASE_ACCESS_TOKEN`** — personal token from [Supabase Account → Tokens](https://supabase.com/dashboard/account/tokens) (`sbp_...`)
+3. **Actions** → **Configure Supabase approver email** → **Run workflow** (branch `main`)
 
-1. GitHub → **Actions** → **Deploy Supabase email functions**
-2. **Run workflow** → branch `main` → **Run workflow**
-3. Wait for green checkmark
+With **only** `SUPABASE_ACCESS_TOKEN`, the script:
 
-The script will:
-
-- Deploy `auth-send-email` and `send-isp-approval-request`
-- Store `RESEND_API_KEY`, `EMAIL_FROM`, and hook secret in Supabase
-- **Enable** the Send Email hook when `EMAIL_FROM` uses your verified domain
+- Patches auth email templates with policy-invite copy
+- **Disables** the Send Email hook (so mail is not routed through a broken Resend sandbox)
+- Approver invites go through Supabase → **any inbox**
 
 **Or locally:**
 
 ```bash
 export SUPABASE_ACCESS_TOKEN=sbp_...
-export RESEND_API_KEY=re_...
-export EMAIL_FROM='EightFiftyThree GRC <noreply@yourdomain.com>'
 node scripts/configure-supabase-email.mjs
 ```
 
----
+#### Step 3 — Test
 
-#### Step 6 — Verify in dashboards
+1. Hard-refresh `app.html`, signed in (cloud mode)
+2. Program setup → ISP Step 3 → **Different approver** → real email (e.g. `nistcsftool@gmail.com`)
+3. Click **Next** past Step 3
+4. Toast: sign-up email sent
+5. Approver clicks the link → lands on `app.html` → signs in with **that same email** → approves ISP
 
-**Resend → Logs** — after a test send you should see `delivered` (not `validation_error`).
+#### Optional — branded mail without buying a domain (SendGrid)
 
-**Supabase → Authentication → Hooks** — **Send Email** should be **Enabled**, URL ending in
-`/functions/v1/auth-send-email`.
+1. [SendGrid](https://sendgrid.com) → **Settings → Sender Authentication → Single Sender Verification** → verify your Gmail (or any address you control)
+2. GitHub secrets/variables:
 
-**Supabase → Edge Functions** — `auth-send-email` and `send-isp-approval-request` listed.
+| Name | Type | Value |
+|------|------|--------|
+| `SUPABASE_ACCESS_TOKEN` | Secret | `sbp_...` |
+| `SENDGRID_API_KEY` | Secret | SendGrid API key |
+| `EMAIL_FROM` | Variable | `EightFiftyThree GRC <your-verified@gmail.com>` |
 
----
+3. Re-run **Configure Supabase approver email** — deploys the auth hook + edge functions; branded copy goes through SendGrid.
 
-#### Step 7 — Test the product flow
+#### Optional — Resend (teams with an existing domain)
 
-1. Hard-refresh `app.html`, **signed in** (cloud mode)
-2. Program setup → ISP Step 3 → check **Different approver**
-3. Enter approver **name** and **real email** (e.g. `nistcsftool@gmail.com`)
-4. Click **Next** past Step 3
-5. Toast should say approval / sign-in email was sent
-6. Approver inbox: subject `Approve … Info Sec Policy`, body with sign-up link
-7. Approver clicks link → lands on app → signs up with **that same email** → gets approver role
-
-If ISP was already “Under Review” from earlier attempts, going back to Step 3 and clicking
-**Next** again will resend the invite.
-
----
+Set `RESEND_API_KEY` + `EMAIL_FROM` on your **verified** domain, then re-run the configure workflow. Resend sandbox alone is rejected by the edge functions.
 
 #### Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| Resend log: “only send testing emails…” | Domain not verified or `EMAIL_FROM` still uses `resend.dev` |
-| Edge function / hook 500 | Re-run deploy; check Supabase → Edge Functions → Logs |
-| Email never arrives | Resend Logs + spam; confirm domain verified |
-| Link opens app but sign-in fails | Add `app.html` to Supabase redirect URLs (Step 4) |
-| Generic Supabase “Confirm your email” | Send Email hook disabled — re-run deploy with `EMAIL_FROM` set |
-| Toast still shows errors | Hard-refresh app; browser console for `sendISPApprovalRequestEmail` |
+| Mail only to your Resend login | Send Email hook still on Resend sandbox — re-run configure workflow with **no** `RESEND_API_KEY` / `SENDGRID_API_KEY` |
+| `Edge Function returned a non-2xx` | Same as above — disable hook; default path needs no edge functions |
+| No mail at all | Supabase **Authentication → Logs**; confirm redirect URLs (Step 1) |
+| Generic “Confirm your email” | Expected on default path — still works; use SendGrid (optional) for branded subject |
+| Toast still shows errors | Hard-refresh app; check browser console for `sendISPApprovalRequestEmail` |
 
----
+#### How the code sends mail
 
-#### How the code sends mail (reference)
+1. App calls `signInWithOtp` for the approver email (org/CISO stored in user metadata).
+2. **Default:** Supabase sends the magic link directly — no Resend, no domain.
+3. **Optional:** Send Email hook → `auth-send-email` → SendGrid or Resend when those keys are configured.
 
-1. App calls `signInWithOtp` for the approver email (with org/CISO in user metadata).
-2. Supabase invokes the **Send Email** hook → `auth-send-email` → Resend with branded template.
-3. If that path fails, the app tries `send-isp-approval-request` (same copy, admin-generated magic link).
-
-Both paths require a working `RESEND_API_KEY` and verified `EMAIL_FROM`.
-
----
 
 ## How it works
 

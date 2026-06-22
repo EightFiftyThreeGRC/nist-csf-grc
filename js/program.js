@@ -391,22 +391,21 @@ function submitISPForApproval(silent, options) {
     }).then(function(res) {
       if (res && res.ok) {
         if (!silent) {
-          var via = res.method === 'custom'
-            ? 'Approval email sent to ' + approverEmail + '.'
-            : 'Sign-in link sent to ' + approverEmail + ' (generic Supabase template — deploy the email function for branded copy).';
-          showToast('📨 ISP submitted to ' + approverName + '. ' + via);
+          showToast('📨 ISP submitted to ' + approverName + '. Sign-up email sent to ' + approverEmail + '.');
         }
         try { addAuditEntry('policy', 'ISP', 'Approver sign-in link sent to ' + approverEmail); } catch (e) { /* ignore */ }
       } else if (res && res.reason === 'not_cloud') {
         if (!silent) showToast('ISP submitted to ' + approverName + '. Sign in (cloud mode) to email ' + approverEmail + ' a sign-up link.', true);
       } else if (!silent) {
-        var detail = (res && res.reason) ? formatApproverEmailFailure(res.reason) : 'unknown error';
+        var fmtFail = typeof formatApproverEmailFailure === 'function' ? formatApproverEmailFailure : function(r) { return r || 'unknown error'; };
+        var detail = (res && res.reason) ? fmtFail(res.reason) : 'unknown error';
         showToast('ISP submitted, but could not email ' + approverEmail + ': ' + detail, true);
       }
     }).catch(function(err) {
       console.warn('submitISPForApproval email', err);
       if (!silent) {
-        var msg = formatApproverEmailFailure(err && err.message ? err.message : String(err));
+        var fmtErr = typeof formatApproverEmailFailure === 'function' ? formatApproverEmailFailure : function(r) { return r || 'unknown error'; };
+        var msg = fmtErr(err && err.message ? err.message : String(err));
         showToast('Could not send approver email: ' + msg, true);
       }
     });
