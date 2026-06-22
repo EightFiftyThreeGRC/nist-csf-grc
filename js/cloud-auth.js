@@ -87,7 +87,7 @@ function getCloudAppUrl() {
 }
 
 // Notify a custom ISP approver (cloud mode). Tries branded edge-function email first,
-// then falls back to Supabase Auth magic link (generic template).
+// then falls back to Supabase Auth OTP (auth-send-email hook or default template).
 async function sendISPApprovalRequestEmail(opts) {
   if (!isCloudSessionActive()) return { ok: false, reason: 'not_cloud' };
   var sb = getCloudClient();
@@ -106,29 +106,33 @@ async function sendISPApprovalRequestEmail(opts) {
     orgName: orgName,
     appUrl: appUrl
   };
+  var lastEdgeFailure = '';
+
+  function parseInvokeData(raw) {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
 
   if (sb.functions && typeof sb.functions.invoke === 'function') {
     try {
       var edge = await sb.functions.invoke('send-isp-approval-request', { body: payload });
-      if (!edge.error && edge.data && edge.data.ok) {
+      var edgeData = parseInvokeData(edge.data);
+      if (!edge.error && edgeData && edgeData.ok) {
         return { ok: true, method: 'custom' };
       }
-      var edgeErr = (edge.data && edge.data.error) || (edge.error && edge.error.message) || '';
-      var edgeDetail = (edge.data && edge.data.detail) || '';
-      var notDeployed = String(edgeErr).toLowerCase().indexOf('not found') >= 0
-        || String(edgeDetail).toLowerCase().indexOf('not found') >= 0;
-      var noResend = String(edgeErr).indexOf('RESEND') >= 0;
-      if (!notDeployed && !noResend && edgeErr) {
-        console.warn('sendISPApprovalRequestEmail edge', edgeErr, edgeDetail);
-        return { ok: false, reason: edgeErr };
-      }
+      var edgeErr = (edgeData && edgeData.error) || (edge.error && edge.error.message) || '';
+      var edgeDetail = (edgeData && edgeData.detail) || '';
+      lastEdgeFailure = [edgeErr, edgeDetail].filter(Boolean).join(' — ');
+      console.warn('sendISPApprovalRequestEmail edge (will try OTP fallback):', lastEdgeFailure || edge);
     } catch (e) {
+      lastEdgeFailure = String(e && e.message ? e.message : e);
       console.warn('sendISPApprovalRequestEmail edge invoke', e);
     }
   }
 
   if (!sb.auth || typeof sb.auth.signInWithOtp !== 'function') {
-    return { ok: false, reason: 'no_client' };
+    return { ok: false, reason: lastEdgeFailure || 'no_client' };
   }
   try {
     var res = await sb.auth.signInWithOtp({
@@ -146,13 +150,31 @@ async function sendISPApprovalRequestEmail(opts) {
     });
     if (res && res.error) {
       console.warn('sendISPApprovalRequestEmail signInWithOtp', res.error);
-      return { ok: false, reason: res.error.message || 'otp_failed' };
+      var otpReason = res.error.message || 'otp_failed';
+      if (lastEdgeFailure) otpReason = lastEdgeFailure + ' · OTP: ' + otpReason;
+      return { ok: false, reason: otpReason };
     }
     return { ok: true, method: 'magic_link' };
   } catch (e) {
     console.warn('sendISPApprovalRequestEmail', e);
-    return { ok: false, reason: String(e && e.message ? e.message : e) };
+    var reason = String(e && e.message ? e.message : e);
+    if (lastEdgeFailure) reason = lastEdgeFailure + ' · OTP: ' + reason;
+    return { ok: false, reason: reason };
   }
+}
+
+function formatApproverEmailFailure(reason) {
+  var r = String(reason || '').toLowerCase();
+  if (r.indexOf('only send testing emails') >= 0 || r.indexOf('verify a domain') >= 0) {
+    return 'Resend sandbox: use the email on your Resend account as approver, or verify a domain and set EMAIL_FROM in GitHub repo variables.';
+  }
+  if (r.indexOf('rate limit') >= 0 || r.indexOf('too many') >= 0) {
+    return 'Email rate limit — wait a minute and try again.';
+  }
+  if (r.indexOf('redirect') >= 0 && r.indexOf('url') >= 0) {
+    return 'Sign-in redirect URL not allowed — add app.html to Supabase Auth → URL configuration → Redirect URLs.';
+  }
+  return reason || 'unknown error';
 }
 
 function getCloudSessionEmail() {
@@ -754,5 +776,6 @@ if (typeof window !== 'undefined') {
   window.cloudPushNow = cloudPushNow;
   window.initCloudAuth = initCloudAuth;
   window.sendISPApprovalRequestEmail = sendISPApprovalRequestEmail;
+  window.formatApproverEmailFailure = formatApproverEmailFailure;
   window.getCloudAppUrl = getCloudAppUrl;
 }

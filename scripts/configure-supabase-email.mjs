@@ -76,7 +76,19 @@ function run(cmd, args, env) {
 
 async function main() {
   const ref = readProjectRef();
-  const hookSecret = process.env.SEND_EMAIL_HOOK_SECRET || generateHookSecret();
+  let hookSecret = process.env.SEND_EMAIL_HOOK_SECRET || '';
+  if (!hookSecret) {
+    try {
+      const authCfg = await api('GET', '/v1/projects/' + ref + '/config/auth');
+      if (authCfg && authCfg.hook_send_email_secrets) {
+        hookSecret = String(authCfg.hook_send_email_secrets);
+        console.log('Reusing existing Send Email hook secret from project config.');
+      }
+    } catch (e) {
+      console.log('Could not read auth config (will generate new hook secret):', e.message);
+    }
+  }
+  if (!hookSecret) hookSecret = generateHookSecret();
   const emailFrom = process.env.EMAIL_FROM || 'EightFiftyThree GRC <onboarding@resend.dev>';
 
   console.log('Project ref:', ref);

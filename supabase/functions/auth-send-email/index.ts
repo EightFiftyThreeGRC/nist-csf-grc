@@ -53,6 +53,14 @@ const DEFAULT_HTML: Record<string, string> = {
   email_change_new: '<h2>Confirm your new email address</h2><p><a href="{{url}}">Confirm</a></p>',
 };
 
+function webhookHeaders(req: Request): Record<string, string> {
+  const out: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    out[key.toLowerCase()] = value;
+  });
+  return out;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -72,7 +80,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.text();
-    const headers = Object.fromEntries(req.headers);
+    const headers = webhookHeaders(req);
     const hookSecret = hookSecretRaw.replace(/^v1,whsec_/, '');
     const wh = new Webhook(hookSecret);
     const { user, email_data } = wh.verify(payload, headers) as {

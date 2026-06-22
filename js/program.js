@@ -299,15 +299,16 @@ function cisoNext(fromStep) {
       }
     }
     // Finalize the ISP and submit to the selected approver for review.
-    try { submitISPForApproval(/*silent=*/false); } catch (e) { console.warn('submitISPForApproval failed:', e); }
+    try { submitISPForApproval(false, { forceEmail: true }); } catch (e) { console.warn('submitISPForApproval failed:', e); }
   }
   goToStep('ciso', fromStep+1);
 }
 
 // Auto-submits the ISP to the assigned approver when the CISO advances past Step 3.
-// Moves the ISP from Draft/Not Started → Under Review, registers the approver as a user,
-// logs an audit entry, and shows a toast. Idempotent — safe to call on re-entry.
-function submitISPForApproval(silent) {
+// options.forceEmail — resend approver invite when leaving ISP step (even if already Under Review).
+function submitISPForApproval(silent, options) {
+  options = options || {};
+  var forceEmail = !!options.forceEmail;
   if (!state.infoSecPolicy) return;
   if (!state.policyStatus) state.policyStatus = {};
   if (!state.policyReviewCycle) state.policyReviewCycle = {};
@@ -342,6 +343,7 @@ function submitISPForApproval(silent) {
   // Only (re)submit if the ISP isn't already approved. Approved policies shouldn't regress on re-edit.
   var current = (state.policyStatus.ISP || {}).status;
   var justSubmitted = false;
+  var wantApproverEmail = isCustom && approverEmail && current !== 'Approved' && (forceEmail || current !== 'Under Review');
   if (current !== 'Approved') {
     justSubmitted = current !== 'Under Review';
     state.policyStatus.ISP = {
@@ -355,21 +357,21 @@ function submitISPForApproval(silent) {
     };
     try { addAuditEntry('policy', 'ISP', 'ISP submitted for approval — routed to ' + approverName + (approverRole ? ' (' + approverRole + ')' : '')); } catch (e) { console.warn('audit log failed:', e); }
     var cloudActive = typeof isCloudSessionActive === 'function' && isCloudSessionActive();
-    var willEmail = justSubmitted && isCustom && approverEmail
+    var willEmail = wantApproverEmail
       && typeof sendISPApprovalRequestEmail === 'function'
       && cloudActive;
     if (!silent && !willEmail) {
       if (isCustom && approverEmail && !cloudActive) {
         showToast('ISP submitted to ' + approverName + '. Sign in (cloud mode) to email ' + approverEmail + ' a sign-up link.', true);
-      } else if (isCustom && approverEmail && !justSubmitted) {
-        showToast('ISP already under review — routed to ' + approverName + '. No new sign-up email sent.', true);
+      } else if (isCustom && approverEmail && current === 'Approved') {
+        showToast('ISP is already approved — no approver email sent.', true);
       } else {
         showToast('📨 ISP submitted to ' + approverName + ' for review.');
       }
     }
   }
 
-  if (justSubmitted && isCustom && approverEmail && typeof sendISPApprovalRequestEmail === 'function') {
+  if (wantApproverEmail && typeof sendISPApprovalRequestEmail === 'function') {
     // Roster the approver and push to cloud before emailing so RLS lets them in when they click the link.
     try { if (typeof syncUsersFromState === 'function') syncUsersFromState(); } catch (e) { console.warn('syncUsersFromState failed:', e); }
     try { markDirty(); } catch (e) { console.warn('markDirty failed:', e); }
@@ -398,8 +400,14 @@ function submitISPForApproval(silent) {
       } else if (res && res.reason === 'not_cloud') {
         if (!silent) showToast('ISP submitted to ' + approverName + '. Sign in (cloud mode) to email ' + approverEmail + ' a sign-up link.', true);
       } else if (!silent) {
-        var detail = (res && res.reason) ? (' (' + res.reason + ')') : '';
-        showToast('ISP submitted, but could not email ' + approverEmail + detail + '. Ask them to open the app and register with that address.', true);
+        var detail = (res && res.reason) ? formatApproverEmailFailure(res.reason) : 'unknown error';
+        showToast('ISP submitted, but could not email ' + approverEmail + ': ' + detail, true);
+      }
+    }).catch(function(err) {
+      console.warn('submitISPForApproval email', err);
+      if (!silent) {
+        var msg = formatApproverEmailFailure(err && err.message ? err.message : String(err));
+        showToast('Could not send approver email: ' + msg, true);
       }
     });
   } else {
