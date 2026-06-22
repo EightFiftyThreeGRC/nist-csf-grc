@@ -78,7 +78,7 @@ const AUTH_TEMPLATE_PATCH = {
 async function main() {
   const ref = readProjectRef();
   const emailFrom = (process.env.EMAIL_FROM || process.env.SENDER_EMAIL || '').trim();
-  const useBrandedHook = process.env.ENABLE_BRANDED_AUTH_HOOK === 'true' || (!!SENDGRID && !!emailFrom);
+  const useBrandedHook = !!SENDGRID && !!emailFrom;
 
   console.log('Project ref:', ref);
   console.log('Mail mode:', useBrandedHook
@@ -127,11 +127,13 @@ async function main() {
     }));
     console.log('\nDone. Branded approver email enabled via SendGrid.');
   } else {
+    // Only flip the hook off — do not send empty uri/secrets (API returns 400).
     await api('PATCH', '/v1/projects/' + ref + '/config/auth', Object.assign({}, AUTH_TEMPLATE_PATCH, {
       hook_send_email_enabled: false,
-      hook_send_email_uri: '',
-      hook_send_email_secrets: '',
     }));
+    if (emailFrom && !SENDGRID) {
+      console.log('Note: EMAIL_FROM is set but SENDGRID_API_KEY is missing — using Supabase built-in mail.');
+    }
     console.log('\nDone. Send Email hook OFF — approver invites use Supabase mail (works for any address).');
   }
 }
