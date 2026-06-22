@@ -114,22 +114,61 @@ async function sendISPApprovalRequestEmail(opts) {
     try { return JSON.parse(raw); } catch (e) { return null; }
   }
 
-  if (sb.functions && typeof sb.functions.invoke === 'function') {
+  function summarizeApiErrorBody(data, fallbackText) {
+    if (!data) return fallbackText || '';
+    var parts = [];
+    if (data.error) parts.push(String(data.error));
+    if (data.detail) {
+      var nested = parseInvokeData(data.detail);
+      if (nested && nested.message) parts.push(String(nested.message));
+      else parts.push(String(data.detail));
+    }
+    if (data.message) parts.push(String(data.message));
+    return parts.filter(Boolean).join(' — ') || fallbackText || '';
+  }
+
+  function formatAuthError(err) {
+    if (!err) return 'sign-in email failed';
+    if (typeof err === 'string') return err;
+    var msg = err.message || err.msg || err.error_description || err.code || '';
+    if (msg && String(msg) !== '{}') return String(msg);
     try {
-      var edge = await sb.functions.invoke('send-isp-approval-request', { body: payload });
-      var edgeData = parseInvokeData(edge.data);
-      if (!edge.error && edgeData && edgeData.ok) {
-        return { ok: true, method: 'custom' };
-      }
-      var edgeErr = (edgeData && edgeData.error) || (edge.error && edge.error.message) || '';
-      var edgeDetail = (edgeData && edgeData.detail) || '';
-      lastEdgeFailure = [edgeErr, edgeDetail].filter(Boolean).join(' — ');
-      console.warn('sendISPApprovalRequestEmail edge (will try OTP fallback):', lastEdgeFailure || edge);
+      var s = JSON.stringify(err);
+      if (s && s !== '{}') return s;
+    } catch (e) { /* ignore */ }
+    return 'sign-in email failed (check Supabase Auth hook / Resend logs)';
+  }
+
+  async function invokeIspApproverEdgeFunction(sb, body) {
+    var cfg = (typeof CLOUD_CONFIG === 'object' && CLOUD_CONFIG) ? CLOUD_CONFIG : {};
+    var baseUrl = String(cfg.supabaseUrl || '').replace(/\/$/, '');
+    var anonKey = String(cfg.supabaseAnonKey || '').trim();
+    var token = (__cloudSession && __cloudSession.access_token) ? __cloudSession.access_token : '';
+    if (!baseUrl || !anonKey || !token) return { ok: false, reason: 'missing_session' };
+    try {
+      var res = await fetch(baseUrl + '/functions/v1/send-isp-approval-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          'apikey': anonKey
+        },
+        body: JSON.stringify(body)
+      });
+      var text = await res.text();
+      var data = parseInvokeData(text);
+      if (res.ok && data && data.ok) return { ok: true, method: 'custom' };
+      var reason = summarizeApiErrorBody(data, text) || ('HTTP ' + res.status);
+      return { ok: false, reason: reason };
     } catch (e) {
-      lastEdgeFailure = String(e && e.message ? e.message : e);
-      console.warn('sendISPApprovalRequestEmail edge invoke', e);
+      return { ok: false, reason: String(e && e.message ? e.message : e) };
     }
   }
+
+  var edgeResult = await invokeIspApproverEdgeFunction(sb, payload);
+  if (edgeResult.ok) return edgeResult;
+  lastEdgeFailure = edgeResult.reason || '';
+  if (lastEdgeFailure) console.warn('sendISPApprovalRequestEmail edge (will try OTP fallback):', lastEdgeFailure);
 
   if (!sb.auth || typeof sb.auth.signInWithOtp !== 'function') {
     return { ok: false, reason: lastEdgeFailure || 'no_client' };
@@ -150,7 +189,7 @@ async function sendISPApprovalRequestEmail(opts) {
     });
     if (res && res.error) {
       console.warn('sendISPApprovalRequestEmail signInWithOtp', res.error);
-      var otpReason = res.error.message || 'otp_failed';
+      var otpReason = formatAuthError(res.error);
       if (lastEdgeFailure) otpReason = lastEdgeFailure + ' · OTP: ' + otpReason;
       return { ok: false, reason: otpReason };
     }
@@ -165,8 +204,9 @@ async function sendISPApprovalRequestEmail(opts) {
 
 function formatApproverEmailFailure(reason) {
   var r = String(reason || '').toLowerCase();
-  if (r.indexOf('only send testing emails') >= 0 || r.indexOf('verify a domain') >= 0) {
-    return 'Resend sandbox: use the email on your Resend account as approver, or verify a domain and set EMAIL_FROM in GitHub repo variables.';
+  if (r.indexOf('only send testing') >= 0 || r.indexOf('your own email') >= 0
+      || r.indexOf('verify a domain') >= 0 || r.indexOf('validation_error') >= 0) {
+    return 'Resend sandbox: approver email must match your Resend account email (nistcsftool@gmail.com may be blocked). Verify a domain in Resend + set EMAIL_FROM, or use your Resend signup email as approver for testing.';
   }
   if (r.indexOf('rate limit') >= 0 || r.indexOf('too many') >= 0) {
     return 'Email rate limit — wait a minute and try again.';
