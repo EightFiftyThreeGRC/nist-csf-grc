@@ -1261,6 +1261,7 @@ function normalizeStateShape() {
     }
   });
   migrateRegMappingStateShape();
+  migrateISPWorkflowStatus();
 }
 
 function migrateRegMappingStateShape() {
@@ -1278,7 +1279,6 @@ function migrateRegMappingStateShape() {
   if (state.activeComplianceLaws.mar_e) delete state.activeComplianceLaws.mar_e;
   if (state._regMappingInitialized === undefined) state._regMappingInitialized = false;
   if (!Array.isArray(state.customRegFrameworks)) state.customRegFrameworks = [];
-  // Legacy flat orgSector → hierarchical orgOwnership / orgGovLevel / orgSector
   if (!state.orgOwnership && state.orgSector) {
     var legacySector = state.orgSector;
     if (legacySector === 'federal') {
@@ -1292,6 +1292,22 @@ function migrateRegMappingStateShape() {
     } else if (['commercial', 'healthcare', 'financial', 'education', 'critical_infra'].indexOf(legacySector) >= 0) {
       state.orgOwnership = 'private';
     }
+  }
+}
+
+/** Legacy ISP used a display-only "Published" status before formal approver sign-off existed. */
+function migrateISPWorkflowStatus() {
+  if (!state.policyStatus || typeof state.policyStatus !== 'object') return;
+  var s = state.policyStatus.ISP;
+  if (!s || typeof s !== 'object') return;
+  var st = (s.status || '').trim();
+  var hasApproval = !!(s.approvedDate || s.approvedAt || (s.approvedBy || '').trim());
+  if (st === 'Published' || (st === 'Approved' && !hasApproval)) {
+    s.status = (s.submittedAt || s.submittedTo) ? 'Under Review' : 'Draft';
+    delete s.approvedDate;
+    delete s.approvedAt;
+    delete s.approvedBy;
+    state.policyStatus.ISP = s;
   }
 }
 

@@ -83,14 +83,21 @@ const DOMAIN_DEFAULT_GENERIC = {
   scope:'All organizational information systems, personnel, and processes within scope of the information security program.',
 };
 
+function ispHasFormalApproval(s) {
+  if (!s) return false;
+  if ((s.status || '').trim() !== 'Approved') return false;
+  return !!(s.approvedDate || s.approvedAt || (s.approvedBy || '').trim());
+}
+
 function getISPStatus() {
   var s = ((state.policyStatus || {}).ISP || {});
   var explicit = (s.status || '').trim();
-  if (explicit === 'Published') return 'Approved';
-  if (explicit === 'Returned' || (s.returnedDate && explicit !== 'Approved' && explicit !== 'Under Review')) return 'Returned';
+  if (explicit === 'Returned' || (s.returnedDate && !ispHasFormalApproval(s))) return 'Returned';
+  if (ispHasFormalApproval(s)) return 'Approved';
+  if (explicit === 'Under Review' || explicit === 'Published') return 'Under Review';
+  if (explicit === 'Approved') return 'Under Review';
+  if (explicit === 'Draft' || explicit === 'In Progress') return explicit;
   if (explicit) return explicit;
-  if (s.approvedDate || s.approvedAt) return 'Approved';
-  if (s.returnedDate) return 'Returned';
   if (s.submittedAt || s.submittedTo) return 'Under Review';
   if (state.infoSecPolicy && state.infoSecPolicy.title) return 'Under Review';
   return 'Not Started';
@@ -289,8 +296,8 @@ function renderCustodianWorkspace(user) {
   if (isISPCustodian) {
     var isp = state.infoSecPolicy;
     var ispSt = getISPStatus();
-    var ispBg = (ispSt === 'Approved' || ispSt === 'Published') ? 'rgba(13,148,136,0.02)' : 'var(--bg-muted)';
-    var ispBorder = (ispSt === 'Approved' || ispSt === 'Published') ? 'rgba(13,148,136,0.3)' : 'var(--border)';
+    var ispBg = ispSt === 'Approved' ? 'rgba(13,148,136,0.02)' : 'var(--bg-muted)';
+    var ispBorder = ispSt === 'Approved' ? 'rgba(13,148,136,0.3)' : 'var(--border)';
     html += '<div style="margin-bottom:20px;">'
       + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px;">Tier 1 — Organization Policy</div>'
       + '<div style="background:' + ispBg + ';border:1px solid ' + ispBorder + ';border-radius:12px;padding:18px 20px;cursor:pointer;transition:box-shadow 0.15s;" onclick="goToCISOPolicyEditor()" onmouseenter="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,0.08)\'" onmouseleave="this.style.boxShadow=\'\'">'
@@ -555,17 +562,12 @@ function renderISSMWorkspace(user) {
   // ISP row — prefer explicit policyStatus.ISP (Under Review / Approved / Returned) before falling back to title-based derivation.
   var ispStatus = getISPStatus();
   function issmStatusChip(st, policyKey) {
-    if (st === 'Approved' || st === 'Published') return '<span style="background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.25);color:var(--teal);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + st + '</span>';
-    if (st === 'Under Review') {
-      var chip = '<span style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);color:#6366f1;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + st + '</span>';
-      if (policyKey) {
-        var who = getPolicyPendingReviewerDisplay(policyKey);
-        if (who) chip += '<div style="font-size:10px;color:#64748b;margin-top:4px;line-height:1.35;">' + _esc(who) + '</div>';
-      }
-      return chip;
+    var chip = chipHTML(st);
+    if (st === 'Under Review' && policyKey) {
+      var who = getPolicyPendingReviewerDisplay(policyKey);
+      if (who) chip += '<div style="font-size:10px;color:#64748b;margin-top:4px;line-height:1.35;">' + _esc(who) + '</div>';
     }
-    if (st === 'In Progress' || st === 'Draft') return '<span style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#d97706;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + st + '</span>';
-    return '<span style="background:rgba(100,116,139,0.06);border:1px solid rgba(100,116,139,0.2);color:#64748b;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + st + '</span>';
+    return chip;
   }
 
   var libRows = '<tr onclick="goToCISOPolicyEditor()" style="cursor:pointer;" onmouseover="this.style.background=\'rgba(13,148,136,0.03)\'" onmouseout="this.style.background=\'\'">'
@@ -631,7 +633,7 @@ function renderPolicyLibraryCatalog() {
   families.forEach(function(f){ if (merges[f]) { if (!slavesOf[merges[f]]) slavesOf[merges[f]] = []; slavesOf[merges[f]].push(f); } });
 
   function statusStyle(st) {
-    if (st === 'Approved' || st === 'Published') return {bg:'rgba(13,148,136,0.06)',border:'rgba(13,148,136,0.25)',text:'var(--teal)'};
+    if (st === 'Approved') return {bg:'rgba(13,148,136,0.06)',border:'rgba(13,148,136,0.25)',text:'var(--teal)'};
     if (st === 'Under Review') return {bg:'rgba(99,102,241,0.06)',border:'rgba(99,102,241,0.25)',text:'#6366f1'};
     if (st === 'In Progress' || st === 'Draft') return {bg:'rgba(245,158,11,0.06)',border:'rgba(245,158,11,0.25)',text:'#d97706'};
     return {bg:'rgba(100,116,139,0.06)',border:'rgba(100,116,139,0.2)',text:'#64748b'};
@@ -650,7 +652,7 @@ function renderPolicyLibraryCatalog() {
     + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(state.programOwner || '—') + '</td>'
     + '<td style="font-size:12px;color:var(--text-muted);">' + _esc((state.infoSecPolicy && state.infoSecPolicy.custodian && state.infoSecPolicy.custodian.name) || '—') + '</td>'
     + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(getApprover('ISP')) + '</td>'
-    + '<td><span style="background:' + ispStyle.bg + ';border:1px solid ' + ispStyle.border + ';color:' + ispStyle.text + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + ispStatus + '</span></td>'
+    + '<td><span style="background:' + ispStyle.bg + ';border:1px solid ' + ispStyle.border + ';color:' + ispStyle.text + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + _esc(ispStatus) + '</span></td>'
     + '</tr>';
 
   masterFams.forEach(function(fam) {
@@ -883,7 +885,7 @@ function renderPolicyList() {
 
   // ── Full Policy Library — show ALL policies with status ──
   function statusStyle(st) {
-    if (st === 'Approved' || st === 'Published') return {bg:'rgba(13,148,136,0.06)',border:'rgba(13,148,136,0.25)',text:'var(--teal)'};
+    if (st === 'Approved') return {bg:'rgba(13,148,136,0.06)',border:'rgba(13,148,136,0.25)',text:'var(--teal)'};
     if (st === 'Under Review') return {bg:'rgba(99,102,241,0.06)',border:'rgba(99,102,241,0.25)',text:'#6366f1'};
     if (st === 'In Progress' || st === 'Draft') return {bg:'rgba(245,158,11,0.06)',border:'rgba(245,158,11,0.25)',text:'#d97706'};
     return {bg:'rgba(100,116,139,0.06)',border:'rgba(100,116,139,0.2)',text:'#64748b'};
@@ -896,7 +898,7 @@ function renderPolicyList() {
     + '<td style="font-weight:600;font-size:13px;color:var(--navy);">Information Security Policy</td>'
     + '<td style="font-size:12px;color:var(--text-muted);">Tier 1 — Organization</td>'
     + '<td style="font-size:12px;color:var(--text-muted);">' + _esc(state.programOwner || state.programOwnerEmail || '—') + '</td>'
-    + '<td><span style="background:' + ispStyle.bg + ';border:1px solid ' + ispStyle.border + ';color:' + ispStyle.text + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + ispStatus + '</span></td>'
+    + '<td><span style="background:' + ispStyle.bg + ';border:1px solid ' + ispStyle.border + ';color:' + ispStyle.text + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">' + _esc(ispStatus) + '</span></td>'
     + '</tr>';
 
   masterFams.forEach(function(fam) {
@@ -2547,9 +2549,11 @@ function renderISPPolicyViewerPanel() {
     var ispHdrSub = ispViewStatus === 'Approved'
       ? 'Tier 1 organizational policy — approved and owned by the CISO.'
       : ispViewStatus === 'Under Review'
-      ? 'Tier 1 organizational policy — submitted and awaiting approver sign-off.'
+      ? 'Tier 1 organizational policy — submitted and awaiting designated approver sign-off.'
       : ispViewStatus === 'Returned'
       ? 'Tier 1 organizational policy — returned to the program owner for revision.'
+      : ispViewStatus === 'Draft' || ispViewStatus === 'In Progress'
+      ? 'Tier 1 organizational policy — draft in progress; not yet approved.'
       : 'Tier 1 organizational policy — owned by the CISO.';
     if (hdr) hdr.innerHTML = '<div class="role-badge">📋 Policy</div>'
       + '<h1>Information Security Policy</h1>'
@@ -2727,6 +2731,15 @@ function renderISPPolicyViewerPanel() {
         + '<div style="font-size:13px;color:#78350f;line-height:1.6;">'
         + (returnNotes ? _esc(returnNotes) : 'No return comments were recorded.')
         + '</div></div>';
+    } else if (ispViewStatus === 'Under Review') {
+      var pendingApprover = typeof getISPDesignatedApproverName === 'function' ? getISPDesignatedApproverName() : '';
+      var pendingEmail = typeof getISPDesignatedApproverEmail === 'function' ? getISPDesignatedApproverEmail() : '';
+      ispHTML += '<div style="margin:16px 0;padding:14px 16px;background:#eef2ff;border:1px solid rgba(99,102,241,0.25);border-radius:10px;">'
+        + '<div style="font-size:12px;font-weight:700;color:#4338ca;margin-bottom:6px;">Awaiting approver sign-off</div>'
+        + '<div style="font-size:13px;color:#3730a3;line-height:1.6;">This policy is not approved yet. '
+        + (pendingApprover ? 'Routed to <strong>' + _esc(pendingApprover) + '</strong>' : 'Routed to the designated approver')
+        + (pendingEmail ? ' (' + _esc(pendingEmail) + ')' : '')
+        + '.</div></div>';
     }
     var viewerUser = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
     var ispSt2 = ispViewStatus || ((state.policyStatus||{}).ISP || {}).status || 'Under Review';
