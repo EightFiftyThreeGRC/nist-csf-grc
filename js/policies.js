@@ -2528,6 +2528,9 @@ function exitISPPolicyViewer() {
 
 function renderISPPolicyViewerPanel() {
     var listPanel = document.getElementById('policy-list-panel');
+    var wizPanel = document.getElementById('policy-wizard-panel');
+    if (listPanel) listPanel.style.display = '';
+    if (wizPanel) wizPanel.style.display = 'none';
     var hdr = listPanel ? listPanel.querySelector('.page-header') : null;
     if (hdr) hdr.innerHTML = '<div class="role-badge">📋 Policy</div>'
       + '<h1>Information Security Policy</h1>'
