@@ -329,7 +329,9 @@ function applyRoleView(userId) {
     if (nav) nav.style.display = visible.indexOf(id) !== -1 ? '' : 'none';
   });
   if (adminSection) {
-    adminSection.style.display = visible.indexOf('users') !== -1 ? '' : 'none';
+    var programTabIds = ['ciso', 'reports', 'frameworks', 'poam', 'users'];
+    var showProgramSection = programTabIds.some(function(id) { return visible.indexOf(id) !== -1; });
+    adminSection.style.display = showProgramSection ? '' : 'none';
   }
 
   // Navigate to the highest-priority role's default tab (approver last — defaults to Reports)
@@ -348,6 +350,9 @@ function applyRoleView(userId) {
   if (!defaultTab) defaultTab = visible[0] || 'reports';
   if (state.cisoComplete && visible.indexOf('home') !== -1) {
     defaultTab = 'home';
+  }
+  if (typeof canSessionApproveISP === 'function' && canSessionApproveISP() && visible.indexOf('reports') !== -1) {
+    defaultTab = 'reports';
   }
   if (visible.indexOf(defaultTab) === -1) {
     defaultTab = visible.indexOf('reports') !== -1 ? 'reports' : (visible[0] || 'reports');

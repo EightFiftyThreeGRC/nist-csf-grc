@@ -776,9 +776,10 @@ function renderAssetOwnerReport(user) {
 function shouldShowISPApprovalCallout(user) {
   var p = (state.policyStatus || {}).ISP || {};
   if (p.status !== 'Under Review') return false;
+  if (typeof canSessionApproveISP === 'function' && canSessionApproveISP()) return true;
   if (!state.currentUserId) return true;
   if (!user) return false;
-  if (user.role === 'ciso' || user.role === 'admin') return true;
+  if (user.role === 'ciso' || user.role === 'admin' || user.role === 'approver') return true;
   var sub = String(p.submittedTo || '').trim().toLowerCase();
   if (sub && String(user.name || '').trim().toLowerCase() === sub) return true;
   return false;
@@ -1261,10 +1262,12 @@ function renderReports() {
     return;
   }
 
-  // Approvers get a focused ISP approval queue — not the program-wide dashboard
+  // Approvers (and designated ISP approvers in cloud mode) get a focused ISP approval queue.
   var isApproverRole = user && user.role === 'approver';
-  if (isApproverRole && showMyView) {
-    body.innerHTML = renderApproverDashboard(user);
+  var isDesignatedIspApprover = typeof canSessionApproveISP === 'function' && canSessionApproveISP();
+  if ((isApproverRole || isDesignatedIspApprover) && (showMyView || isDesignatedIspApprover)) {
+    var dashUser = user || { name: typeof getSessionActorName === 'function' ? getSessionActorName('Approver') : 'Approver', role: 'approver' };
+    body.innerHTML = renderApproverDashboard(dashUser);
     return;
   }
 

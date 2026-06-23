@@ -94,6 +94,28 @@ function getNextActions() {
     }
   });
 
+  if (typeof getISPStatus === 'function' && getISPStatus() === 'Under Review') {
+    var ispTitle = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '')
+      || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+    var ispCanApprove = typeof canSessionApproveISP === 'function' && canSessionApproveISP();
+    var ispIsApproverRole = false;
+    if (state.currentUserId && state.users) {
+      (state._currentPersonIds || [state.currentUserId]).forEach(function(pid) {
+        var rec = state.users.find(function(u) { return u.id === pid; });
+        if (rec && rec.role === 'approver') ispIsApproverRole = true;
+      });
+    }
+    if (ispCanApprove || ispIsApproverRole) {
+      actions.push({
+        priority: 0,
+        icon: '✅',
+        label: 'Approve ISP: ' + ispTitle,
+        desc: 'Tier 1 Information Security Policy is awaiting your sign-off.',
+        action: "showTab('reports');goToCISOPolicyEditor();"
+      });
+    }
+  }
+
   (state.assets || []).forEach(function(a) {
     var signoff = (state.sspSignoffs || {})[a.id] || {};
     if (signoff.status === 'Submitted') {

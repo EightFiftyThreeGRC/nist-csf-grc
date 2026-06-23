@@ -704,9 +704,13 @@ function updateNotificationBadges() {
   }
   setBadge('badge-control', controlCount);
 
-  // Reports badge: pending review queue items for ISSM/CISO
+  // Reports badge: pending review queue items for ISSM/CISO, or ISP awaiting approver sign-off
   var reviewCount = 0;
-  if (role === 'issm' || role === 'ciso' || !user) {
+  if (typeof canSessionApproveISP === 'function' && canSessionApproveISP()) {
+    reviewCount = 1;
+  } else if (role === 'approver' && typeof getISPStatus === 'function' && getISPStatus() === 'Under Review') {
+    reviewCount = 1;
+  } else if (role === 'issm' || role === 'ciso' || !user) {
     var queue = state.controlReviewQueue || [];
     if (role === 'issm' && user.families) {
       reviewCount = queue.filter(function(r) {

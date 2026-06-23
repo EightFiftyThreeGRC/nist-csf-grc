@@ -93,6 +93,14 @@ function findProgramUserForEntraIdentity(email, displayName) {
     return false;
   });
   if (!matches.length) return null;
+  var emKey = String(email || '').trim().toLowerCase();
+  if (emKey && typeof getISPDesignatedApproverEmail === 'function') {
+    var ispApproverEmail = getISPDesignatedApproverEmail();
+    if (ispApproverEmail && emKey === ispApproverEmail) {
+      var ispApprover = matches.find(function(u) { return u.role === 'approver'; });
+      if (ispApprover) return ispApprover;
+    }
+  }
   var rolePriority = ['ciso', 'ao', 'assessor', 'issm', 'control-owner', 'asset-owner', 'custodian', 'approver'];
   matches.sort(function(a, b) {
     var ia = rolePriority.indexOf(a.role);
