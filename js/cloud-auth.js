@@ -17,6 +17,7 @@ var __cloudSuppressRealtimeUntil = 0;
 var __sbLoadPromise = null;
 var __cloudEntered = false;   // true once a program is loaded for the session
 var __cloudEntering = false;  // re-entrancy guard for enterCloudWithSession
+var __cloudPasswordRecovery = false; // true while user must set a new password (reset email link)
 
 // ── configuration / capability checks ───────────────────────────────────────
 function isCloudConfigured() {
@@ -556,10 +557,29 @@ async function completePasswordReset() {
     setCloudGateBusy(true, 'Updating password…');
     var res = await sb.auth.updateUser({ password: password });
     if (res && res.error) throw res.error;
+    var savedEmail = '';
+    try {
+      var userRes = await sb.auth.getUser();
+      savedEmail = (userRes && userRes.data && userRes.data.user && userRes.data.user.email) || '';
+    } catch (e) { /* ignore */ }
+    __cloudPasswordRecovery = false;
+    try { await sb.auth.signOut(); } catch (e) { /* ignore */ }
+    teardownCloudRealtime();
+    __cloudSession = null;
+    __cloudProgramId = null;
+    __cloudProgramOwnerId = null;
+    __cloudLocked = false;
+    __cloudEntered = false;
+    __cloudEntering = false;
     hideCloudPasswordResetForm();
-    showCloudGateInfo('Password updated. Sign in with your new password.');
+    showCloudSignInGate();
+    if (savedEmail) {
+      var emailEl = document.getElementById('cloudGateEmail');
+      if (emailEl) emailEl.value = savedEmail;
+    }
     if (passEl) passEl.value = '';
     if (confirmEl) confirmEl.value = '';
+    showCloudGateInfo('Password updated. Sign in with your new password.');
     cleanCloudUrl();
   } catch (err) {
     console.warn('completePasswordReset', err);
@@ -892,11 +912,44 @@ function cleanCloudUrl() {
   } catch (e) { /* ignore */ }
 }
 
+function isPasswordRecoveryFlow() {
+  try {
+    var href = window.location.href;
+    if (/type=recovery/i.test(href)) return true;
+    var hash = window.location.hash || '';
+    if (hash) {
+      var hp = new URLSearchParams(hash.charAt(0) === '#' ? hash.slice(1) : hash);
+      if (hp.get('type') === 'recovery') return true;
+    }
+    var search = window.location.search || '';
+    if (search) {
+      var sp = new URLSearchParams(search.charAt(0) === '?' ? search.slice(1) : search);
+      if (sp.get('type') === 'recovery') return true;
+    }
+  } catch (e) { /* ignore */ }
+  return false;
+}
+
+function beginPasswordRecovery(session) {
+  __cloudPasswordRecovery = true;
+  __cloudEntered = false;
+  __cloudEntering = false;
+  if (session) __cloudSession = session;
+  setCloudGateBusy(false);
+  showCloudSignInGate();
+  showCloudPasswordResetForm();
+  showCloudGateInfo('Choose a new password for your account.');
+}
+
 // Idempotently bring a signed-in session into the app (load program, lock view).
 // Called from both getSession() and onAuthStateChange so a magic-link return is
 // never missed regardless of timing.
 async function enterCloudWithSession(session) {
   if (!session || __cloudEntered || __cloudEntering) return false;
+  if (__cloudPasswordRecovery || isPasswordRecoveryFlow()) {
+    beginPasswordRecovery(session);
+    return false;
+  }
   __cloudEntering = true;
   __cloudSession = session;
   setCloudGateBusy(true, 'Loading your program…');
@@ -933,27 +986,29 @@ async function initCloudAuth() {
   // token refresh, or sign-in from another tab) as well as sign-out.
   try {
     sb.auth.onAuthStateChange(function(event, session) {
-      if (event === 'SIGNED_OUT') { __cloudSession = null; __cloudEntered = false; return; }
-      if (event === 'PASSWORD_RECOVERY' && session) {
-        __cloudSession = session;
-        showCloudSignInGate();
-        showCloudPasswordResetForm();
-        showCloudGateInfo('Choose a new password for your account.');
+      if (event === 'SIGNED_OUT') {
+        __cloudSession = null;
+        __cloudEntered = false;
+        __cloudPasswordRecovery = false;
         return;
       }
+      if (event === 'PASSWORD_RECOVERY' || (session && isPasswordRecoveryFlow())) {
+        beginPasswordRecovery(session);
+        return;
+      }
+      if (__cloudPasswordRecovery) return;
       if (session && !__cloudEntered) { enterCloudWithSession(session); }
     });
   } catch (e) { /* ignore */ }
+
+  if (isPasswordRecoveryFlow()) __cloudPasswordRecovery = true;
 
   var got = null;
   try { got = await sb.auth.getSession(); } catch (e) { console.warn('getSession', e); }
   var session = got && got.data ? got.data.session : null;
   if (session) {
-    if (/type=recovery/.test(window.location.href)) {
-      __cloudSession = session;
-      showCloudSignInGate();
-      showCloudPasswordResetForm();
-      showCloudGateInfo('Choose a new password for your account.');
+    if (__cloudPasswordRecovery || isPasswordRecoveryFlow()) {
+      beginPasswordRecovery(session);
       return false;
     }
     return enterCloudWithSession(session);
@@ -963,8 +1018,13 @@ async function initCloudAuth() {
   // link) give detectSessionInUrl a moment to fire onAuthStateChange before we
   // fall back to showing the gate.
   if (/[#&?](access_token|refresh_token|code=|type=)/.test(window.location.href)) {
-    setCloudGateBusy(true, 'Finishing sign-in…');
+    setCloudGateBusy(true, isPasswordRecoveryFlow() ? 'Opening password reset…' : 'Finishing sign-in…');
     setTimeout(function() {
+      if (__cloudPasswordRecovery || isPasswordRecoveryFlow()) {
+        setCloudGateBusy(false);
+        beginPasswordRecovery(__cloudSession);
+        return;
+      }
       if (!__cloudEntered) { setCloudGateBusy(false); showCloudSignInGate(); }
     }, 5000);
     return false;
