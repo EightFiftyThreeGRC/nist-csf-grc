@@ -259,48 +259,6 @@ function renderOrgClassificationFieldsHtml() {
       : '');
 }
 
-function buildDefaultISPComplianceNotes() {
-  var orgName = ((state && state.orgName) || 'the organization').trim() || 'the organization';
-  var lines = [
-    'Legal, regulatory, and contractual compliance requirements applicable to this information security program include:',
-    '',
-    '• NIST SP 800-53 Rev. 5 — catalog of security and privacy controls selected for this program.',
-    '• NIST SP 800-37 Rev. 2 (RMF) — risk management lifecycle for authorizing systems.'
-  ];
-  if (state && state.orgOwnership === 'government') {
-    lines.push('• Federal Information Security Modernization Act (FISMA) — federal information security program requirements.');
-    if (state.orgGovLevel === 'federal') {
-      lines.push('• OMB Circular A-130 — management of federal information resources.');
-    }
-    if (state.orgGovLevel === 'slg') {
-      lines.push('• State and local government security and privacy requirements applicable to the jurisdiction.');
-    }
-  } else if (state && state.orgOwnership === 'private') {
-    lines.push('• Applicable federal, state, and industry regulations based on the organization\'s sector and contracts.');
-  }
-  if (state && state.fismaMode) {
-    lines.push('• FISMA / FedRAMP / DoD RMF — authorization and continuous monitoring requirements for federal systems.');
-  }
-  if (state && state.privacyOverlay) {
-    lines.push('• Privacy Act of 1974 / E-Government Act of 2002 — collection, use, and protection of personally identifiable information (PII).');
-  }
-  var lawIds = typeof getActiveComplianceLawIds === 'function' ? getActiveComplianceLawIds() : [];
-  lawIds.forEach(function(lawId) {
-    var meta = typeof resolveLawMeta === 'function' ? resolveLawMeta(lawId) : null;
-    if (meta) lines.push('• ' + meta.label + ' — ' + meta.subtitle + '.');
-  });
-  if (typeof getOrgClassificationSummary === 'function') {
-    var profile = getOrgClassificationSummary();
-    if (profile) {
-      lines.push('');
-      lines.push('Organization profile: ' + profile + '.');
-    }
-  }
-  lines.push('');
-  lines.push('All personnel must comply with the above requirements as implemented through this policy and its subordinate domain policies.');
-  return lines.join('\n');
-}
-
 function getCustomRegFrameworks(kind) {
   return (state.customRegFrameworks || []).filter(function(c) { return c.kind === kind; });
 }

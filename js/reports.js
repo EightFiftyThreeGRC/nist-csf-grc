@@ -100,7 +100,6 @@ function viewISPModal() {
       if (sec.type === 'purpose')    content = isp.purpose||sec.content||'';
       else if (sec.type === 'scope')      content = isp.scope||sec.content||'';
       else if (sec.type === 'policy')     content = isp.policy||sec.content||'';
-      else if (sec.type === 'compliance') content = isp.compliance||sec.content||'';
       else content = sec.content||'';
       if (!content) return;
       hasSections = true;
@@ -110,7 +109,7 @@ function viewISPModal() {
         + '</div>';
     });
     if (!hasSections) {
-      [['Purpose', isp.purpose||''], ['Scope', isp.scope||''], ['Policy Statement', isp.policy||''], ['Compliance', isp.compliance||'']].forEach(function(pair) {
+      [['Purpose', isp.purpose||''], ['Scope', isp.scope||''], ['Policy Statement', isp.policy||'']].forEach(function(pair) {
         if (!pair[1]) return;
         hasSections = true;
         sectionsHTML += '<div style="margin-bottom:20px;">'

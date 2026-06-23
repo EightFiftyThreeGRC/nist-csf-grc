@@ -1438,9 +1438,9 @@ function ensureISPSectionMigrations() {
     var insertAt = idx >= 0 ? idx + 1 : isp.sections.length;
     isp.sections.splice(insertAt, 0, section);
   }
-  insertAfter('requirements', { type:'compliance', title:'Compliance & Applicable Requirements' });
-  insertAfter('compliance', { type:'enforcement', title:'Enforcement & Violations', content: getDefaultISPEnforcementContent(orgNameVal) });
+  insertAfter('requirements', { type:'enforcement', title:'Enforcement & Violations', content: getDefaultISPEnforcementContent(orgNameVal) });
   insertAfter('enforcement', { type:'exceptions', title:'Exceptions & Waivers', content: getDefaultISPExceptionsContent(orgNameVal) });
+  isp.sections = (isp.sections || []).filter(function(s) { return s.type !== 'compliance'; });
   isp.sections.forEach(function(sec) {
     if (sec.type === 'enforcement' && !sec.content) sec.content = getDefaultISPEnforcementContent(orgNameVal);
     if (sec.type === 'exceptions' && !sec.content) sec.content = getDefaultISPExceptionsContent(orgNameVal);
@@ -1517,7 +1517,6 @@ function renderCISOStep3() {
         { type:'scope', title:'Scope', content:`This policy applies to all employees, contractors, third-party service providers, and any individual or system that accesses ${orgNameVal}'s information assets. It encompasses all information systems, business processes, and data regardless of form, format, or location, including cloud-hosted systems, mobile devices, and remote access connections.` },
         { type:'roles', title:'Roles & Responsibilities' },
         { type:'requirements', title:'Policy Requirements' },
-        { type:'compliance', title:'Compliance & Applicable Requirements' },
         { type:'enforcement', title:'Enforcement & Violations', content: getDefaultISPEnforcementContent(orgNameVal) },
         { type:'exceptions', title:'Exceptions & Waivers', content: getDefaultISPExceptionsContent(orgNameVal) },
         { type:'documents', title:'Related Documents & Standards' },
@@ -1559,7 +1558,6 @@ function renderCISOStep3() {
       { type:'scope', title:'Scope', content: old.scope || '' },
       { type:'roles', title:'Roles & Responsibilities' },
       { type:'requirements', title:'Policy Requirements' },
-      { type:'compliance', title:'Compliance & Applicable Requirements' },
       { type:'enforcement', title:'Enforcement & Violations' },
       { type:'exceptions', title:'Exceptions & Waivers' },
       { type:'documents', title:'Related Documents & Standards' },
@@ -1637,8 +1635,6 @@ function renderCISOStep3() {
       content = renderRequirementsSection(unmappedPM);
     } else if (sec.type === 'documents') {
       content = renderDocumentsSection();
-    } else if (sec.type === 'compliance') {
-      content = renderComplianceSection(si);
     } else if (sec.type === 'revision-history') {
       content = renderRevisionHistorySection(si);
     } else if (sec.type === 'controls') {
@@ -1986,19 +1982,6 @@ function renderDocumentsSection() {
       </div>
       <button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px;opacity:0.6;flex-shrink:0;" onclick="removePolicyDoc(${i})">🗑</button>
     </div>`).join('')}`;
-}
-
-function renderComplianceSection(si) {
-  const isp = state.infoSecPolicy;
-  var defaultCompliance = typeof buildDefaultISPComplianceNotes === 'function'
-    ? buildDefaultISPComplianceNotes()
-    : '';
-  if (!isp.complianceNotes || !String(isp.complianceNotes).trim()) {
-    isp.complianceNotes = defaultCompliance;
-  }
-  return `
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Enumerate the laws, regulations, standards, and contractual obligations this program must satisfy. Pre-filled from your organization profile and Step 3 reg mapping — edit as needed.</div>
-    <textarea class="form-input" rows="10" style="font-size:13px;line-height:1.8;padding:16px 18px;border-radius:8px;background:white;border:1px solid var(--border);resize:vertical;min-height:180px;" oninput="state.infoSecPolicy.complianceNotes=this.value; window.markDirty();" placeholder="List applicable laws, regulations, and standards…">${escapeHTML(isp.complianceNotes)}</textarea>`;
 }
 
 function renderRevisionHistorySection(si) {

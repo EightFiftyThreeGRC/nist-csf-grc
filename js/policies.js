@@ -1180,9 +1180,6 @@ function _buildISPExportPayload() {
   if ((isp.requirements || []).length) {
     sections.push({ heading: 'Policy Requirements', content: (isp.requirements || []).map(function(r) { return (r.id || 'REQ') + ': ' + stripRequirementNistRef(r.text || r.requirement || ''); }).join('\n\n') });
   }
-  if (isp.complianceNotes && String(isp.complianceNotes).trim()) {
-    sections.push({ heading: 'Compliance & Applicable Requirements', content: String(isp.complianceNotes).trim() });
-  }
   if ((isp.documents || []).length) {
     sections.push({ heading: 'Referenced Documents', content: (isp.documents || []).map(function(d) { return (d.title || 'Document') + (d.url ? ' — ' + d.url : '') + (d.desc ? '\n' + d.desc : ''); }).join('\n\n') });
   }
@@ -2534,7 +2531,6 @@ function goToCISOPolicyEditor() {
       if (sec.type === 'purpose')    content = isp.purpose||sec.content||'';
       else if (sec.type === 'scope')      content = isp.scope||sec.content||'';
       else if (sec.type === 'policy')     content = isp.policy||sec.content||'';
-      else if (sec.type === 'compliance') content = isp.compliance||sec.content||'';
       else content = sec.content||'';
       if (!content) return;
       hasSections = true;
@@ -2545,7 +2541,7 @@ function goToCISOPolicyEditor() {
     });
     // Fallback: if no sections rendered, show top-level fields directly
     if (!hasSections) {
-      [['Purpose', isp.purpose||''], ['Scope', isp.scope||''], ['Policy Statement', isp.policy||''], ['Compliance', isp.compliance||'']].forEach(function(pair) {
+      [['Purpose', isp.purpose||''], ['Scope', isp.scope||''], ['Policy Statement', isp.policy||'']].forEach(function(pair) {
         if (!pair[1]) return;
         ispHTML += '<div style="margin-bottom:20px;">'
           + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">' + pair[0] + '</div>'
