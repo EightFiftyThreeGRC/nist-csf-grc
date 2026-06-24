@@ -1983,26 +1983,14 @@ function renderControlDetailForm(ctrl) {
       ${Object.keys(nistParts).map(letter => {
         const partText = nistParts[letter];
         const savedVal = designParts[letter] || '';
-        const assignments = extractNistAssignments(partText);
-        const partParams = ((cs.designPartParams || {})[letter]) || {};
         return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;">
           <div style="background:#f8fafc;padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;">
             <span style="font-family:monospace;font-size:14px;font-weight:800;color:var(--navy);background:rgba(30,58,95,0.08);padding:2px 8px;border-radius:4px;flex-shrink:0;">${letter.toUpperCase()}</span>
-            <div style="font-size:11px;color:var(--text-muted);line-height:1.6;">${escapeHTML(partText.length > 220 ? partText.substring(0,220)+'…' : partText)}</div>
+            <div style="font-size:11px;color:var(--navy);line-height:1.65;white-space:pre-line;flex:1;min-width:0;">${escapeHTML(partText)}</div>
           </div>
           <div style="padding:10px 14px;">
             <label class="form-label" style="font-size:10px;">How does your design address sub-requirement ${letter.toUpperCase()}?</label>
             <textarea class="form-input" rows="3" style="font-size:12px;line-height:1.6;resize:vertical;" placeholder="Describe the specific process, system, or mechanism that satisfies this sub-requirement…" oninput="setCtrlDesignPart('${cid}','${letter}',this.value)">${escapeHTML(savedVal)}</textarea>
-            ${assignments.length ? `<div style="margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#1d4ed8;margin-bottom:6px;">Tailoring Required for This Sub-Requirement</div>
-              <div style="font-size:11px;color:#1e3a8a;margin-bottom:8px;">Fill organization-defined values referenced in this specific subcomponent.</div>
-              ${assignments.map(a => {
-                const safeA = a.replace(/'/g,"\\'");
-                const savedA = partParams[a] || '';
-                return `<label class="form-label" style="font-size:10px;margin-top:6px;">${escapeHTML(a)}</label>
-                <input class="form-input" style="font-size:12px;" value="${escapeHTML(savedA)}" placeholder="Define value for: ${escapeHTML(a)}" oninput="setCtrlPartAssignment('${cid}','${letter}','${safeA}',this.value)">`;
-              }).join('')}
-            </div>` : ''}
           </div>
         </div>`;
       }).join('')}
@@ -2011,16 +1999,6 @@ function renderControlDetailForm(ctrl) {
         <label class="form-label">Control Design Description</label>
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Describe how this control is designed and implemented. Be specific about systems, processes, configurations, and responsible roles. Assessors use this to verify your implementation.</div>
         <textarea class="form-input" rows="5" style="font-size:12px;line-height:1.6;resize:vertical;" placeholder="Describe how this control operates in your environment…" oninput="setCtrlField('${cid}','approach',this.value)">${escapeHTML(cs.approach||'')}</textarea>
-        ${controlAssignments.length ? `<div style="margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#1d4ed8;margin-bottom:6px;">Tailoring Required</div>
-          <div style="font-size:11px;color:#1e3a8a;margin-bottom:8px;">This control statement includes organization-defined values. Define them here as part of the design.</div>
-          ${controlAssignments.map(a => {
-            const safeA = a.replace(/'/g,"\\'");
-            const savedA = designParams[a] || '';
-            return `<label class="form-label" style="font-size:10px;margin-top:6px;">${escapeHTML(a)}</label>
-            <input class="form-input" style="font-size:12px;" value="${escapeHTML(savedA)}" placeholder="Define value for: ${escapeHTML(a)}" oninput="setCtrlAssignment('${cid}','${safeA}',this.value)">`;
-          }).join('')}
-        </div>` : ''}
       </div>
       `}
 
