@@ -1021,7 +1021,19 @@ function renderReturnedWorkCallout(user) {
     );
   }
 
-  if (user && user.families && user.families.length && (user.role === 'issm' || user.role === 'custodian')) {
+  if (typeof getSessionReturnedDomainPolicyFamilies === 'function') {
+    getSessionReturnedDomainPolicyFamilies().forEach(function(fam) {
+      var title = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam;
+      var notes = String(((state.policyStatus || {})[fam] || {}).notes || '').trim();
+      cards.push(
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:12px 14px;">'
+        + '<div><div style="font-size:13px;font-weight:700;color:#92400e;">' + escapeHTML(title) + ' returned for revision</div>'
+        + '<div style="font-size:12px;color:#78350f;">' + escapeHTML(notes || 'Update the policy and resubmit when ready.') + '</div></div>'
+        + '<button class="btn btn-primary btn-sm" onclick="showTab(\'policy\');enterPolicyWizard(\'' + fam.replace(/'/g, "\\'") + '\')">✏️ Edit &amp; resubmit</button>'
+        + '</div>'
+      );
+    });
+  } else if (user && user.families && user.families.length && (user.role === 'issm' || user.role === 'custodian')) {
     var returnedFams = user.families.filter(function(f) {
       return ((state.policyStatus || {})[f] || {}).status === 'Returned';
     });

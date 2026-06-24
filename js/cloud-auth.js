@@ -371,6 +371,66 @@ function canSessionReviseReturnedISP() {
   return isSessionProgramOwnerActor();
 }
 
+/** True when the signed-in viewer owns the domain policy family (drafter / policy owner). */
+function isSessionDomainPolicyOwnerActor(fam) {
+  if (!fam) return false;
+  var owner = ((state.domainOwners || {})[fam] || {});
+  var ownerName = (owner.name || '').trim().toLowerCase();
+  var ownerEmail = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(owner.email) : String(owner.email || '').trim().toLowerCase();
+  if (!ownerName && !ownerEmail) return false;
+
+  var poName = (state.programOwner || '').trim().toLowerCase();
+  var poEmail = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(state.programOwnerEmail) : String(state.programOwnerEmail || '').trim().toLowerCase();
+  var ownerIsProgramOwner = (ownerEmail && poEmail && ownerEmail === poEmail)
+    || (ownerName && poName && ownerName === poName);
+  if (ownerIsProgramOwner && isSessionProgramOwnerActor()) return true;
+
+  if (isCloudSessionActive()) {
+    var sessionEmail = getSessionEmailForApproval();
+    if (ownerEmail && sessionEmail && ownerEmail === sessionEmail) return true;
+    if (typeof getMatchedCloudProgramUser === 'function') {
+      var matched = getMatchedCloudProgramUser();
+      if (matched) {
+        var mName = (matched.name || '').trim().toLowerCase();
+        var mEmail = typeof normalizeOwnerEmail === 'function'
+          ? normalizeOwnerEmail(matched.email) : String(matched.email || '').trim().toLowerCase();
+        if (ownerName && mName && ownerName === mName) return true;
+        if (ownerEmail && mEmail && ownerEmail === mEmail) return true;
+      }
+    }
+  }
+
+  if (state.currentUserId && state.users) {
+    var personIds = state._currentPersonIds || [state.currentUserId];
+    for (var i = 0; i < personIds.length; i++) {
+      var u = state.users.find(function(x) { return x.id === personIds[i]; });
+      if (!u) continue;
+      var uName = (u.name || '').trim().toLowerCase();
+      var uEmail = typeof normalizeOwnerEmail === 'function'
+        ? normalizeOwnerEmail(u.email) : String(u.email || '').trim().toLowerCase();
+      if (ownerName && uName && ownerName === uName) return true;
+      if (ownerEmail && uEmail && ownerEmail === uEmail) return true;
+    }
+  }
+  return false;
+}
+
+function canSessionReviseReturnedDomainPolicy(fam) {
+  if (((state.policyStatus || {})[fam] || {}).status !== 'Returned') return false;
+  return isSessionDomainPolicyOwnerActor(fam);
+}
+
+function getSessionReturnedDomainPolicyFamilies() {
+  var out = [];
+  var families = typeof getMasterPolicyFamilies === 'function' ? getMasterPolicyFamilies() : [];
+  families.forEach(function(fam) {
+    if (canSessionReviseReturnedDomainPolicy(fam)) out.push(fam);
+  });
+  return out;
+}
+
 function validateISPApproverAssignment(rc, silent) {
   rc = rc || (state.policyReviewCycle || {}).ISP || {};
   if (!rc._customApprover) {
@@ -1270,6 +1330,9 @@ if (typeof window !== 'undefined') {
   window.getISPDesignatedApproverName = getISPDesignatedApproverName;
   window.canSessionApproveISP = canSessionApproveISP;
   window.canSessionReviseReturnedISP = canSessionReviseReturnedISP;
+  window.isSessionDomainPolicyOwnerActor = isSessionDomainPolicyOwnerActor;
+  window.canSessionReviseReturnedDomainPolicy = canSessionReviseReturnedDomainPolicy;
+  window.getSessionReturnedDomainPolicyFamilies = getSessionReturnedDomainPolicyFamilies;
   window.ispApproverViolatesSeparationOfDuties = ispApproverViolatesSeparationOfDuties;
   window.validateISPApproverAssignment = validateISPApproverAssignment;
   window.domainPolicyRequiresSeparateApprover = domainPolicyRequiresSeparateApprover;

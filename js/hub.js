@@ -140,6 +140,23 @@ function getNextActions() {
     });
   }
 
+  var returnedDomainFams = typeof getSessionReturnedDomainPolicyFamilies === 'function'
+    ? getSessionReturnedDomainPolicyFamilies() : [];
+  returnedDomainFams.forEach(function(fam) {
+    var title = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam;
+    var domainNotes = String(((state.policyStatus || {})[fam] || {}).notes || '').trim();
+    var domainDesc = domainNotes
+      ? 'Returned with comments: ' + domainNotes.slice(0, 80) + (domainNotes.length > 80 ? '\u2026' : '')
+      : 'Domain policy was returned for your revision and resubmission.';
+    actions.push({
+      priority: 0,
+      icon: '\u21A9',
+      label: 'Revise policy: ' + title,
+      desc: domainDesc,
+      action: "showTab('policy');enterPolicyWizard('" + fam.replace(/'/g, "\\'") + "');"
+    });
+  });
+
   (state.assets || []).forEach(function(a) {
     var signoff = (state.sspSignoffs || {})[a.id] || {};
     if (signoff.status === 'Submitted') {
@@ -196,6 +213,7 @@ function countImplementedControls() {
 
 function userHasPolicyDraftWork(user) {
   if (typeof canSessionReviseReturnedISP === 'function' && canSessionReviseReturnedISP()) return true;
+  if (typeof getSessionReturnedDomainPolicyFamilies === 'function' && getSessionReturnedDomainPolicyFamilies().length) return true;
   if (!user) {
     if (typeof getISPStatus === 'function' && getISPStatus() !== 'Approved') return true;
     var allFams = typeof getMasterPolicyFamilies === 'function' ? getMasterPolicyFamilies() : [];
