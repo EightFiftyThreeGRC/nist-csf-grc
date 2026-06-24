@@ -1668,6 +1668,7 @@ function buildEvidenceArtifactSectionHTML(ctrl) {
           return '<option' + ((evRow.type || '') === tp ? ' selected' : '') + '>' + tp + '</option>';
         }).join('')
         + '</select>'
+        + buildEvidenceProgramDocPickerHtml(cid, idx)
         + '<input class="form-input" style="font-size:12px;" placeholder="Evidence name (e.g., CP Procedure v2.1)" value="' + escapeHTML(evRow.title || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'title\',this.value)">'
         + '</div>'
         + '<div style="margin-top:8px;">'
@@ -1812,8 +1813,6 @@ function renderControlDetailForm(ctrl) {
   const designParts     = cs.designParts  || {};
   const nistParts       = parseControlParts(ctrl.id);
   const nistFullText    = (typeof NIST_CONTROL_TEXT !== 'undefined' && NIST_CONTROL_TEXT[ctrl.id]) ? NIST_CONTROL_TEXT[ctrl.id] : '';
-  const controlAssignments = extractNistAssignments(nistFullText);
-  const designParams    = cs.designParams || {};
   const coveredTypes    = getCtrlCoveredAssetTypes(ctrl.id);
   const assetTypeStatus = cs.assetTypeStatus || {};
   const policyReqs      = getControlPolicyReqs(ctrl.id);
@@ -2153,6 +2152,108 @@ function getBulkEvidenceEligibleControls(sourceCtrlId) {
   });
 }
 
+function getProgramEvidenceDocumentOptions() {
+  var opts = [];
+  var isp = state.infoSecPolicy || {};
+  var ispTitle = String(isp.title || '').trim()
+    || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+  opts.push({ id: 'isp', label: 'ISP — ' + ispTitle, title: ispTitle, type: 'Policy' });
+  Object.keys(state.domainPolicies || {}).sort().forEach(function(fam) {
+    var dp = state.domainPolicies[fam];
+    if (!dp) return;
+    var title = String(dp.title || '').trim()
+      || (typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam);
+    opts.push({ id: 'policy:' + fam, label: fam + ' — ' + title, title: title, type: 'Policy' });
+  });
+  return opts;
+}
+
+function buildEvidenceProgramDocPickerHtml(cid, idx) {
+  var opts = getProgramEvidenceDocumentOptions();
+  if (!opts.length) return '';
+  return '<select class="form-select" style="font-size:11px;margin-bottom:6px;" onchange="applyEvidenceProgramDocPick(\'' + cid + '\',' + idx + ',this.value);this.value=\'\';">'
+    + '<option value="">Link to program document…</option>'
+    + opts.map(function(o) {
+        return '<option value="' + escapeHTML(o.id) + '">' + escapeHTML(o.label) + '</option>';
+      }).join('')
+    + '</select>';
+}
+
+function applyEvidenceProgramDocPick(ctrlId, idx, pickId) {
+  if (!pickId) return;
+  var match = getProgramEvidenceDocumentOptions().find(function(o) { return o.id === pickId; });
+  if (!match) return;
+  setEvidenceField(ctrlId, idx, 'title', match.title);
+  if (match.type) setEvidenceField(ctrlId, idx, 'type', match.type);
+  setTimeout(function() { renderControlStep2(); }, 0);
+}
+
+function getBulkEvidenceRowFilteredControls(st) {
+  var eligible = getBulkEvidenceEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  var familyFilter = String(st.familyFilter || '');
+  var scopeFilter = String(st.scopeFilter || 'all');
+  var sourceControl = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
+  return eligible.filter(function(c) {
+    if (familyFilter && c.f !== familyFilter) return false;
+    if (scopeFilter === 'minus1') {
+      if (!(typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id))) return false;
+    } else if (scopeFilter === 'isp-tier' && typeof isControlIspTier === 'function') {
+      if (!isControlIspTier(c)) return false;
+    } else if (scopeFilter === 'same-family' && sourceControl) {
+      if (c.f !== sourceControl.f) return false;
+    }
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function bulkEvidenceRestoreSearchFocus() {
+  setTimeout(function() {
+    var inp = document.getElementById('bulkEvidenceRowSearch');
+    if (!inp) return;
+    inp.focus();
+    var len = inp.value.length;
+    if (typeof inp.setSelectionRange === 'function') inp.setSelectionRange(len, len);
+  }, 0);
+}
+
+function bulkEvidenceSetSearch(value) {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  st.search = value;
+  renderBulkEvidenceRowModalBody();
+  bulkEvidenceRestoreSearchFocus();
+}
+
+function bulkEvidenceSetFamilyFilter(value) {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  st.familyFilter = value;
+  renderBulkEvidenceRowModalBody();
+}
+
+function bulkEvidenceSetScopeFilter(value) {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  st.scopeFilter = value;
+  renderBulkEvidenceRowModalBody();
+}
+
+function bulkEvidenceSelectMinus1() {
+  var st = window._bulkEvidenceRowState;
+  if (!st) return;
+  st.scopeFilter = 'minus1';
+  st.familyFilter = '';
+  Object.keys(st.selected).forEach(function(k) { st.selected[k] = false; });
+  getBulkEvidenceEligibleControls(st.sourceCtrlId).forEach(function(c) {
+    if (typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id)) {
+      st.selected[c.id] = true;
+    }
+  });
+  renderBulkEvidenceRowModalBody();
+}
+
 function buildEvidenceRowSignature(row) {
   if (!row) return '';
   var kind = row.kind === 'image' ? 'image' : 'ref';
@@ -2203,13 +2304,18 @@ function openBulkEvidenceRowModal(sourceCtrlId, rowIdx) {
   }
 
   var selected = {};
-  var defaultFamily = sourceControl ? sourceControl.f : '';
-  eligible.forEach(function(c) { selected[c.id] = !!(defaultFamily && c.f === defaultFamily); });
+  var sourceIsMinus1 = typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(sourceCtrlId);
+  if (sourceIsMinus1) {
+    eligible.forEach(function(c) {
+      if (isPolicyAndProceduresControl(c.id)) selected[c.id] = true;
+    });
+  }
 
   window._bulkEvidenceRowState = {
     sourceCtrlId: sourceCtrlId,
     sourceRowIdx: rowIdx,
-    familyFilter: defaultFamily,
+    familyFilter: '',
+    scopeFilter: sourceIsMinus1 ? 'minus1' : 'all',
     search: '',
     selected: selected
   };
@@ -2246,37 +2352,38 @@ function renderBulkEvidenceRowModalBody() {
   var body = document.getElementById('bulkEvidenceRowBody');
   if (!st || !body) return;
   var eligible = getBulkEvidenceEligibleControls(st.sourceCtrlId);
-  var sourceControl = CONTROLS.find(function(c) { return c.id === st.sourceCtrlId; });
   var families = Array.from(new Set(eligible.map(function(c) { return c.f; }))).sort();
-  var q = String(st.search || '').toLowerCase();
   var familyFilter = String(st.familyFilter || '');
-  var filtered = eligible.filter(function(c) {
-    if (familyFilter && c.f !== familyFilter) return false;
-    if (!q) return true;
-    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
-  });
+  var scopeFilter = String(st.scopeFilter || 'all');
+  var filtered = getBulkEvidenceRowFilteredControls(st);
   var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
   var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
   var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
 
   body.innerHTML = ''
-    + '<div style="display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '<div style="display:grid;grid-template-columns:180px 180px 1fr;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Scope</label>'
+    + '    <select class="form-select" style="font-size:12px;" onchange="bulkEvidenceSetScopeFilter(this.value)">'
+    + '      <option value="all"' + (scopeFilter === 'all' ? ' selected' : '') + '>All eligible</option>'
+    + '      <option value="minus1"' + (scopeFilter === 'minus1' ? ' selected' : '') + '>Policy &amp; Procedures (XX-1)</option>'
+    + '      <option value="isp-tier"' + (scopeFilter === 'isp-tier' ? ' selected' : '') + '>ISP tier (XX-1 + PM)</option>'
+    + '      <option value="same-family"' + (scopeFilter === 'same-family' ? ' selected' : '') + '>Same catalog family</option>'
+    + '    </select></div>'
     + '  <div><label class="form-label" style="font-size:10px;">Family filter</label>'
-    + '    <select class="form-select" style="font-size:12px;" onchange="window._bulkEvidenceRowState.familyFilter=this.value;renderBulkEvidenceRowModalBody();">'
+    + '    <select class="form-select" style="font-size:12px;" onchange="bulkEvidenceSetFamilyFilter(this.value)">'
     + '      <option value="">All families</option>'
     +        families.map(function(f) {
               return '<option value="' + escapeHTML(f) + '"' + (familyFilter === f ? ' selected' : '') + '>' + escapeHTML(f + ' — ' + (FAMILIES[f] || f)) + '</option>';
             }).join('')
     + '    </select></div>'
     + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
-    + '    <input class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="window._bulkEvidenceRowState.search=this.value;renderBulkEvidenceRowModalBody();"></div>'
+    + '    <input id="bulkEvidenceRowSearch" class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="bulkEvidenceSetSearch(this.value)"></div>'
     + '</div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible controls'
-    + (sourceControl && sourceControl.f ? ' · default scope: ' + escapeHTML(sourceControl.f) : '')
-    + '  </div>'
-    + '  <div style="display:flex;gap:8px;">'
-    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectFiltered(true)">Select all eligible</button>'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' eligible · ' + filtered.length + ' shown</div>'
+    + '  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectMinus1()">Select all XX-1</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectFiltered(true)">Select all shown</button>'
     + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkEvidenceSelectFiltered(false)">Clear</button>'
     + '  </div>'
     + '</div>'
@@ -2322,12 +2429,7 @@ function bulkEvidenceSetOne(ctrlId, checked) {
 function bulkEvidenceSelectFiltered(checked) {
   var st = window._bulkEvidenceRowState;
   if (!st) return;
-  var eligible = getBulkEvidenceEligibleControls(st.sourceCtrlId);
-  var q = String(st.search || '').toLowerCase();
-  var familyFilter = String(st.familyFilter || '');
-  eligible.forEach(function(c) {
-    if (familyFilter && c.f !== familyFilter) return;
-    if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
+  getBulkEvidenceRowFilteredControls(st).forEach(function(c) {
     st.selected[c.id] = !!checked;
   });
   renderBulkEvidenceRowModalBody();
