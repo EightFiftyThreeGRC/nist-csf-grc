@@ -1268,6 +1268,13 @@ function renderControlStep2() {
         <div class="ctrl-family-subnav" style="display:flex;flex-wrap:wrap;gap:8px;">
           ${renderControlFamilyChipNav(designFams, activeFam, 2)}
         </div>
+        ${activeFam === 'ISP' ? `
+        <div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:#166534;line-height:1.5;">
+            <strong>ISP shortcut:</strong> Policy &amp; Procedures controls share governance text and <em>IS Governance</em> scope. Document one control, then bulk-apply the pattern to the rest.
+          </div>
+          ${state._selectedCtrl ? '<button type="button" class="btn btn-secondary btn-sm" onclick="openBulkIspDesignPatternModal(\'' + String(state._selectedCtrl).replace(/'/g, "\\'") + '\')">Bulk apply to ISP controls…</button>' : ''}
+        </div>` : ''}
       </div>
       <div style="display:flex;flex:1;overflow:hidden;">
       <!-- LEFT: control list -->
@@ -1427,6 +1434,354 @@ function normalizeControlDesignState(ctrlId) {
     delete e.caption;
     return e;
   });
+  ensureIspOrganizationalDesignDefaults(ctrlId);
+}
+
+var ISP_GOVERNANCE_TYPE_KEY = 'proc_is_governance';
+
+function isIspOrganizationalControl(ctrlId) {
+  var ctrl = CONTROLS.find(function(c) { return c.id === ctrlId; });
+  if (!ctrl) return false;
+  if (typeof isControlIspTier === 'function' && isControlIspTier(ctrl)) return true;
+  return typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(ctrlId);
+}
+
+function controlScopeWasTouched(cs) {
+  if (!cs) return false;
+  if (cs.assetCoverage && Object.keys(cs.assetCoverage).length) return true;
+  if ((cs.linkedAssets || []).length) return true;
+  if ((cs.linkedProcesses || []).length) return true;
+  return false;
+}
+
+function ensureIspOrganizationalDesignDefaults(ctrlId) {
+  if (!isIspOrganizationalControl(ctrlId)) return;
+  var cs = state.controlStatus[ctrlId];
+  if (!cs) return;
+  if (controlScopeWasTouched(cs)) return;
+  if (!cs.assetCoverage) cs.assetCoverage = {};
+  if (cs.assetCoverage[ISP_GOVERNANCE_TYPE_KEY]) return;
+  cs.assetCoverage[ISP_GOVERNANCE_TYPE_KEY] = true;
+  var procId = findIsGovernanceProcessId();
+  if (procId) {
+    if (!cs.linkedProcesses) cs.linkedProcesses = [];
+    if (cs.linkedProcesses.indexOf(procId) === -1) cs.linkedProcesses.push(procId);
+  }
+  if (!cs.status || cs.status === 'Not Started') cs.status = 'Planned';
+  markDirty();
+}
+
+function findIsGovernanceProcessId() {
+  var processes = state.processes || [];
+  for (var i = 0; i < processes.length; i++) {
+    var p = processes[i];
+    var name = String(p.name || p.id || '').trim().toLowerCase();
+    if (name === 'is governance') return String(p.id || p.name);
+  }
+  return null;
+}
+
+function captureIspDesignPattern(ctrlId) {
+  normalizeControlDesignState(ctrlId);
+  var cs = state.controlStatus[ctrlId] || {};
+  return {
+    designSource: cs.designSource || 'inline',
+    designParts: JSON.parse(JSON.stringify(cs.designParts || {})),
+    assetCoverage: JSON.parse(JSON.stringify(cs.assetCoverage || {})),
+    linkedAssets: (cs.linkedAssets || []).slice(),
+    linkedProcesses: (cs.linkedProcesses || []).slice()
+  };
+}
+
+function ispDesignPatternHasContent(ctrlId) {
+  normalizeControlDesignState(ctrlId);
+  var cs = state.controlStatus[ctrlId] || {};
+  var parts = cs.designParts || {};
+  var hasParts = Object.keys(parts).some(function(k) { return String(parts[k] || '').trim(); });
+  return hasParts || controlHasAssetProcessScope(ctrlId);
+}
+
+function getBulkIspDesignEligibleControls(sourceCtrlId) {
+  return controlsInDesignGroup('ISP').filter(function(c) {
+    if (c.id === sourceCtrlId) return false;
+    var cs = state.controlStatus[c.id] || {};
+    if (cs.returnedToPolicyOwner || cs.recommendedDeselect) return false;
+    return true;
+  }).sort(function(a, b) { return String(a.id).localeCompare(String(b.id)); });
+}
+
+function openBulkIspDesignPatternModal(sourceCtrlId) {
+  normalizeControlDesignState(sourceCtrlId);
+  if (!ispDesignPatternHasContent(sourceCtrlId)) {
+    showToast('Document sub-requirements A/B/C and/or select IS Governance scope on this control first.', true);
+    return;
+  }
+  var eligible = getBulkIspDesignEligibleControls(sourceCtrlId);
+  if (!eligible.length) {
+    showToast('No other ISP controls in your queue to update.', true);
+    return;
+  }
+  var selected = {};
+  eligible.forEach(function(c) { selected[c.id] = true; });
+  window._bulkIspDesignState = {
+    sourceCtrlId: sourceCtrlId,
+    search: '',
+    overwrite: true,
+    incompleteOnly: false,
+    selected: selected
+  };
+
+  var existing = document.getElementById('bulkIspDesignOverlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'bulkIspDesignOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10055;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 18px;';
+  overlay.innerHTML = ''
+    + '<div style="background:white;border-radius:14px;width:940px;max-width:100%;box-shadow:0 24px 60px rgba(2,6,23,0.22);overflow:hidden;">'
+    + '  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px;">Bulk apply ISP design pattern</div>'
+    + '      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;">Source: <span class="control-id">' + escapeHTML(sourceCtrlId) + '</span> — copies sub-requirement text and asset/process scope to other ISP controls.</div>'
+    + '    </div>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkIspDesignPatternModal()">Close</button>'
+    + '  </div>'
+    + '  <div id="bulkIspDesignBody" style="padding:16px 20px;"></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeBulkIspDesignPatternModal(); });
+  renderBulkIspDesignPatternModalBody();
+}
+
+function closeBulkIspDesignPatternModal() {
+  var overlay = document.getElementById('bulkIspDesignOverlay');
+  if (overlay) overlay.remove();
+  window._bulkIspDesignState = null;
+}
+
+function getBulkIspDesignFilteredControls(st) {
+  var eligible = getBulkIspDesignEligibleControls(st.sourceCtrlId);
+  var q = String(st.search || '').toLowerCase();
+  return eligible.filter(function(c) {
+    if (st.incompleteOnly && isControlDesigned(c.id)) return false;
+    if (!q) return true;
+    return String(c.id).toLowerCase().indexOf(q) !== -1 || String(c.n || '').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function renderBulkIspDesignPatternModalBody() {
+  var st = window._bulkIspDesignState;
+  var body = document.getElementById('bulkIspDesignBody');
+  if (!st || !body) return;
+  var eligible = getBulkIspDesignEligibleControls(st.sourceCtrlId);
+  var filtered = getBulkIspDesignFilteredControls(st);
+  var selectedCount = eligible.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var filteredSelected = filtered.filter(function(c) { return !!st.selected[c.id]; }).length;
+  var allFilteredSelected = !!filtered.length && filteredSelected === filtered.length;
+  var pattern = captureIspDesignPattern(st.sourceCtrlId);
+  var partLetters = Object.keys(pattern.designParts || {}).filter(function(k) { return String(pattern.designParts[k] || '').trim(); });
+  var scopeLabels = getCtrlCoveredAssetTypes(st.sourceCtrlId).map(function(t) { return t.label; });
+  (pattern.linkedProcesses || []).forEach(function(pid) {
+    var p = (state.processes || []).find(function(x) { return String(x.id) === String(pid) || String(x.name) === String(pid); });
+    scopeLabels.push('Process: ' + (p ? String(p.name || p.id) : pid));
+  });
+  (pattern.linkedAssets || []).forEach(function(aid) {
+    var a = (state.assets || []).find(function(x) { return String(x.id) === String(aid) || String(x.name) === String(aid); });
+    scopeLabels.push('Asset: ' + (a ? String(a.name || a.id) : aid));
+  });
+
+  body.innerHTML = ''
+    + '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:#166534;line-height:1.55;">'
+    + '<div style="font-weight:700;margin-bottom:4px;">Pattern to copy</div>'
+    + (partLetters.length ? '<div>Sub-requirements: ' + escapeHTML(partLetters.map(function(l) { return l.toUpperCase(); }).join(', ')) + '</div>' : '<div>No sub-requirement text yet</div>')
+    + (scopeLabels.length ? '<div>Scope: ' + escapeHTML(scopeLabels.join(' · ')) + '</div>' : '<div>No asset/process scope selected</div>')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end;margin-bottom:12px;">'
+    + '  <div><label class="form-label" style="font-size:10px;">Search</label>'
+    + '    <input id="bulkIspDesignSearch" class="form-input" style="font-size:12px;" placeholder="Filter by control ID or name" value="' + escapeHTML(st.search || '') + '" oninput="bulkIspDesignSetSearch(this.value)"></div>'
+    + '  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--navy);white-space:nowrap;padding-bottom:8px;">'
+    + '    <input type="checkbox" ' + (st.incompleteOnly ? 'checked' : '') + ' onchange="bulkIspDesignSetIncompleteOnly(this.checked)" style="accent-color:var(--teal);">'
+    + '    Incomplete only'
+    + '  </label>'
+    + '  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--navy);white-space:nowrap;padding-bottom:8px;">'
+    + '    <input type="checkbox" ' + (st.overwrite ? 'checked' : '') + ' onchange="bulkIspDesignSetOverwrite(this.checked)" style="accent-color:var(--teal);">'
+    + '    Overwrite existing'
+    + '  </label>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '  <div style="font-size:12px;color:var(--text-muted);">' + selectedCount + ' selected of ' + eligible.length + ' ISP controls · ' + filtered.length + ' shown</div>'
+    + '  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkIspDesignSelectIncomplete()">Select incomplete</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkIspDesignSelectFiltered(true)">Select all shown</button>'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkIspDesignSelectFiltered(false)">Clear</button>'
+    + '  </div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">'
+    + (st.overwrite
+      ? 'Overwrite replaces sub-requirement text and scope on selected controls.'
+      : 'Fill-empty only writes blank sub-requirements and controls with no scope yet.')
+    + '</div>'
+    + '<div style="border:1px solid var(--border);border-radius:10px;max-height:360px;overflow:auto;">'
+    + '  <table class="control-table" style="margin:0;">'
+    + '    <thead><tr>'
+    + '      <th style="width:42px;"><input type="checkbox" ' + (allFilteredSelected ? 'checked' : '') + ' onchange="bulkIspDesignSelectFiltered(this.checked)" style="accent-color:var(--teal);"></th>'
+    + '      <th style="width:95px;">Control</th>'
+    + '      <th>Name</th>'
+    + '      <th style="width:70px;">Family</th>'
+    + '      <th style="width:90px;">Designed</th>'
+    + '    </tr></thead>'
+    + '    <tbody>'
+    +      (filtered.length ? filtered.map(function(c) {
+            var checked = !!st.selected[c.id];
+            var designed = isControlDesigned(c.id);
+            return '<tr>'
+              + '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="bulkIspDesignSetOne(\'' + c.id.replace(/'/g, "\\'") + '\',this.checked)" style="accent-color:var(--teal);"></td>'
+              + '<td><span class="control-id">' + escapeHTML(c.id) + '</span></td>'
+              + '<td style="font-size:12px;color:var(--navy);">' + escapeHTML(c.n) + '</td>'
+              + '<td><span class="family-badge">' + escapeHTML(c.f) + '</span></td>'
+              + '<td style="font-size:11px;color:' + (designed ? '#166534' : 'var(--text-muted)') + ';">' + (designed ? 'Yes' : '—') + '</td>'
+              + '</tr>';
+          }).join('') : '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No controls match current filter.</td></tr>')
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">'
+    + '  <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkIspDesignPatternModal()">Cancel</button>'
+    + '  <button type="button" class="btn btn-primary btn-sm" onclick="applyBulkIspDesignPattern()">Apply pattern</button>'
+    + '</div>';
+}
+
+function bulkIspDesignSetSearch(value) {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  st.search = value;
+  renderBulkIspDesignPatternModalBody();
+}
+
+function bulkIspDesignSetOverwrite(checked) {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  st.overwrite = !!checked;
+  renderBulkIspDesignPatternModalBody();
+}
+
+function bulkIspDesignSetIncompleteOnly(checked) {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  st.incompleteOnly = !!checked;
+  renderBulkIspDesignPatternModalBody();
+}
+
+function bulkIspDesignSetOne(ctrlId, checked) {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  st.selected[ctrlId] = !!checked;
+  renderBulkIspDesignPatternModalBody();
+}
+
+function bulkIspDesignSelectFiltered(checked) {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  getBulkIspDesignFilteredControls(st).forEach(function(c) {
+    st.selected[c.id] = !!checked;
+  });
+  renderBulkIspDesignPatternModalBody();
+}
+
+function bulkIspDesignSelectIncomplete() {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  getBulkIspDesignEligibleControls(st.sourceCtrlId).forEach(function(c) {
+    st.selected[c.id] = !isControlDesigned(c.id);
+  });
+  renderBulkIspDesignPatternModalBody();
+}
+
+function applyIspDesignPatternToControl(pattern, ctrlId, overwrite) {
+  normalizeControlDesignState(ctrlId);
+  var target = state.controlStatus[ctrlId];
+  var changed = false;
+
+  if (!target.designParts) target.designParts = {};
+  var sourceParts = pattern.designParts || {};
+  Object.keys(sourceParts).forEach(function(letter) {
+    var nextVal = String(sourceParts[letter] || '');
+    if (!nextVal.trim()) return;
+    var prevVal = String((target.designParts || {})[letter] || '');
+    if (overwrite) {
+      if (prevVal !== nextVal) {
+        target.designParts[letter] = nextVal;
+        changed = true;
+      }
+    } else if (!prevVal.trim()) {
+      target.designParts[letter] = nextVal;
+      changed = true;
+    }
+  });
+
+  if (overwrite || !controlHasAssetProcessScope(ctrlId)) {
+    var nextCoverage = JSON.parse(JSON.stringify(pattern.assetCoverage || {}));
+    var nextAssets = (pattern.linkedAssets || []).slice();
+    var nextProcesses = (pattern.linkedProcesses || []).slice();
+    if (JSON.stringify(target.assetCoverage || {}) !== JSON.stringify(nextCoverage)) {
+      target.assetCoverage = nextCoverage;
+      changed = true;
+    }
+    if (JSON.stringify(target.linkedAssets || []) !== JSON.stringify(nextAssets)) {
+      target.linkedAssets = nextAssets;
+      changed = true;
+    }
+    if (JSON.stringify(target.linkedProcesses || []) !== JSON.stringify(nextProcesses)) {
+      target.linkedProcesses = nextProcesses;
+      changed = true;
+    }
+  }
+
+  if (changed && pattern.designSource) {
+    target.designSource = pattern.designSource;
+  }
+  if (changed && (!target.status || target.status === 'Not Started')) {
+    target.status = 'Planned';
+  }
+  return changed;
+}
+
+function applyBulkIspDesignPattern() {
+  var st = window._bulkIspDesignState;
+  if (!st) return;
+  var pattern = captureIspDesignPattern(st.sourceCtrlId);
+  var selectedIds = getBulkIspDesignEligibleControls(st.sourceCtrlId)
+    .map(function(c) { return c.id; })
+    .filter(function(id) { return !!st.selected[id]; });
+  if (!selectedIds.length) {
+    showToast('Select at least one ISP control to update.', true);
+    return;
+  }
+  var warn = st.overwrite
+    ? 'Overwrite sub-requirement text and scope on ' + selectedIds.length + ' ISP control(s)? Existing content will be replaced.'
+    : 'Fill empty sub-requirements and scope on ' + selectedIds.length + ' ISP control(s)? Controls that already have content will be skipped.';
+  if (!window.confirm(warn)) return;
+
+  var idx = 0;
+  var appliedCount = 0;
+  var skippedCount = 0;
+
+  function applyChunk() {
+    var end = Math.min(idx + 30, selectedIds.length);
+    for (; idx < end; idx++) {
+      if (applyIspDesignPatternToControl(pattern, selectedIds[idx], !!st.overwrite)) appliedCount++;
+      else skippedCount++;
+    }
+    if (idx < selectedIds.length) {
+      requestAnimationFrame(applyChunk);
+      return;
+    }
+    addAuditEntry('control', st.sourceCtrlId, 'Bulk-applied ISP design pattern from ' + st.sourceCtrlId + ' to ' + appliedCount + ' control(s)' + (skippedCount ? ' (' + skippedCount + ' unchanged)' : '') + '.');
+    markDirty();
+    closeBulkIspDesignPatternModal();
+    showToast('✅ ISP pattern applied to ' + appliedCount + ' control' + (appliedCount === 1 ? '' : 's') + (skippedCount ? ' · ' + skippedCount + ' unchanged' : '') + '.');
+    renderControlStep2();
+  }
+  applyChunk();
 }
 
 function getDesignChecklist(ctrl) {
@@ -2254,6 +2609,10 @@ function renderControlDetailForm(ctrl) {
           </div>
         </div>`;
       }).join('')}
+      ${(typeof isIspOrganizationalControl === 'function' && isIspOrganizationalControl(ctrl.id)) ? `
+      <div style="margin-top:4px;display:flex;justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openBulkIspDesignPatternModal('${cid}')">Bulk apply to all ISP controls…</button>
+      </div>` : ''}
       ` : `
       <div>
         <label class="form-label">Control Design Description</label>

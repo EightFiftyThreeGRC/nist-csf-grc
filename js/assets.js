@@ -37,6 +37,7 @@ const ASSET_TYPES = [
     { key: 'devops_container',   label: 'Container Orchestration (Kubernetes)' },
   ]},
   { category: 'Process', types: [
+    { key: 'proc_is_governance', label: 'IS Governance' },
     { key: 'proc_risk_mgmt',     label: 'Risk Management' },
     { key: 'proc_vuln_mgmt',     label: 'Vulnerability Management' },
     { key: 'proc_iam',           label: 'Identity & Access Management' },
