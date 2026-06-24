@@ -1135,10 +1135,20 @@ function _policyZipStored(files) {
 
 function _policyBuildDocxFromLines(title, lines) {
   var allLines = [title || 'Policy'].concat(lines || []);
-  var bodyXml = allLines.map(function(line) {
-    if (!line) return '<w:p/>';
-    return '<w:p><w:r><w:t xml:space="preserve">' + _policyEscapeXml(line) + '</w:t></w:r></w:p>';
-  }).join('');
+  var bodyXml = '';
+  allLines.forEach(function(line) {
+    if (line == null || line === '') {
+      bodyXml += '<w:p/>';
+      return;
+    }
+    String(line).split(/\r?\n/).forEach(function(part) {
+      if (!part) {
+        bodyXml += '<w:p/>';
+      } else {
+        bodyXml += '<w:p><w:r><w:t xml:space="preserve">' + _policyEscapeXml(part) + '</w:t></w:r></w:p>';
+      }
+    });
+  });
   var documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"'
     + ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
