@@ -1027,6 +1027,63 @@ function confirmPolicyOwnerDeselectDecision(ctrlId, decision) {
   renderPolicyStep2();
 }
 
+function updateControlStep2FooterNav() {
+  var nextBtn = document.getElementById('controlStep2NextBtn');
+  var backBtn = document.getElementById('controlStep2BackBtn');
+  var designFams = typeof getDesignFamiliesForQueue === 'function' ? getDesignFamiliesForQueue() : [];
+  var activeFam = typeof ensureControlDesignFamily === 'function' ? ensureControlDesignFamily() : (designFams[0] || null);
+  var idx = activeFam ? designFams.indexOf(activeFam) : -1;
+  if (idx < 0) idx = 0;
+
+  if (backBtn) {
+    if (idx > 0) {
+      var prevFam = designFams[idx - 1];
+      var prevLetter = String.fromCharCode(97 + idx - 1);
+      var prevLabel = prevFam === 'ISP' ? 'ISP' : prevFam;
+      backBtn.textContent = '← 2' + prevLetter + ' · ' + prevLabel;
+    } else {
+      backBtn.textContent = '← Back';
+    }
+  }
+
+  if (!nextBtn) return;
+  if (!designFams.length || idx >= designFams.length - 1) {
+    nextBtn.textContent = 'Asset Requirements →';
+    return;
+  }
+  var nextFam = designFams[idx + 1];
+  var nextLetter = String.fromCharCode(97 + idx + 1);
+  var nextLabel = nextFam === 'ISP' ? 'ISP' : nextFam;
+  nextBtn.textContent = 'Next: 2' + nextLetter + ' · ' + nextLabel + ' →';
+}
+
+function advanceControlStep2() {
+  var designFams = typeof getDesignFamiliesForQueue === 'function' ? getDesignFamiliesForQueue() : [];
+  if (!designFams.length) {
+    goToStep('control', 3);
+    return;
+  }
+  var activeFam = typeof ensureControlDesignFamily === 'function' ? ensureControlDesignFamily() : designFams[0];
+  var idx = designFams.indexOf(activeFam);
+  if (idx < 0) idx = 0;
+  if (idx < designFams.length - 1) {
+    selectControlDesignFamily(designFams[idx + 1]);
+    return;
+  }
+  goToStep('control', 3);
+}
+
+function retreatControlStep2() {
+  var designFams = typeof getDesignFamiliesForQueue === 'function' ? getDesignFamiliesForQueue() : [];
+  var activeFam = typeof ensureControlDesignFamily === 'function' ? ensureControlDesignFamily() : (designFams[0] || null);
+  var idx = activeFam ? designFams.indexOf(activeFam) : -1;
+  if (idx > 0) {
+    selectControlDesignFamily(designFams[idx - 1]);
+    return;
+  }
+  goToStep('control', 1);
+}
+
 // ── STEP 2: DESIGN THE CONTROL ────────────────────────────────────────────────
 function renderControlStep2() {
   const body = document.getElementById('control-step-2-body');
@@ -1073,6 +1130,7 @@ function renderControlStep2() {
   const totalDesigned = allQueue.filter(function(c) { return isControlDesigned(c.id); }).length;
 
   updateControlStep2SidebarSubnav(designFams);
+  updateControlStep2FooterNav();
 
   body.innerHTML = `
     <div style="display:flex;flex-direction:column;min-height:500px;height:calc(100vh - 320px);overflow:hidden;margin:-4px;">
