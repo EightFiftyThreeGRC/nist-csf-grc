@@ -131,6 +131,56 @@ function getPolicyPendingReviewerDisplay(policyKey) {
   return policyKey === 'ISP' ? 'Program owner / CISO' : 'Program owner (CISO)';
 }
 
+/** Approver routing from Step 1 review-cycle card (before or after submit). */
+function getDomainPolicyApproverMeta(fam) {
+  fam = fam || state._policyDomain;
+  if (!state.policyReviewCycle) state.policyReviewCycle = {};
+  var rc = state.policyReviewCycle[fam] || {};
+  var useCustom = !!(rc._customApprover && (rc.approvedBy || '').trim());
+  return {
+    useCustom: useCustom,
+    name: useCustom ? String(rc.approvedBy || '').trim() : String(state.programOwner || '').trim(),
+    role: useCustom ? String(rc.approverRole || '').trim() : String(state.programOwnerTitle || '').trim(),
+    email: useCustom ? String(rc.approverEmail || '').trim() : String(state.programOwnerEmail || '').trim()
+  };
+}
+
+/** Short label for submit UI — prefers approver role (e.g. CIO), then name. */
+function getDomainPolicySubmitApprovalPhrase(fam) {
+  var meta = getDomainPolicyApproverMeta(fam);
+  if (meta.role) return meta.role;
+  if (meta.name) return meta.name;
+  return '';
+}
+
+function getDomainPolicySubmitButtonLabel(fam) {
+  var phrase = getDomainPolicySubmitApprovalPhrase(fam);
+  if (phrase) return '\u2713 Submit for ' + phrase + ' Approval';
+  return '\u2713 Submit for Approval';
+}
+
+function getDomainPolicySubmitModalTitle(fam) {
+  var phrase = getDomainPolicySubmitApprovalPhrase(fam);
+  if (phrase) return 'Submit Policy for ' + phrase + ' Approval';
+  return 'Submit Policy for Approval';
+}
+
+function getDomainPolicySubmitModalDescription(fam) {
+  var phrase = getDomainPolicySubmitApprovalPhrase(fam);
+  if (phrase) {
+    return 'Review the summary below, then submit your domain policy to ' + phrase + ' for review and approval.';
+  }
+  return 'Review the summary below, then submit your domain policy for review and approval.';
+}
+
+function updateDomainPolicySubmitButton(fam) {
+  var btn = document.getElementById('policy-submit-approval-btn');
+  if (!btn) {
+    btn = document.querySelector('#policy-step-4 .wizard-step-footer .btn-navy');
+  }
+  if (btn) btn.textContent = getDomainPolicySubmitButtonLabel(fam);
+}
+
 // ============================================================
 // POLICY OWNER TAB
 // ============================================================
@@ -3916,6 +3966,7 @@ function renderPolicyStep4() {
       </div>
     </div>
   `;
+  setTimeout(function() { updateDomainPolicySubmitButton(fam); }, 0);
 }
 
 // Fill batch-assign fields from a user picked in the left-panel quick-fill dropdown
@@ -4158,8 +4209,8 @@ function showSubmitModal() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML =
     '<div style="background:white;border-radius:16px;padding:32px;width:480px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
-    + '<div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px;">Submit Policy for CISO Approval</div>'
-    + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Review the summary below, then submit your domain policy for CISO review and approval.</div>'
+    + '<div style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:8px;">' + escapeHTML(getDomainPolicySubmitModalTitle(fam)) + '</div>'
+    + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">' + escapeHTML(getDomainPolicySubmitModalDescription(fam)) + '</div>'
     + '<div style="background:#f9fafb;border-radius:10px;padding:16px;margin-bottom:20px;">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Domain</div><div style="font-size:14px;font-weight:700;color:var(--navy);">' + (FAMILIES[fam]||fam) + '</div></div>'
@@ -4187,11 +4238,12 @@ function confirmSubmitDomainPolicy() {
   if (typeof validateDomainApproverAssignment === 'function') {
     if (!validateDomainApproverAssignment(fam, rc, false)) return;
   }
-  var useCustom = rc._customApprover && (rc.approvedBy || '').trim();
-  var reviewerName = useCustom ? rc.approvedBy.trim() : (state.programOwner || '').trim();
-  var reviewerRole = useCustom ? (rc.approverRole || '').trim() : (state.programOwnerTitle || 'CISO').trim();
-  var reviewerEmail = useCustom ? (rc.approverEmail || '').trim() : (state.programOwnerEmail || '').trim();
-  state.policyStatus[fam].submittedTo = reviewerName || (state.programOwner || 'CISO');
+  var meta = getDomainPolicyApproverMeta(fam);
+  var reviewerName = meta.name || (state.programOwner || '').trim();
+  var reviewerRole = meta.role || (state.programOwnerTitle || '').trim();
+  var reviewerEmail = meta.email || (state.programOwnerEmail || '').trim();
+  var useCustom = meta.useCustom;
+  state.policyStatus[fam].submittedTo = reviewerName || 'Designated approver';
   state.policyStatus[fam].submittedToRole = reviewerRole;
   state.policyStatus[fam].submittedToEmail = reviewerEmail;
   state.policyStatus[fam].submittedAt = new Date().toISOString().slice(0, 10);
