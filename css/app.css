@@ -1136,6 +1136,7 @@
     .control-table .col-filter-row th {
       padding: 6px 8px;
       background: #f8fafc;
+      color: var(--navy);
       vertical-align: top;
     }
 
@@ -1168,6 +1169,7 @@
       max-height: 200px;
       overflow-y: auto;
       background: white;
+      color: var(--navy);
       border: 1px solid var(--border);
       border-radius: 6px;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);

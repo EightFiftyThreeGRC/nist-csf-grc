@@ -414,7 +414,7 @@ function renderControlStep1() {
   const controls = getMyDesignQueueControls();
   const returnedControls = allControls.filter(c => (state.controlStatus[c.id]||{}).returnedToPolicyOwner);
   const deselectControls = allControls.filter(c => (state.controlStatus[c.id]||{}).recommendedDeselect);
-  const families = getDesignFamiliesForQueue();
+  const families = [...new Set(controls.map(function(c) { return c.f; }))].sort();
   const ownerOptions = typeof getControlQueueOwnerFilterOptions === 'function'
     ? getControlQueueOwnerFilterOptions(controls) : [];
   var fq = ensureControlQueueFilters();
