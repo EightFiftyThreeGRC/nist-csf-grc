@@ -185,14 +185,14 @@ function renderControlStep(step) {
   var designFams = typeof getDesignFamiliesForQueue === 'function' ? getDesignFamiliesForQueue() : [];
   if (step === 1) {
     renderControlStep1();
-    updateControlStep1SidebarSubnav(designFams);
+    updateControlFamilySidebarSubnav(1, []);
     updateControlStep2SidebarSubnav([]);
   } else if (step === 2) {
     renderControlStep2();
-    updateControlStep1SidebarSubnav([]);
+    updateControlFamilySidebarSubnav(1, []);
     updateControlStep2SidebarSubnav(designFams);
   } else {
-    updateControlStep1SidebarSubnav([]);
+    updateControlFamilySidebarSubnav(1, []);
     updateControlStep2SidebarSubnav([]);
     if (step === 3) renderControlStep3();
     if (step === 4) renderControlStep4();
@@ -244,7 +244,12 @@ function selectControlDesignFamily(fam) {
   if (famCtrls.length && (!state._selectedCtrl || !famCtrls.some(function(c) { return c.id === state._selectedCtrl; }))) {
     state._selectedCtrl = famCtrls[0].id;
   }
-  renderControlStep(currentStep.control);
+  if (currentStep.control !== 2) {
+    goToStep('control', 2);
+    return;
+  }
+  renderControlStep2();
+  updateControlStep2SidebarSubnav(getDesignFamiliesForQueue());
 }
 
 function renderControlFamilyChipNav(designFams, activeFam, stepNum) {
@@ -286,23 +291,18 @@ function updateControlFamilySidebarSubnav(stepNum, designFams) {
   host.style.display = '';
   var activeFam = state._controlDesignFamily || designFams[0];
   if (stepName) {
-    var prefix = stepNum === 1 ? 'My Controls · ' : 'Design · ';
-    stepName.textContent = prefix + activeFam + (isControlFamilyDesignComplete(activeFam) ? ' ✓' : '');
+    stepName.textContent = (stepNum === 2 ? 'Design · ' : 'My Controls · ') + activeFam + (isControlFamilyDesignComplete(activeFam) ? ' ✓' : '');
   }
   host.innerHTML = designFams.map(function(fam, i) {
     var letter = String.fromCharCode(97 + i);
     var complete = isControlFamilyDesignComplete(fam);
     var isActive = fam === activeFam;
     var famKey = fam.replace(/'/g, "\\'");
-    return '<div class="control-substep-item' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="goToStep(\'control\',' + stepNum + ');selectControlDesignFamily(\'' + famKey + '\')">'
-      + '<span>' + stepNum + letter + ' ' + fam + '</span>'
+    return '<div class="control-substep-item' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="goToStep(\'control\',2);selectControlDesignFamily(\'' + famKey + '\')">'
+      + '<span>2' + letter + ' ' + fam + '</span>'
       + '<span class="control-substep-check">' + (complete ? '✓' : '') + '</span>'
       + '</div>';
   }).join('');
-}
-
-function updateControlStep1SidebarSubnav(designFams) {
-  updateControlFamilySidebarSubnav(1, designFams);
 }
 
 function updateControlStep2SidebarSubnav(designFams) {
@@ -386,11 +386,9 @@ function renderControlStep1() {
   const controls = getMyDesignQueueControls();
   const returnedControls = allControls.filter(c => (state.controlStatus[c.id]||{}).returnedToPolicyOwner);
   const deselectControls = allControls.filter(c => (state.controlStatus[c.id]||{}).recommendedDeselect);
-  const designFams = getDesignFamiliesForQueue();
-  const activeFam = ensureControlDesignFamily();
-  const familyControls = activeFam ? controls.filter(function(c) { return c.f === activeFam; }) : controls;
+  const families = getDesignFamiliesForQueue();
   const ownerOptions = typeof getControlQueueOwnerFilterOptions === 'function'
-    ? getControlQueueOwnerFilterOptions(familyControls) : [];
+    ? getControlQueueOwnerFilterOptions(controls) : [];
   var fq = ensureControlQueueFilters();
 
   if (allControls.length === 0 && assignedBeforeGate.length > 0) {
@@ -406,17 +404,15 @@ function renderControlStep1() {
   const now  = new Date();
   const soon = new Date(now.getTime() + 30*24*60*60*1000);
 
-  const totalDesigned = familyControls.filter(c => {
+  const totalDesigned = controls.filter(c => {
     const cs = state.controlStatus[c.id]||{};
     return cs.designSource || (cs.approach && cs.approach.trim()) || (cs.designParts && Object.values(cs.designParts).some(v => v && v.trim()));
   }).length;
-  const totalInProg = familyControls.filter(c => ['In Progress','Planned'].includes((state.controlStatus[c.id]||{}).status)).length;
-  const totalNA     = familyControls.filter(c => (state.controlStatus[c.id]||{}).status === 'Not Applicable').length;
-  const pctDesigned = familyControls.length ? Math.round((totalDesigned / familyControls.length) * 100) : 0;
-  const overallDesigned = controls.filter(function(c) { return isControlDesigned(c.id); }).length;
-  const famComplete = activeFam ? isControlFamilyDesignComplete(activeFam) : false;
+  const totalInProg = controls.filter(c => ['In Progress','Planned'].includes((state.controlStatus[c.id]||{}).status)).length;
+  const totalNA     = controls.filter(c => (state.controlStatus[c.id]||{}).status === 'Not Applicable').length;
+  const pctDesigned = controls.length ? Math.round((totalDesigned / controls.length) * 100) : 0;
 
-  const dueSoon = familyControls.filter(c => {
+  const dueSoon = controls.filter(c => {
     const dd = (state.controlOwners||{})[c.id]?.dueDate;
     if (!dd) return false;
     const d = new Date(dd);
@@ -426,27 +422,17 @@ function renderControlStep1() {
   const workspaceTitle = typeof getControlWorkspaceTitle === 'function' ? getControlWorkspaceTitle() : (state.currentUserId ? 'My Controls' : 'Controls');
   const workspaceSubtitle = (typeof isCloudOwnerSession === 'function' && isCloudOwnerSession() && !state.currentUserId)
     ? 'Program owner view — design any control in scope or assign owners in Domain policies.'
-    : (controls.length + ' control' + (controls.length === 1 ? '' : 's') + ' assigned to you · ' + overallDesigned + ' designed overall' + (activeFam ? ' — showing <strong>' + activeFam + '</strong> (' + familyControls.length + ')' : ''));
+    : (controls.length + ' control' + (controls.length === 1 ? '' : 's') + ' in your design queue — ' + (state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High') + ' baseline' + (state.privacyOverlay?' + Privacy Overlay':''));
 
   body.innerHTML = `
     <div class="section-title">${workspaceTitle}</div>
     <div class="section-subtitle">${workspaceSubtitle}</div>
 
-    ${designFams.length > 1 ? `<div style="padding:0 0 16px 0;border-bottom:1px solid var(--border);margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:700;color:var(--navy);">Browse by control family</div>
-        <div style="font-size:11px;color:var(--teal);font-weight:700;">${activeFam} — ${FAMILIES[activeFam] || activeFam}: ${totalDesigned}/${familyControls.length} designed${famComplete ? ' ✓' : ''}</div>
-      </div>
-      <div class="ctrl-family-subnav" style="display:flex;flex-wrap:wrap;gap:8px;">
-        ${renderControlFamilyChipNav(designFams, activeFam, 1)}
-      </div>
-    </div>` : ''}
-
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
         ['Designed',    totalDesigned,                                          '#166534','#dcfce7','✅'],
         ['In Progress', totalInProg,                                            '#92400e','#fef3c7','🔄'],
-        ['Not Started', familyControls.length - totalDesigned - totalInProg - totalNA,'#1e3a5f','#eff6ff','⏳'],
+        ['Not Started', controls.length - totalDesigned - totalInProg - totalNA,'#1e3a5f','#eff6ff','⏳'],
         ['N / A',       totalNA,                                                '#64748b','#f1f5f9','—'],
       ].map(([label,count,color,bg,icon]) => `
         <div style="background:${bg};border:1px solid ${color}22;border-radius:10px;padding:14px 16px;border-left:3px solid ${color};">
@@ -455,7 +441,7 @@ function renderControlStep1() {
             <div style="font-size:18px;">${icon}</div>
           </div>
           <div style="font-size:28px;font-weight:800;color:${color};line-height:1.1;margin-top:4px;">${count}</div>
-          <div style="font-size:10px;color:${color};opacity:0.7;margin-top:2px;">of ${familyControls.length} in ${activeFam || 'queue'}</div>
+          <div style="font-size:10px;color:${color};opacity:0.7;margin-top:2px;">of ${controls.length} controls</div>
         </div>`).join('')}
     </div>
 
@@ -481,7 +467,7 @@ function renderControlStep1() {
 
     <div class="filter-bar" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
       <input type="text" id="ctrlSearch" placeholder="🔍  Search by ID or name…" value="${escapeHTML(fq.search || '')}" oninput="setCtrlQueueSearch(this.value)" style="flex:1;">
-      <span id="controlQueueFilterCount" style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${familyControls.length} shown</span>
+      <span id="controlQueueFilterCount" style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${controls.length} shown</span>
     </div>
 
     <div class="table-scroll">
@@ -490,6 +476,7 @@ function renderControlStep1() {
           <tr>
             <th style="width:80px;">Control</th>
             <th>Name</th>
+            <th style="width:70px;">Family</th>
             <th style="width:140px;">Owner</th>
             <th style="width:95px;">Due Date</th>
             <th style="width:120px;">Status</th>
@@ -498,6 +485,7 @@ function renderControlStep1() {
           <tr class="col-filter-row">
             <th></th>
             <th></th>
+            <th>${renderCtrlQueueMsFilter('ctrlQFamMenu', 'families', families.map(function(f) { return { value: f, label: f + ' — ' + (FAMILIES[f] || f) }; }), 'All families')}</th>
             <th>${renderCtrlQueueMsFilter('ctrlQOwnerMenu', 'owners', ownerOptions, 'All owners')}</th>
             <th></th>
             <th>${renderCtrlQueueMsFilter('ctrlQStatusMenu', 'statuses', ['Not Started', 'Planned', 'In Progress', 'Implemented', 'Not Applicable'].map(function(s) { return { value: s, label: s }; }), 'All statuses')}</th>
@@ -505,7 +493,7 @@ function renderControlStep1() {
           </tr>
         </thead>
         <tbody id="ctrlMainTbody">
-          ${familyControls.map(c => {
+          ${controls.map(c => {
             const cs  = state.controlStatus[c.id] || {};
             const co  = (state.controlOwners||{})[c.id] || {};
             const st  = cs.status || 'Not Started';
@@ -521,6 +509,7 @@ function renderControlStep1() {
             return `<tr data-id="${c.id}" data-name="${nameAttr}" data-family="${c.f}" data-status="${st}" data-owner="${ownerKey}" data-deselected="${deselBaseline?'1':'0'}" class="${deselBaseline?'tr-deselected-baseline':''}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
               <td><span class="control-id">${c.id}</span></td>
               <td style="font-size:13px;">${c.n}</td>
+              <td><span class="family-badge">${c.f}</span></td>
               <td style="font-size:12px;color:${typeof hasRealControlOwner === 'function' && hasRealControlOwner(co) ? 'var(--navy)' : 'var(--text-muted)'};font-style:${typeof hasRealControlOwner === 'function' && hasRealControlOwner(co) ? 'normal' : 'italic'};">${escapeHTML(typeof getControlOwnerDisplayName === 'function' ? getControlOwnerDisplayName(co) : ownerName)}</td>
               <td style="font-size:12px;font-weight:${isDueSoon?'700':'400'};color:${isDueSoon?'#d97706':'var(--text-muted)'};">${ddStr}${isDueSoon?' ⚠️':''}</td>
               <td>${chipHTML(st)}</td>
@@ -629,18 +618,21 @@ function getControlQueueOwnerFilterOptions(controls) {
 function filterControlList() {
   var fq = ensureControlQueueFilters();
   var q = (fq.search || '').toLowerCase();
+  var fams = fq.families || [];
   var owners = fq.owners || [];
   var statuses = fq.statuses || [];
   var visible = 0;
   document.querySelectorAll('#controlInventoryTable tbody tr').forEach(function(row) {
     var id = (row.dataset.id || '').toLowerCase();
     var name = (row.dataset.name || row.cells[1] && row.cells[1].textContent || '').toLowerCase();
+    var rowFam = row.dataset.family || '';
     var rowSt = row.dataset.status || '';
     var rowOwner = row.dataset.owner || '';
     var matchQ = !q || id.indexOf(q) !== -1 || name.indexOf(q) !== -1;
+    var matchF = !fams.length || fams.indexOf(rowFam) !== -1;
     var matchO = !owners.length || owners.indexOf(rowOwner) !== -1;
     var matchS = !statuses.length || statuses.indexOf(rowSt) !== -1;
-    var show = matchQ && matchO && matchS;
+    var show = matchQ && matchF && matchO && matchS;
     row.style.display = show ? '' : 'none';
     if (show) visible++;
   });
