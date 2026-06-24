@@ -3939,7 +3939,7 @@ function renderPolicyStep4() {
               const co = state.controlOwners[cid]||{};
               const ownerName = getOwnerDisplayName(co);
               const inviteReady = isControlOwnerInviteReady(co);
-              const hasEmail = isValidOwnerEmail(co.email);
+              const assignStatus = getControlOwnerAssignStatus(co);
               const cidSafe = cid.replace(/[()]/g,'_');
               // Find index of currently assigned person in roster
               const assignedIdx = ownerName !== '—' ? cardUsers.findIndex(function(u){ return u.name===co.name; }) : -1;
@@ -3947,11 +3947,7 @@ function renderPolicyStep4() {
               const selectOpts = '<option value="">— assign owner…</option>'
                 + cardUsers.map(function(u,i){ return '<option value="' + i + '"' + (i===assignedIdx?' selected':'') + '>' + escapeHTML(u.name) + (u.role?' — '+escapeHTML((ROLE_META[u.role]||{}).label||u.role):'') + '</option>'; }).join('')
                 + '<option value="__custom__"' + customSel + '>+ Type a different name…</option>';
-              var statusHtml = inviteReady
-                ? '<div class="co-assign-status" style="font-size:10px;color:var(--teal);margin-top:4px;">✓ Ready — can sign up with this email</div>'
-                : (ownerName !== '—' && !hasEmail
-                  ? '<div class="co-assign-status" style="font-size:10px;color:#b45309;margin-top:4px;">⚠ Work email required for sign-up</div>'
-                  : '<div class="co-assign-status" style="font-size:10px;color:var(--text-muted);margin-top:4px;">Name and email required</div>');
+              var statusHtml = '<div class="co-assign-status" style="font-size:10px;color:' + assignStatus.color + ';margin-top:4px;">' + escapeHTML(assignStatus.text) + '</div>';
               return '<tr id="cocard-' + cidSafe + '" style="background:' + (inviteReady?'rgba(13,148,136,0.02)':'') + ';">'
                 + '<td><span class="control-id" style="font-size:12px;">' + cid + '</span></td>'
                 + '<td><div style="font-weight:600;font-size:13px;line-height:1.3;">' + escapeHTML(ctrl&&ctrl.n||cid) + '</div>'
@@ -4065,22 +4061,13 @@ function _coCardUpdate(cid) {
   if (!card) return;
   const co = (state.controlOwners || {})[cid] || {};
   const inviteReady = isControlOwnerInviteReady(co);
-  const ownerName = getOwnerDisplayName(co);
-  const hasEmail = isValidOwnerEmail(co.email);
+  const assignStatus = getControlOwnerAssignStatus(co);
   card.style.borderColor = inviteReady ? 'rgba(13,148,136,0.3)' : 'var(--border)';
   card.style.background  = inviteReady ? 'rgba(13,148,136,0.02)' : 'white';
   var statusEl = card.querySelector('.co-assign-status');
   if (statusEl) {
-    if (inviteReady) {
-      statusEl.style.color = 'var(--teal)';
-      statusEl.textContent = '✓ Ready — can sign up with this email';
-    } else if (ownerName !== '—' && !hasEmail) {
-      statusEl.style.color = '#b45309';
-      statusEl.textContent = '⚠ Work email required for sign-up';
-    } else {
-      statusEl.style.color = 'var(--text-muted)';
-      statusEl.textContent = 'Name and email required';
-    }
+    statusEl.style.color = assignStatus.color;
+    statusEl.textContent = assignStatus.text;
   }
   step4RefreshAssignmentProgress();
 }

@@ -1621,6 +1621,36 @@ function isControlOwnerInviteReady(co) {
   return isValidOwnerEmail(co.email);
 }
 
+/** True when this email already belongs to someone on the program roster (not a new invite). */
+function isKnownProgramUserEmail(email) {
+  var key = normalizeOwnerEmail(email);
+  if (!key) return false;
+  if (normalizeOwnerEmail(state.programOwnerEmail) === key) return true;
+  if ((state.users || []).some(function(u) {
+    return !u.isDemoPlaceholder && normalizeOwnerEmail(u.email) === key;
+  })) return true;
+  var owners = state.domainOwners || {};
+  return Object.keys(owners).some(function(fam) {
+    var o = owners[fam];
+    return o && normalizeOwnerEmail(o.email) === key;
+  });
+}
+
+/** Status line for domain policy step 4 control-owner rows. */
+function getControlOwnerAssignStatus(co) {
+  if (!isControlOwnerInviteReady(co)) {
+    var ownerName = getOwnerDisplayName(co || {});
+    if (ownerName !== '—' && !isValidOwnerEmail((co || {}).email)) {
+      return { text: '⚠ Work email required for sign-up', color: '#b45309' };
+    }
+    return { text: 'Name and email required', color: 'var(--text-muted)' };
+  }
+  if (isKnownProgramUserEmail(co.email)) {
+    return { text: '✓ Assigned — on program roster', color: 'var(--teal)' };
+  }
+  return { text: '✓ Ready — new user can sign up with this email', color: 'var(--teal)' };
+}
+
 /** NIST XX-1 policy-and-procedures controls — covered by the Tier 1 ISP, not domain policy pickers. */
 function isPolicyAndProceduresControl(ctrlId) {
   return /^[A-Z]{2}-1$/.test(String(ctrlId || '').trim());
