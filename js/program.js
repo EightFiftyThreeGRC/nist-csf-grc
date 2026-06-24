@@ -418,9 +418,12 @@ function submitISPForApproval(silent, options) {
     justSubmitted = current !== 'Under Review' || forceResubmit;
     if (forceResubmit && state.infoSecPolicy) {
       if (!state.infoSecPolicy.revisionHistory) state.infoSecPolicy.revisionHistory = [];
-      var actor = typeof getSessionActorName === 'function'
-        ? getSessionActorName(state.programOwner || 'Program Owner')
-        : (state.programOwner || 'Program Owner');
+      var actor = typeof resolveProgramOwnerActorName === 'function'
+        ? resolveProgramOwnerActorName()
+        : ((state.programOwner || '').trim() || 'Program Owner');
+      if (!actor && typeof getSessionActorName === 'function') {
+        actor = getSessionActorName('Program Owner');
+      }
       state.infoSecPolicy.revisionHistory.push({
         version: 'R' + (state.infoSecPolicy.revisionHistory.length + 1),
         date: new Date().toISOString().slice(0, 10),

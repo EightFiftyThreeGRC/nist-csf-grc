@@ -75,7 +75,60 @@ function isCloudOwnerSession() {
 }
 
 /** Best display name for attestations / submissions in the current session. */
+function resolveProgramOwnerActorName() {
+  var po = (state.programOwner || '').trim();
+  if (po) return po;
+  var ownerEmail = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(state.programOwnerEmail)
+    : String(state.programOwnerEmail || '').trim().toLowerCase();
+  if (ownerEmail && state.users) {
+    var match = state.users.find(function(u) {
+      var em = typeof normalizeOwnerEmail === 'function'
+        ? normalizeOwnerEmail(u.email) : String(u.email || '').trim().toLowerCase();
+      return em && em === ownerEmail;
+    });
+    if (match && match.name) return match.name;
+  }
+  return '';
+}
+
+/** True when the signed-in session is acting as the CISO / program owner (not a separate approver or delegate). */
+function isSessionProgramOwnerActor() {
+  if (isCloudOwnerSession()) return true;
+  if (isLocalDemoAdminMode()) return true;
+
+  var ownerName = String(state.programOwner || '').trim().toLowerCase();
+  var ownerEmail = typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(state.programOwnerEmail)
+    : String(state.programOwnerEmail || '').trim().toLowerCase();
+
+  if (isCloudSessionActive()) {
+    var sessionEmail = getSessionEmailForApproval();
+    if (sessionEmail && ownerEmail && sessionEmail === ownerEmail) return true;
+    var sessionName = String(getCloudSessionName() || '').trim().toLowerCase();
+    if (sessionName && ownerName && sessionName === ownerName) return true;
+  }
+
+  if (state.currentUserId && state.users) {
+    var personIds = state._currentPersonIds || [state.currentUserId];
+    for (var i = 0; i < personIds.length; i++) {
+      var u = state.users.find(function(x) { return x.id === personIds[i]; });
+      if (!u) continue;
+      if (u.role === 'ciso') return true;
+      if (ownerName && String(u.name || '').trim().toLowerCase() === ownerName) return true;
+      var uEm = typeof normalizeOwnerEmail === 'function'
+        ? normalizeOwnerEmail(u.email) : String(u.email || '').trim().toLowerCase();
+      if (ownerEmail && uEm && uEm === ownerEmail) return true;
+    }
+  }
+  return false;
+}
+
 function getSessionActorName(fallback) {
+  if (typeof isSessionProgramOwnerActor === 'function' && isSessionProgramOwnerActor()) {
+    var programOwnerName = resolveProgramOwnerActorName();
+    if (programOwnerName) return programOwnerName;
+  }
   if (state.currentUserId && state.users) {
     var u = state.users.find(function(x) { return x.id === state.currentUserId; });
     if (u && u.name) return u.name;
@@ -281,34 +334,7 @@ function canSessionApproveISP() {
 /** True when the signed-in viewer is the CISO/program owner who should revise a returned ISP. */
 function canSessionReviseReturnedISP() {
   if (typeof getISPStatus === 'function' && getISPStatus() !== 'Returned') return false;
-  if (isCloudOwnerSession()) return true;
-  if (isLocalDemoAdminMode()) return true;
-
-  var ownerName = String(state.programOwner || '').trim().toLowerCase();
-  var ownerEmail = typeof normalizeOwnerEmail === 'function'
-    ? normalizeOwnerEmail(state.programOwnerEmail)
-    : String(state.programOwnerEmail || '').trim().toLowerCase();
-
-  if (isCloudSessionActive()) {
-    var sessionEmail = getSessionEmailForApproval();
-    if (sessionEmail && ownerEmail && sessionEmail === ownerEmail) return true;
-    var sessionName = String(getCloudSessionName() || '').trim().toLowerCase();
-    if (sessionName && ownerName && sessionName === ownerName) return true;
-  }
-
-  if (state.currentUserId && state.users) {
-    var personIds = state._currentPersonIds || [state.currentUserId];
-    for (var i = 0; i < personIds.length; i++) {
-      var u = state.users.find(function(x) { return x.id === personIds[i]; });
-      if (!u) continue;
-      if (u.role === 'ciso') return true;
-      if (ownerName && String(u.name || '').trim().toLowerCase() === ownerName) return true;
-      var uEm = typeof normalizeOwnerEmail === 'function'
-        ? normalizeOwnerEmail(u.email) : String(u.email || '').trim().toLowerCase();
-      if (ownerEmail && uEm && uEm === ownerEmail) return true;
-    }
-  }
-  return false;
+  return isSessionProgramOwnerActor();
 }
 
 function validateISPApproverAssignment(rc, silent) {
@@ -1087,6 +1113,8 @@ if (typeof window !== 'undefined') {
   window.isLocalDemoAdminMode = isLocalDemoAdminMode;
   window.isCloudOwnerSession = isCloudOwnerSession;
   window.getSessionActorName = getSessionActorName;
+  window.resolveProgramOwnerActorName = resolveProgramOwnerActorName;
+  window.isSessionProgramOwnerActor = isSessionProgramOwnerActor;
   window.getControlWorkspaceTitle = getControlWorkspaceTitle;
   window.canReassignProgramWork = canReassignProgramWork;
   window.signInWithMicrosoft = signInWithMicrosoft;   // overrides the legacy Entra one
