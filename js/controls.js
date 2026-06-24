@@ -182,11 +182,21 @@ function renderControlLibraryView() {
 }
 
 function renderControlStep(step) {
-  if (step===1) renderControlStep1();
-  if (step===2) renderControlStep2();
-  else if (typeof updateControlStep2SidebarSubnav === 'function') updateControlStep2SidebarSubnav([]);
-  if (step===3) renderControlStep3();
-  if (step===4) renderControlStep4();
+  var designFams = typeof getDesignFamiliesForQueue === 'function' ? getDesignFamiliesForQueue() : [];
+  if (step === 1) {
+    renderControlStep1();
+    updateControlStep1SidebarSubnav(designFams);
+    updateControlStep2SidebarSubnav([]);
+  } else if (step === 2) {
+    renderControlStep2();
+    updateControlStep1SidebarSubnav([]);
+    updateControlStep2SidebarSubnav(designFams);
+  } else {
+    updateControlStep1SidebarSubnav([]);
+    updateControlStep2SidebarSubnav([]);
+    if (step === 3) renderControlStep3();
+    if (step === 4) renderControlStep4();
+  }
 }
 
 // ── STEP 1: MY CONTROLS ──────────────────────────────────────────────────────
@@ -234,40 +244,69 @@ function selectControlDesignFamily(fam) {
   if (famCtrls.length && (!state._selectedCtrl || !famCtrls.some(function(c) { return c.id === state._selectedCtrl; }))) {
     state._selectedCtrl = famCtrls[0].id;
   }
-  renderControlStep2();
+  renderControlStep(currentStep.control);
 }
 
-function updateControlStep2SidebarSubnav(designFams) {
-  var host = document.getElementById('control-step-2-subnav');
+function renderControlFamilyChipNav(designFams, activeFam, stepNum) {
+  if (!designFams.length) return '';
+  return designFams.map(function(fam, i) {
+    var letter = String.fromCharCode(97 + i);
+    var famCtrls = getMyDesignQueueControls().filter(function(c) { return c.f === fam; });
+    var done = famCtrls.filter(function(c) { return isControlDesigned(c.id); }).length;
+    var complete = isControlFamilyDesignComplete(fam);
+    var isActive = fam === activeFam;
+    var famKey = fam.replace(/'/g, "\\'");
+    return '<button type="button" class="ctrl-family-chip' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="selectControlDesignFamily(\'' + famKey + '\')">'
+      + '<span class="ctrl-family-chip-label">' + stepNum + letter + ' · ' + fam + '</span>'
+      + '<span class="ctrl-family-chip-meta">' + (complete ? '✓' : (done + '/' + famCtrls.length)) + '</span>'
+      + '</button>';
+  }).join('');
+}
+
+function updateControlFamilySidebarSubnav(stepNum, designFams) {
+  var hostId = 'control-step-' + stepNum + '-subnav';
+  var stepItemId = 'control-step-item-' + stepNum;
+  var host = document.getElementById(hostId);
   if (!host) {
-    var stepItem = document.getElementById('control-step-item-2');
+    var stepItem = document.getElementById(stepItemId);
     if (!stepItem) return;
     host = document.createElement('div');
-    host.id = 'control-step-2-subnav';
+    host.id = hostId;
     host.className = 'control-step-subnav';
     stepItem.parentNode.insertBefore(host, stepItem.nextSibling);
   }
+  var defaultNames = { 1: 'My Controls', 2: 'Design Controls' };
+  var stepName = document.querySelector('#' + stepItemId + ' .step-name');
   if (!designFams || !designFams.length) {
     host.innerHTML = '';
     host.style.display = 'none';
-    var stepName = document.querySelector('#control-step-item-2 .step-name');
-    if (stepName) stepName.textContent = 'Design Controls';
+    if (stepName) stepName.textContent = defaultNames[stepNum] || '';
     return;
   }
   host.style.display = '';
   var activeFam = state._controlDesignFamily || designFams[0];
-  var stepName = document.querySelector('#control-step-item-2 .step-name');
-  if (stepName) stepName.textContent = 'Design · ' + activeFam + (isControlFamilyDesignComplete(activeFam) ? ' ✓' : '');
+  if (stepName) {
+    var prefix = stepNum === 1 ? 'My Controls · ' : 'Design · ';
+    stepName.textContent = prefix + activeFam + (isControlFamilyDesignComplete(activeFam) ? ' ✓' : '');
+  }
   host.innerHTML = designFams.map(function(fam, i) {
     var letter = String.fromCharCode(97 + i);
     var complete = isControlFamilyDesignComplete(fam);
     var isActive = fam === activeFam;
     var famKey = fam.replace(/'/g, "\\'");
-    return '<div class="control-substep-item' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="goToStep(\'control\',2);selectControlDesignFamily(\'' + famKey + '\')">'
-      + '<span>2' + letter + ' ' + fam + '</span>'
+    return '<div class="control-substep-item' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="goToStep(\'control\',' + stepNum + ');selectControlDesignFamily(\'' + famKey + '\')">'
+      + '<span>' + stepNum + letter + ' ' + fam + '</span>'
       + '<span class="control-substep-check">' + (complete ? '✓' : '') + '</span>'
       + '</div>';
   }).join('');
+}
+
+function updateControlStep1SidebarSubnav(designFams) {
+  updateControlFamilySidebarSubnav(1, designFams);
+}
+
+function updateControlStep2SidebarSubnav(designFams) {
+  updateControlFamilySidebarSubnav(2, designFams);
 }
 
 function toggleCtrlQueueFilterMenu(menuId, ev) {
@@ -344,11 +383,13 @@ function renderControlStep1() {
   const allControls = getScopedControls();
   const assignedBeforeGate = state.currentUserId && typeof getAssignedControlsForCurrentUser === 'function'
     ? getAssignedControlsForCurrentUser() : allControls;
-  const controls    = allControls.filter(c => !(state.controlStatus[c.id]||{}).returnedToPolicyOwner && !(state.controlStatus[c.id]||{}).recommendedDeselect);
+  const controls = getMyDesignQueueControls();
   const returnedControls = allControls.filter(c => (state.controlStatus[c.id]||{}).returnedToPolicyOwner);
   const deselectControls = allControls.filter(c => (state.controlStatus[c.id]||{}).recommendedDeselect);
-  const families = [...new Set(controls.map(c => c.f).filter(Boolean))];
-  const ownerNames = [...new Set(controls.map(function(c) {
+  const designFams = getDesignFamiliesForQueue();
+  const activeFam = ensureControlDesignFamily();
+  const familyControls = activeFam ? controls.filter(function(c) { return c.f === activeFam; }) : controls;
+  const ownerNames = [...new Set(familyControls.map(function(c) {
     return ((state.controlOwners || {})[c.id] || {}).name || '';
   }).filter(Boolean))].sort();
   const statusOptions = ['Not Started', 'Planned', 'In Progress', 'Implemented', 'Not Applicable'];
@@ -367,15 +408,17 @@ function renderControlStep1() {
   const now  = new Date();
   const soon = new Date(now.getTime() + 30*24*60*60*1000);
 
-  const totalDesigned = controls.filter(c => {
+  const totalDesigned = familyControls.filter(c => {
     const cs = state.controlStatus[c.id]||{};
     return cs.designSource || (cs.approach && cs.approach.trim()) || (cs.designParts && Object.values(cs.designParts).some(v => v && v.trim()));
   }).length;
-  const totalInProg = controls.filter(c => ['In Progress','Planned'].includes((state.controlStatus[c.id]||{}).status)).length;
-  const totalNA     = controls.filter(c => (state.controlStatus[c.id]||{}).status === 'Not Applicable').length;
-  const pctDesigned = controls.length ? Math.round((totalDesigned / controls.length) * 100) : 0;
+  const totalInProg = familyControls.filter(c => ['In Progress','Planned'].includes((state.controlStatus[c.id]||{}).status)).length;
+  const totalNA     = familyControls.filter(c => (state.controlStatus[c.id]||{}).status === 'Not Applicable').length;
+  const pctDesigned = familyControls.length ? Math.round((totalDesigned / familyControls.length) * 100) : 0;
+  const overallDesigned = controls.filter(function(c) { return isControlDesigned(c.id); }).length;
+  const famComplete = activeFam ? isControlFamilyDesignComplete(activeFam) : false;
 
-  const dueSoon = controls.filter(c => {
+  const dueSoon = familyControls.filter(c => {
     const dd = (state.controlOwners||{})[c.id]?.dueDate;
     if (!dd) return false;
     const d = new Date(dd);
@@ -384,13 +427,23 @@ function renderControlStep1() {
 
   body.innerHTML = `
     <div class="section-title">${state.currentUserId ? 'My Controls' : 'Control Library'}</div>
-    <div class="section-subtitle">${controls.length} control${controls.length === 1 ? '' : 's'} assigned to you${state.currentUserId ? '' : ' (admin view)'} — ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} baseline${state.privacyOverlay?' + Privacy Overlay':''}</div>
+    <div class="section-subtitle">${controls.length} control${controls.length === 1 ? '' : 's'} assigned to you${state.currentUserId ? '' : ' (admin view)'} · ${overallDesigned} designed overall${activeFam ? ' — showing <strong>' + activeFam + '</strong> (' + familyControls.length + ')' : ''}</div>
+
+    ${designFams.length > 1 ? `<div style="padding:0 0 16px 0;border-bottom:1px solid var(--border);margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);">Browse by control family</div>
+        <div style="font-size:11px;color:var(--teal);font-weight:700;">${activeFam} — ${FAMILIES[activeFam] || activeFam}: ${totalDesigned}/${familyControls.length} designed${famComplete ? ' ✓' : ''}</div>
+      </div>
+      <div class="ctrl-family-subnav" style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${renderControlFamilyChipNav(designFams, activeFam, 1)}
+      </div>
+    </div>` : ''}
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
         ['Designed',    totalDesigned,                                          '#166534','#dcfce7','✅'],
         ['In Progress', totalInProg,                                            '#92400e','#fef3c7','🔄'],
-        ['Not Started', controls.length - totalDesigned - totalInProg - totalNA,'#1e3a5f','#eff6ff','⏳'],
+        ['Not Started', familyControls.length - totalDesigned - totalInProg - totalNA,'#1e3a5f','#eff6ff','⏳'],
         ['N / A',       totalNA,                                                '#64748b','#f1f5f9','—'],
       ].map(([label,count,color,bg,icon]) => `
         <div style="background:${bg};border:1px solid ${color}22;border-radius:10px;padding:14px 16px;border-left:3px solid ${color};">
@@ -399,7 +452,7 @@ function renderControlStep1() {
             <div style="font-size:18px;">${icon}</div>
           </div>
           <div style="font-size:28px;font-weight:800;color:${color};line-height:1.1;margin-top:4px;">${count}</div>
-          <div style="font-size:10px;color:${color};opacity:0.7;margin-top:2px;">of ${controls.length} controls</div>
+          <div style="font-size:10px;color:${color};opacity:0.7;margin-top:2px;">of ${familyControls.length} in ${activeFam || 'queue'}</div>
         </div>`).join('')}
     </div>
 
@@ -433,7 +486,6 @@ function renderControlStep1() {
           <tr>
             <th style="width:80px;">Control</th>
             <th>Name</th>
-            <th style="width:100px;">Family</th>
             <th style="width:140px;">Owner</th>
             <th style="width:95px;">Due Date</th>
             <th style="width:120px;">Status</th>
@@ -442,7 +494,6 @@ function renderControlStep1() {
           <tr class="col-filter-row">
             <th></th>
             <th></th>
-            <th>${renderCtrlQueueMsFilter('ctrlQFamMenu', 'families', families.map(function(f) { return { value: f, label: f + ' — ' + (FAMILIES[f] || f) }; }), 'All families')}</th>
             <th>${renderCtrlQueueMsFilter('ctrlQOwnerMenu', 'owners', ownerNames.map(function(n) { return { value: n, label: n }; }), 'All owners')}</th>
             <th></th>
             <th>${renderCtrlQueueMsFilter('ctrlQStatusMenu', 'statuses', statusOptions.map(function(s) { return { value: s, label: s }; }), 'All statuses')}</th>
@@ -450,7 +501,7 @@ function renderControlStep1() {
           </tr>
         </thead>
         <tbody id="ctrlMainTbody">
-          ${controls.map(c => {
+          ${familyControls.map(c => {
             const cs  = state.controlStatus[c.id] || {};
             const co  = (state.controlOwners||{})[c.id] || {};
             const st  = cs.status || 'Not Started';
@@ -463,7 +514,6 @@ function renderControlStep1() {
             return `<tr data-id="${c.id}" data-family="${c.f}" data-status="${st}" data-owner="${ownerAttr}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
               <td><span class="control-id">${c.id}</span></td>
               <td style="font-size:13px;">${c.n}</td>
-              <td><span class="family-badge">${c.f}</span></td>
               <td style="font-size:12px;color:${co.name?'var(--navy)':'var(--text-muted)'};font-style:${co.name?'normal':'italic'};">${escapeHTML(ownerName)}</td>
               <td style="font-size:12px;font-weight:${isDueSoon?'700':'400'};color:${isDueSoon?'#d97706':'var(--text-muted)'};">${ddStr}${isDueSoon?' ⚠️':''}</td>
               <td>${chipHTML(st)}</td>
@@ -963,18 +1013,7 @@ function renderControlStep2() {
           <div style="font-size:11px;color:var(--teal);font-weight:700;">${activeFam} — ${FAMILIES[activeFam] || activeFam}: ${famDesigned}/${controls.length} designed${famComplete ? ' ✓' : ''}</div>
         </div>
         <div class="ctrl-family-subnav" style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${designFams.map(function(fam, i) {
-            var letter = String.fromCharCode(97 + i);
-            var famCtrls = allQueue.filter(function(c) { return c.f === fam; });
-            var done = famCtrls.filter(function(c) { return isControlDesigned(c.id); }).length;
-            var complete = isControlFamilyDesignComplete(fam);
-            var isActive = fam === activeFam;
-            var famKey = fam.replace(/'/g, "\\'");
-            return '<button type="button" class="ctrl-family-chip' + (isActive ? ' active' : '') + (complete ? ' complete' : '') + '" onclick="selectControlDesignFamily(\'' + famKey + '\')">'
-              + '<span class="ctrl-family-chip-label">2' + letter + ' · ' + fam + '</span>'
-              + '<span class="ctrl-family-chip-meta">' + (complete ? '✓' : (done + '/' + famCtrls.length)) + '</span>'
-              + '</button>';
-          }).join('')}
+          ${renderControlFamilyChipNav(designFams, activeFam, 2)}
         </div>
       </div>
       <div style="display:flex;flex:1;overflow:hidden;">
