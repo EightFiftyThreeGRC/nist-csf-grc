@@ -531,7 +531,9 @@ function renderISSMWorkspace(user) {
     var deadline = getEffectivePolicyDeadline(fam);
     var dp = (state.domainPolicies||{})[fam];
     var selected = (state.policySelectedControls||{})[fam] || [];
-    var ctrlCount = allControls.filter(function(c){ return c.f === fam || slaves.includes(c.f); }).length;
+    var ctrlCount = allControls.filter(function(c){
+      return (c.f === fam || slaves.includes(c.f)) && !isPolicyAndProceduresControl(c.id);
+    }).length;
     totalControls += ctrlCount;
 
     // Count assigned control owners for this domain
@@ -883,7 +885,7 @@ function renderPolicyList() {
       const status = (state.policyStatus[masterFam]||{}).status || 'Not Started';
       // combined control count across master + all merged slaves
       const ctrlCount = allControls.filter(function(c){
-        return c.f === masterFam || slaves.includes(c.f);
+        return (c.f === masterFam || slaves.includes(c.f)) && !isPolicyAndProceduresControl(c.id);
       }).length;
       const custodian = getCustodian(masterFam).name;
       const dd = DOMAIN_DEFAULTS[masterFam] || DOMAIN_DEFAULT_GENERIC;
@@ -1794,7 +1796,7 @@ function renderPolicyStep1() {
   const allFams = getPolicyAllFamilies(fam);
   const dd = DOMAIN_DEFAULTS[fam] || DOMAIN_DEFAULT_GENERIC;
   // Count controls across all merged families
-  const ctrls = getActiveControls().filter(function(c){ return allFams.includes(c.f); }).length;
+  const ctrls = getDomainPolicySelectableControls(allFams).length;
   const allBadgesHtml = allFams.map(function(f){
     return '<span class="family-badge" style="font-size:11px;padding:2px 6px;">' + f + '</span>';
   }).join(' ');
@@ -1984,6 +1986,23 @@ function confirmReturnToCISO(fam) {
 // ============================================================
 // POLICY STEP 2: SELECT CONTROLS (was Step 1)
 // ============================================================
+function getDomainPolicySelectableControls(allFams) {
+  return CONTROLS.filter(function(c) {
+    return allFams.includes(c.f) && !isPolicyAndProceduresControl(c.id);
+  });
+}
+
+function sanitizeDomainPolicySelection(fam) {
+  if (!state.policySelectedControls || !state.policySelectedControls[fam]) return;
+  var cleaned = state.policySelectedControls[fam].filter(function(id) {
+    return !isPolicyAndProceduresControl(id);
+  });
+  if (cleaned.length !== state.policySelectedControls[fam].length) {
+    state.policySelectedControls[fam] = cleaned;
+    markDirty();
+  }
+}
+
 function renderPolicyStep2() {
   const helpEl = document.getElementById('policy-step-2-help');
   const body = document.getElementById('policy-step-2-body');
@@ -2000,8 +2019,8 @@ function renderPolicyStep2() {
   const allFams = getPolicyAllFamilies(fam);
   const mergedTitle = getPolicyMergedTitle(fam);
 
-  // ALL controls across all merged families
-  const allFamControls = CONTROLS.filter(function(c){ return allFams.includes(c.f); });
+  // ALL controls across all merged families (excluding XX-1 — those live in the ISP)
+  const allFamControls = getDomainPolicySelectableControls(allFams);
   // Controls required by the program's baseline (pre-selected by default)
   const baselineControls = allFamControls.filter(function(c){
     return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
@@ -2014,12 +2033,11 @@ function renderPolicyStep2() {
   // user has moved to step 3+, we preserve whatever they explicitly selected.
   const policyStarted = !!(state.domainPolicies && state.domainPolicies[fam]);
   if (!state.policySelectedControls[fam] || (!state.policySelectedControls[fam].length && !policyStarted)) {
-    state.policySelectedControls[fam] = baselineControls
-      .filter(function(c){ return !c.id.endsWith('-1'); })
-      .map(function(c){ return c.id; });
+    state.policySelectedControls[fam] = baselineControls.map(function(c){ return c.id; });
     // Auto-populate control owners from domain owner if one is set (opt-out model)
     autoPopulateControlOwnersFromDomain(fam);
   }
+  sanitizeDomainPolicySelection(fam);
   const selected = state.policySelectedControls[fam];
   const deSelectQueue = allFamControls.filter(function(c) {
     const cs = state.controlStatus[c.id] || {};
@@ -2036,7 +2054,7 @@ function renderPolicyStep2() {
     </div>
     <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:12px; margin-bottom:16px;">
       <div style="font-size:12px; font-weight:700; color:#2563eb; margin-bottom:6px;">\u2139\uFE0F About this step</div>
-      <div style="font-size:12px; color:#1d4ed8; line-height:1.6;">Baseline controls are pre-selected. Deselect any that don't apply. You can also add controls from higher baselines if your risk profile or strategic priorities require them.</div>
+      <div style="font-size:12px; color:#1d4ed8; line-height:1.6;">Baseline controls are pre-selected. Deselect any that don't apply. You can also add controls from higher baselines if your risk profile or strategic priorities require them. <strong>Policy and Procedures (XX-1) controls are covered by your organization-wide Information Security Policy and are not listed here.</strong></div>
     </div>
     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px;">Quick Select</div>
     <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:6px;" onclick="selectAllDomainControls('${fam}','baseline')">\u21A9 Reset to ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} Baseline</button>
@@ -2164,6 +2182,10 @@ function addControlsFromOtherFamilies(fam) {
       invalid.push(raw);
       return;
     }
+    if (isPolicyAndProceduresControl(canonical)) {
+      invalid.push(raw + ' (covered by ISP)');
+      return;
+    }
     if (selected.indexOf(canonical) === -1) {
       selected.push(canonical);
       added++;
@@ -2188,13 +2210,15 @@ function switchPolicyDomain(fam) {
 }
 
 function toggleDomainControl(fam, ctrlId, checked) {
+  if (isPolicyAndProceduresControl(ctrlId)) return;
   if (!state.policySelectedControls) state.policySelectedControls = {};
   if (!state.policySelectedControls[fam]) state.policySelectedControls[fam] = [];
   if (checked && !state.policySelectedControls[fam].includes(ctrlId)) state.policySelectedControls[fam].push(ctrlId);
   if (!checked) state.policySelectedControls[fam] = state.policySelectedControls[fam].filter(function(id){ return id !== ctrlId; });
   const sel = state.policySelectedControls[fam];
-  const baselineCount = CONTROLS.filter(function(c){
-    return c.f === fam && (c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P')));
+  const allFams = getPolicyAllFamilies(fam);
+  const baselineCount = getDomainPolicySelectableControls(allFams).filter(function(c){
+    return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
   }).length;
   const fc  = document.getElementById('policy-step-2-count');
   const fcs = document.getElementById('policy-step-2-count-side');
@@ -2208,7 +2232,7 @@ function selectAllDomainControls(fam, mode) {
   if (mode === false) mode = 'none';
   // Include all merged slave families so merged domains (e.g. AC+IA) get full coverage
   const allFams     = getPolicyAllFamilies(fam);
-  const allFam      = CONTROLS.filter(function(c){ return allFams.includes(c.f); });
+  const allFam      = getDomainPolicySelectableControls(allFams);
   const baselineFam = allFam.filter(function(c){
     return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
   });

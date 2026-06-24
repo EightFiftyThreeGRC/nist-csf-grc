@@ -1607,7 +1607,7 @@ function renderISPEditorBody(body, opts) {
   }
   // Init policy state
   if (!state.infoSecPolicy) {
-    const minus1 = getActiveControls().filter(c=>c.id.endsWith('-1')).map(c=>c.id);
+    const minus1 = getActiveControls().filter(function(c) { return isPolicyAndProceduresControl(c.id); }).map(function(c) { return c.id; });
     const ownerName  = state.programOwner || 'Program Owner';
     const ownerTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
     const orgNameVal = state.orgName || 'the organization';
@@ -2963,7 +2963,9 @@ function autoPopulateControlOwnersFromDomain(fam) {
   var selected = (state.policySelectedControls || {})[fam] || [];
   // If no controls selected yet, try the baseline controls for this family
   if (!selected.length) {
-    selected = getActiveControls().filter(function(c) { return c.f === fam; }).map(function(c) { return c.id; });
+    selected = getActiveControls().filter(function(c) {
+      return c.f === fam && !isPolicyAndProceduresControl(c.id);
+    }).map(function(c) { return c.id; });
   }
   // Also handle merged families
   var merges = state.policyMerges || {};
@@ -2971,7 +2973,9 @@ function autoPopulateControlOwnersFromDomain(fam) {
   slaveFams.forEach(function(sf) {
     var sfSelected = (state.policySelectedControls || {})[sf] || [];
     if (!sfSelected.length) {
-      sfSelected = getActiveControls().filter(function(c) { return c.f === sf; }).map(function(c) { return c.id; });
+      sfSelected = getActiveControls().filter(function(c) {
+        return c.f === sf && !isPolicyAndProceduresControl(c.id);
+      }).map(function(c) { return c.id; });
     }
     selected = selected.concat(sfSelected);
   });

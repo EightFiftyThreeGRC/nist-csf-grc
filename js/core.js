@@ -1614,6 +1614,11 @@ function hasRealControlOwner(co) {
   return isValidOwnerEmail(co.email);
 }
 
+/** NIST XX-1 policy-and-procedures controls — covered by the Tier 1 ISP, not domain policy pickers. */
+function isPolicyAndProceduresControl(ctrlId) {
+  return /^[A-Z]{2}-1$/.test(String(ctrlId || '').trim());
+}
+
 function getControlOwnerDisplayName(co) {
   var label = getOwnerDisplayName(co);
   return label === '—' ? 'Unassigned' : label;
