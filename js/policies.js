@@ -152,6 +152,10 @@ function renderPolicyTab() {
     renderISPPolicyViewerPanel();
     return;
   }
+  if (state._ispRevisionView) {
+    renderISPRevisionPanel();
+    return;
+  }
   // Doc viewer takes priority — show read-only policy document
   if (state._policyDocView && state._policyDomain && !state._policyWizardMode) {
     renderPolicyDocViewer(state._policyDomain);
@@ -2526,12 +2530,36 @@ function _renderDomainRevisionHistory(fam, dp) {
 function goToCISOPolicyEditor() {
   state._policyLibraryMode = false;
   state._policyDocView = false;
+  state._ispRevisionView = false;
   state._ispReviewView = true;
   showTab('policy');
 }
 
+function renderISPRevisionPanel() {
+  var listPanel = document.getElementById('policy-list-panel');
+  var wizPanel = document.getElementById('policy-wizard-panel');
+  if (listPanel) listPanel.style.display = '';
+  if (wizPanel) wizPanel.style.display = 'none';
+  var hdr = listPanel ? listPanel.querySelector('.page-header') : null;
+  var ispTitle = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '')
+    || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+  if (hdr) {
+    hdr.innerHTML = '<div class="role-badge isp-revision-badge">↩ Revision workspace</div>'
+      + '<h1>Revise: ' + escapeHTML(ispTitle) + '</h1>'
+      + '<p>Address your approver\'s comments and resubmit for sign-off. This workspace is separate from program setup.</p>';
+  }
+  var body = document.getElementById('policy-list-body');
+  if (!body) return;
+  if (typeof renderISPEditorBody === 'function') {
+    renderISPEditorBody(body, { context: 'revision' });
+    return;
+  }
+  body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">Editor unavailable</div><p>Reload the page and try again.</p></div>';
+}
+
 function exitISPPolicyViewer() {
   state._ispReviewView = false;
+  state._ispRevisionView = false;
   var user = state.currentUserId && state.users
     ? state.users.find(function(u) { return u.id === state.currentUserId; })
     : null;

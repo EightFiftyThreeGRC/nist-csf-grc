@@ -313,7 +313,7 @@ function cisoNext(fromStep) {
   goToStep('ciso', fromStep+1);
 }
 
-// Open the editable ISP wizard (CISO step 5) after the approver returned it for revision.
+// Open the dedicated returned-ISP revision workspace (policy tab — not program setup).
 function openISPForRevision() {
   if (typeof canSessionReviseReturnedISP === 'function' && !canSessionReviseReturnedISP()) {
     showToast('Only the program owner can edit a returned ISP.', true);
@@ -321,16 +321,18 @@ function openISPForRevision() {
   }
   state._ispReviewView = false;
   state._policyLibraryMode = false;
-  state._ispRevisionMode = true;
-  var cisoNav = document.getElementById('nav-ciso');
-  if (cisoNav) cisoNav.style.display = '';
-  showTab('ciso');
-  goToStep('ciso', 5);
+  state._ispRevisionView = true;
+  showTab('policy');
 }
 
-function exitISPRevisionEditor(restoreNav) {
-  state._ispRevisionMode = false;
-  if (restoreNav !== false && typeof applyPostSetupNav === 'function') applyPostSetupNav();
+function exitISPRevisionEditor() {
+  state._ispRevisionView = false;
+}
+
+function exitISPRevisionToViewer() {
+  exitISPRevisionEditor();
+  if (typeof goToCISOPolicyEditor === 'function') goToCISOPolicyEditor();
+  else showTab('home');
 }
 
 // Resubmit a returned ISP to the designated CIO/approver after edits.
@@ -1565,7 +1567,36 @@ function draftUnmappedPMRequirements(rerender) {
 }
 
 function renderCISOStep3() {
-  const body = document.getElementById('ciso-step-5-body');
+  if (state._ispRevisionView && typeof renderISPRevisionPanel === 'function') {
+    renderISPRevisionPanel();
+    return;
+  }
+  var body = document.getElementById('ciso-step-5-body');
+  if (!body) return;
+  renderISPEditorBody(body, { context: 'setup' });
+}
+
+function buildISPRevisionBannerHtml() {
+  var notes = String((((state.policyStatus || {}).ISP || {}).notes) || '').trim();
+  var returnedBy = String((((state.policyStatus || {}).ISP || {}).returnedBy) || '').trim();
+  return '<div class="isp-revision-banner">'
+    + '<div class="isp-revision-banner-title">↩ Returned for revision</div>'
+    + (returnedBy ? '<div class="isp-revision-banner-meta">Returned by ' + escapeHTML(returnedBy) + '</div>' : '')
+    + '<div class="isp-revision-banner-body">'
+    + escapeHTML(notes || 'Your approver returned this policy. Update the content below, then resubmit for sign-off.')
+    + '</div></div>';
+}
+
+function buildISPRevisionFooterHtml() {
+  return '<div class="isp-revision-footer">'
+    + '<button type="button" class="btn btn-secondary btn-sm" onclick="exitISPRevisionToViewer()">← Back to policy view</button>'
+    + '<button type="button" class="btn btn-primary btn-sm" onclick="resubmitISPForApproval()">📨 Resubmit for approval</button>'
+    + '</div>';
+}
+
+function renderISPEditorBody(body, opts) {
+  opts = opts || {};
+  var isRevision = opts.context === 'revision';
   if (!body) return;
   if (!state.baseline) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Return to Step 2 to choose an impact level (Low, Moderate, or High) that matches your system\'s risk profile.</p></div>';
@@ -1718,10 +1749,10 @@ function renderCISOStep3() {
     return `<div class="isp-section" data-section-idx="${si}" ${dragAttr} style="margin-bottom:28px;padding:4px;border-radius:6px;transition:background 0.15s;">${hdr}${content}</div>`;
   }).join('');
 
-  body.innerHTML = `
-    <div class="section-title">${escapeHTML((isp.title || '').trim() || getDefaultISPTitle())}</div>
-    <div class="section-subtitle">Review and edit your organization's overall security policy here. The domain policies your teams write later should line up with this document.</div>
-
+  body.innerHTML = (isRevision ? buildISPRevisionBannerHtml() : '')
+    + (isRevision ? '' : '<div class="section-title">' + escapeHTML((isp.title || '').trim() || getDefaultISPTitle()) + '</div>'
+      + '<div class="section-subtitle">Review and edit your organization\'s overall security policy here. The domain policies your teams write later should line up with this document.</div>')
+    + `
     <div style="border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;background:white;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Policy title</div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Choose the name shown in the app, reports, and exports (for example on a cover page or table of contents).</div>
@@ -1763,18 +1794,7 @@ function renderCISOStep3() {
     <div id="isp-sections-container">
       ${sectionsHTML}
     </div>
-    ${(typeof getISPStatus === 'function' && getISPStatus() === 'Returned'
-      && typeof canSessionReviseReturnedISP === 'function' && canSessionReviseReturnedISP()) ? `
-    <div style="margin-top:28px;padding:18px 20px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid rgba(245,158,11,0.45);border-radius:12px;">
-      <div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:8px;">↩ Returned — revise and resubmit</div>
-      <div style="font-size:13px;color:#78350f;line-height:1.6;margin-bottom:14px;">
-        ${escapeHTML(String((((state.policyStatus || {}).ISP || {}).notes) || '').trim() || 'Your approver returned this policy. Update the sections above, then resubmit for sign-off.')}
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button type="button" class="btn btn-primary btn-sm" onclick="resubmitISPForApproval()">📨 Resubmit for approval</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="exitISPRevisionEditor();if(typeof goToCISOPolicyEditor==='function')goToCISOPolicyEditor();else showTab('home');">← Back to policy view</button>
-      </div>
-    </div>` : ''}
+    ${isRevision ? buildISPRevisionFooterHtml() : ''}
   `;
   autoExpandTextareas(body);
 }

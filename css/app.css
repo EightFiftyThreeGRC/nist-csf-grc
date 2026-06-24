@@ -2819,6 +2819,49 @@
     /* ============================================================
        MULTI-USER CLOUD SIGN-IN GATE + ACCOUNT MENU
        ============================================================ */
+    /* Dedicated returned-ISP revision workspace (policy tab — not program setup). */
+    .isp-revision-badge {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #92400e;
+    }
+    .isp-revision-banner {
+      margin-bottom: 22px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 12px;
+    }
+    .isp-revision-banner-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 6px;
+    }
+    .isp-revision-banner-meta {
+      font-size: 12px;
+      color: #a16207;
+      margin-bottom: 8px;
+    }
+    .isp-revision-banner-body {
+      font-size: 13px;
+      color: #78350f;
+      line-height: 1.6;
+    }
+    .isp-revision-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: sticky;
+      bottom: 0;
+      margin-top: 28px;
+      padding: 16px 0 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--white) 24%);
+      border-top: 1px solid var(--border);
+    }
+
     /* Hide the legacy admin shell until cloud sign-in completes. */
     html.cloud-auth-pending .sidebar,
     html.cloud-auth-pending #app-persist-toolbar,
