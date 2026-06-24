@@ -472,20 +472,18 @@ function cisoFinish() {
   }
   clearScopedUndoStack('program finalization');
 
-  // Auto-assign PM control owners: ISP custodian if set, otherwise program owner.
+  // Auto-assign PM control owners to the CISO/program owner (Tier 1 ISP scope).
   // Only fills unassigned controls — never overwrites a name already set.
   (function() {
-    var isp = state.infoSecPolicy || {};
-    var cust = isp.custodian || {};
-    var ownerEmail = cust.email || state.programOwnerEmail || '';
-    var ownerName  = cust.name  || state.programOwner || getOwnerDisplayName({ email: ownerEmail, name: '' });
-    var ownerRole  = cust.role  || state.programOwnerTitle || '';
+    var ownerEmail = (state.programOwnerEmail || '').trim();
+    var ownerName  = (state.programOwner || '').trim() || getOwnerDisplayName({ email: ownerEmail, name: '' });
+    var ownerRole  = (state.programOwnerTitle || '').trim();
     if (!ownerEmail && !ownerName) return;
     if (!state.controlOwners) state.controlOwners = {};
     var pmControls = state.pmControls || {};
     Object.keys(pmControls).forEach(function(cid) {
-      if (!pmControls[cid]) return;                          // not selected
-      if (hasRealControlOwner(state.controlOwners[cid])) return;    // already assigned
+      if (!pmControls[cid]) return;
+      if (hasRealControlOwner(state.controlOwners[cid])) return;
       state.controlOwners[cid] = { name: ownerName, role: ownerRole, email: ownerEmail };
     });
   })();
@@ -588,9 +586,9 @@ function renderSidebarBadges() {
   const pList = document.getElementById('sidebar-policies-list');
   const wsSection = document.getElementById('sidebar-workspaces-section');
   if (pList) {
-    var showPolicySidebar = !user || visibleTabs.includes('policy') || visibleTabs.includes('ciso') || hasApprover;
+    var showPolicySidebar = !user || visibleTabs.includes('policy') || visibleTabs.includes('ciso') || (hasApprover && !isTier1OnlyApprover);
     if (wsSection) {
-      wsSection.style.display = showPolicySidebar || visibleTabs.includes('control') || visibleTabs.includes('asset') ? '' : 'none';
+      wsSection.style.display = showPolicySidebar || (!isTier1OnlyApprover && (visibleTabs.includes('control') || visibleTabs.includes('asset'))) ? '' : 'none';
     }
 
     const ispDone = !!(state.infoSecPolicy && state.infoSecPolicy.title);

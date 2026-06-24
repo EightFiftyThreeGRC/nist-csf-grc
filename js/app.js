@@ -381,6 +381,9 @@ function getScopedControls() {
     // Secondary match: controls where this user is named as owner
     return getActiveControls().filter(c => (state.controlOwners||{})[c.id]?.name === primaryUser.name);
   }
+  if (roles.includes('approver') && !roles.includes('ciso') && !roles.includes('issm') && !roles.includes('control-owner')) {
+    return [];
+  }
   if (roles.includes('issm') || roles.includes('custodian')) {
     // ISSM/custodian: filter by assigned families
     if (allFamilies.length) return getActiveControls().filter(c => allFamilies.includes(c.f));
@@ -641,8 +644,23 @@ function getPersonVisibleTabIds(user) {
   }
   // If this person is assigned as a control owner for any control, they need the
   // control implementation workspace — regardless of their primary role (e.g. CISO
-  // who also owns PM controls).
-  if (visible.indexOf('control') === -1) {
+  // who also owns PM controls). Tier-1 ISP approvers never get control workspace.
+  var personIsApproverOnly = false;
+  if (user) {
+    var personIds = state._currentPersonIds || [user.id];
+    var hasApproverRole = false;
+    var hasImplRole = false;
+    personIds.forEach(function(pid) {
+      var rec = (state.users || []).find(function(u) { return u.id === pid; });
+      if (!rec) return;
+      (rec.roles && rec.roles.length ? rec.roles : [rec.role]).forEach(function(r) {
+        if (r === 'approver') hasApproverRole = true;
+        if (r === 'ciso' || r === 'issm' || r === 'control-owner') hasImplRole = true;
+      });
+    });
+    personIsApproverOnly = hasApproverRole && !hasImplRole;
+  }
+  if (visible.indexOf('control') === -1 && !personIsApproverOnly) {
     var userNameKey = (user.name || '').trim().toLowerCase();
     var isControlOwner = Object.values(state.controlOwners || {}).some(function(co) {
       return co && (co.name || '').trim().toLowerCase() === userNameKey;

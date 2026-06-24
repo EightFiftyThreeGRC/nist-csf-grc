@@ -1084,7 +1084,7 @@ const ROLE_TABS = {
   'custodian':     ['home','policy','reports'],
   'assessor':      ['home','poam','reports'],
   'ao':            ['home','asset','poam','reports','users'],
-  'approver':      ['home','control','asset','reports'],
+  'approver':      ['home','reports'],
 };
 
 // Default program-owner title (CISO wizard Step 1). Privacy overlay implies combined security + privacy leadership.
@@ -1262,6 +1262,7 @@ function normalizeStateShape() {
   });
   migrateRegMappingStateShape();
   migrateISPWorkflowStatus();
+  ensurePmControlsAssignedToCiso();
 }
 
 function migrateRegMappingStateShape() {
@@ -1309,6 +1310,37 @@ function migrateISPWorkflowStatus() {
     delete s.approvedBy;
     state.policyStatus.ISP = s;
   }
+}
+
+/** PM (Tier 1 / ISP) controls belong to the CISO — never the external ISP approver. */
+function ensurePmControlsAssignedToCiso() {
+  if (!state.pmControls) return;
+  var ownerName = (state.programOwner || '').trim();
+  var ownerEmail = (state.programOwnerEmail || '').trim();
+  var ownerRole = (state.programOwnerTitle || '').trim();
+  if (!ownerName && !ownerEmail) return;
+  var approverEmail = '';
+  var approverName = '';
+  try {
+    var rc = (state.policyReviewCycle || {}).ISP || {};
+    approverEmail = String(rc.approverEmail || '').trim().toLowerCase();
+    approverName = String(rc.approvedBy || '').trim().toLowerCase();
+    var ps = (state.policyStatus || {}).ISP || {};
+    if (!approverEmail && ps.submittedToEmail) approverEmail = String(ps.submittedToEmail).trim().toLowerCase();
+    if (!approverName && ps.submittedTo) approverName = String(ps.submittedTo).trim().toLowerCase();
+  } catch (e) { /* ignore */ }
+  if (!state.controlOwners) state.controlOwners = {};
+  Object.keys(state.pmControls).forEach(function(cid) {
+    if (!state.pmControls[cid]) return;
+    var co = state.controlOwners[cid] || {};
+    var coEmail = String(co.email || '').trim().toLowerCase();
+    var coName = String(co.name || '').trim().toLowerCase();
+    var ownedByApprover = (approverEmail && coEmail === approverEmail)
+      || (approverName && coName && coName === approverName);
+    if (!hasRealControlOwner(co) || ownedByApprover) {
+      state.controlOwners[cid] = { name: ownerName, role: ownerRole, email: ownerEmail };
+    }
+  });
 }
 
 function resetStateToDefaults() {

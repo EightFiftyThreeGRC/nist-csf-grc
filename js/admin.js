@@ -13,7 +13,7 @@ const ROLE_META = {
   'assessor':      { label:'Security Assessor',             icon:'🧪', color:'#0f766e', desc:'Builds assessment scope, procedures, and results for authorization boundaries.' },
   'ao':            { label:'Authorizing Official (AO)',     icon:'🖋️', color:'#7c3aed', desc:'Makes final authorization decisions (ATO/IATT/Denial) based on assessment results and residual risk.' },
   'custodian':     { label:'Policy Custodian',              icon:'📂', color:'#8b5cf6', desc:'Read-only view of assigned policies. Reviews and downloads policy documents.' },
-  'approver':      { label:'Policy Approver (ISP)',         icon:'✅', color:'#059669', desc:'Signs off the Tier 1 Information Security Policy when routed for review. Uses Reports and the Policy Library — not the Domain policies workspace (Tier 2 ISSM drafting).' },
+  'approver':      { label:'Policy Approver (ISP)',         icon:'✅', color:'#059669', desc:'Signs off the Tier 1 Information Security Policy when routed for review. Uses Command Center and Reports only — no control or asset workspaces.' },
 };
 
 function getProgramRoleMeta(role) {
