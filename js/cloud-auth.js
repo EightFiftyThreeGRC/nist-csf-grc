@@ -364,7 +364,15 @@ function renderCloudGateMethods() {
   if (elDiv) elDiv.style.display = ((password || magic) && (ms || gg)) ? '' : 'none';
 }
 
+function setCloudAuthPending(pending) {
+  try {
+    document.documentElement.classList.toggle('cloud-auth-pending', !!pending);
+    if (document.body) document.body.classList.toggle('cloud-auth-pending', !!pending);
+  } catch (e) { /* ignore */ }
+}
+
 function showCloudSignInGate(message) {
+  setCloudAuthPending(true);
   var gate = document.getElementById('cloudSignInGate');
   if (!gate) return;
   renderCloudGateMethods();
@@ -409,6 +417,7 @@ function clearCloudGateMessage() {
 }
 
 function hideCloudSignInGate() {
+  setCloudAuthPending(false);
   var gate = document.getElementById('cloudSignInGate');
   if (gate) gate.style.display = 'none';
 }
@@ -1002,6 +1011,7 @@ async function enterCloudWithSession(session) {
 // ── boot entry point (called from app.js DOMContentLoaded) ──────────────────
 async function initCloudAuth() {
   if (!isCloudEnabled()) return false;
+  showCloudSignInGate();
   try {
     await loadSupabaseScript();
   } catch (e) {

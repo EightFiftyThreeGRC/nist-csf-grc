@@ -1206,7 +1206,15 @@ window.bootAfterStateReady = bootAfterStateReady;
 
 // Single-user / demo boot: load from this browser's localStorage and show the
 // full app (admin view), optionally honoring a legacy Entra session.
-function bootLocalMode() {
+function bootLocalMode(force) {
+  // When Supabase is wired up, never open the legacy admin / role-picker demo without
+  // an explicit ?demo=1 opt-in — the sign-in gate is the entry point.
+  if (!force && typeof isCloudConfigured === 'function' && isCloudConfigured()) {
+    if (!/[?&]demo=1(?:&|$)/.test(window.location.search || '')) {
+      if (typeof showCloudSignInGate === 'function') showCloudSignInGate();
+      return;
+    }
+  }
   try { loadFromStorage(); } catch (e) { console.warn('loadFromStorage:', e); }
   var entraBoot = Promise.resolve(false);
   if (typeof initEntraAuth === 'function') {
@@ -1228,7 +1236,7 @@ window.bootLocalMode = bootLocalMode;
 // keeps the public GitHub Pages demo usable for portfolio viewers.
 function continueAsLocalDemo() {
   if (typeof hideCloudSignInGate === 'function') hideCloudSignInGate();
-  bootLocalMode();
+  bootLocalMode(true);
 }
 window.continueAsLocalDemo = continueAsLocalDemo;
 
@@ -1265,11 +1273,15 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       initCloudAuth().catch(function(e) {
         console.warn('initCloudAuth:', e);
-        if (typeof showCloudSignInGate === 'function') showCloudSignInGate('Sign-in failed to initialize. Try again, or continue in local demo mode.');
+        if (typeof showCloudSignInGate === 'function') {
+          showCloudSignInGate('Sign-in failed to initialize. Check your connection and try again.');
+        }
       });
     } catch (e) {
       console.warn('initCloudAuth threw:', e);
-      bootLocalMode();
+      if (typeof showCloudSignInGate === 'function') {
+        showCloudSignInGate('Sign-in failed to initialize. Check your connection and try again.');
+      }
     }
   } else {
     bootLocalMode();

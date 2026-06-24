@@ -723,7 +723,6 @@
 
 <script src="js/nist-control-text.js?v=20260624"></script>
 <script src="js/core.js?v=20260624d"></script>
-<script src="js/app.js?v=20260624d"></script>
 <script src="js/program.js?v=20260624d"></script>
 <script src="js/policies.js?v=20260624e"></script>
 <script src="js/controls.js?v=20260624"></script>
@@ -740,9 +739,18 @@
      No-ops unless js/cloud-config.js is filled in. The Supabase library is
      loaded lazily (only when cloud mode is configured), so the public demo
      stays zero-dependency. See MULTI_USER_SETUP.md. -->
-<script src="js/cloud-config.js?v=20260624"></script>
-<script src="js/cloud-auth.js?v=20260624d"></script>
-<script src="js/app.js?v=20260624d"></script>
+<script src="js/cloud-config.js?v=20260624e"></script>
+<script>
+(function () {
+  var cfg = typeof CLOUD_CONFIG === 'object' && CLOUD_CONFIG;
+  if (!cfg || !String(cfg.supabaseUrl || '').trim() || !String(cfg.supabaseAnonKey || '').trim()) return;
+  document.documentElement.classList.add('cloud-auth-pending');
+  var gate = document.getElementById('cloudSignInGate');
+  if (gate) gate.style.display = 'flex';
+})();
+</script>
+<script src="js/cloud-auth.js?v=20260624e"></script>
+<script src="js/app.js?v=20260624e"></script>
 
 </body>
 </html>

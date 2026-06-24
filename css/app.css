@@ -2819,6 +2819,15 @@
     /* ============================================================
        MULTI-USER CLOUD SIGN-IN GATE + ACCOUNT MENU
        ============================================================ */
+    /* Hide the legacy admin shell until cloud sign-in completes. */
+    html.cloud-auth-pending .sidebar,
+    html.cloud-auth-pending #app-persist-toolbar,
+    html.cloud-auth-pending main,
+    html.cloud-auth-pending #welcomeIntroOverlay,
+    html.cloud-auth-pending #rolePickerOverlay {
+      display: none !important;
+    }
+
     #cloudSignInGate {
       position: fixed;
       inset: 0;
