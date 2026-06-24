@@ -273,19 +273,40 @@ function cisoReturnPolicy(fam) {
   if (!notes) { showToast('Please add review notes before returning the policy.', true); return; }
   if (!state.policyStatus) state.policyStatus = {};
   var prevR = state.policyStatus[fam] || {};
+  var revisee = typeof resolveEffectiveDomainOwner === 'function'
+    ? resolveEffectiveDomainOwner(fam)
+    : ((state.domainOwners || {})[fam] || {});
+  // Keep roster row when program owner also owns domain policies (common small-team setup).
+  if (state.cisoIsISSM && typeof isValidOwnerEmail === 'function' && isValidOwnerEmail(state.programOwnerEmail)) {
+    if (!state.domainOwners) state.domainOwners = {};
+    if (!isValidOwnerEmail((state.domainOwners[fam] || {}).email)) {
+      state.domainOwners[fam] = {
+        name: (state.programOwner || '').trim(),
+        email: (state.programOwnerEmail || '').trim(),
+        role: (state.programOwnerTitle || '').trim() || 'Program Owner'
+      };
+      var merges = state.policyMerges || {};
+      if (typeof getActiveFamilies === 'function') {
+        getActiveFamilies().filter(function(f) { return merges[f] === fam; }).forEach(function(mf) {
+          state.domainOwners[mf] = Object.assign({}, state.domainOwners[fam]);
+        });
+      }
+      revisee = state.domainOwners[fam];
+    }
+  }
   var retBy = typeof getSessionActorName === 'function'
     ? getSessionActorName(typeof getDomainDesignatedApproverName === 'function' ? getDomainDesignatedApproverName(fam) : (state.programOwner || 'CISO'))
     : (state.programOwner || (state.programOwnerTitle || 'CISO'));
   state.policyStatus[fam] = {
     status: 'Returned',
+    returnedForRevision: true,
     returnedDate: new Date().toISOString().slice(0, 10),
     returnedBy: retBy,
     notes: notes,
     submittedAt: prevR.submittedAt || '',
-    // Route back to the current domain owner so this never gets stranded in an old approver queue.
-    submittedTo: ((state.domainOwners || {})[fam] || {}).name || prevR.submittedTo || '',
-    submittedToRole: ((state.domainOwners || {})[fam] || {}).role || prevR.submittedToRole || '',
-    submittedToEmail: ((state.domainOwners || {})[fam] || {}).email || prevR.submittedToEmail || ''
+    submittedTo: (revisee.name || '').trim() || prevR.submittedTo || '',
+    submittedToRole: (revisee.role || '').trim() || prevR.submittedToRole || '',
+    submittedToEmail: (revisee.email || '').trim() || prevR.submittedToEmail || ''
   };
   if (!state.domainPolicies) state.domainPolicies = {};
   if (!state.domainPolicies[fam]) state.domainPolicies[fam] = {};
@@ -313,7 +334,9 @@ function renderProgramDashboard(controls, families) {
     var ps = (state.policyStatus[f] || {});
     if (ps.status === 'Under Review') return true;
     if (ps.status !== 'Returned') return false;
-    // Returned items explicitly routed back to CISO/program owner should show in CISO queue for reassignment.
+    if (ps.returnedForRevision) return false;
+    if (ps.returnedForReassignment) return true;
+    // Legacy returned items explicitly routed back to CISO/program owner for reassignment.
     var routedTo = String(ps.submittedTo || '').trim().toLowerCase();
     var cisoName = String(state.programOwner || '').trim().toLowerCase();
     return !routedTo || (cisoName && routedTo === cisoName);
@@ -411,7 +434,7 @@ function renderProgramDashboard(controls, families) {
     const title = getPolicyMergedTitle(fam);
     const allFams = getPolicyAllFamilies(fam);
     const badges = allFams.map(f => '<span class="family-badge" style="font-size:10px;padding:1px 5px;">' + f + '</span>').join(' ');
-    const isReturnedToCiso = p.status === 'Returned';
+    const isReturnedToCiso = p.status === 'Returned' && !!p.returnedForReassignment;
     const returnNotes = isReturnedToCiso ? String(p.notes || '').trim() : '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">'
       + '<div style="display:flex;gap:10px;align-items:center;">'

@@ -1567,10 +1567,32 @@ function getOwnerDisplayName(owner) {
   return '—';
 }
 
+/** Domain owner for a family — explicit roster row, else program owner when they wear all domain hats. */
+function resolveEffectiveDomainOwner(fam) {
+  var owner = (state.domainOwners || {})[fam] || {};
+  var name = (owner.name || '').trim();
+  var email = (owner.email || '').trim();
+  if (name || isValidOwnerEmail(email)) {
+    return { name: name, email: email, role: (owner.role || '').trim() };
+  }
+  if (state.cisoIsISSM) {
+    return {
+      name: (state.programOwner || '').trim(),
+      email: (state.programOwnerEmail || '').trim(),
+      role: (state.programOwnerTitle || '').trim()
+    };
+  }
+  var ps = (state.policyStatus || {})[fam] || {};
+  return {
+    name: (ps.submittedTo || '').trim(),
+    email: (ps.submittedToEmail || '').trim(),
+    role: (ps.submittedToRole || '').trim()
+  };
+}
+
 /** Policy domain owner for tables — name, else email, else em dash. */
 function getDomainOwnerLabel(fam) {
-  var owner = (state.domainOwners || {})[fam];
-  return getOwnerDisplayName(owner);
+  return getOwnerDisplayName(resolveEffectiveDomainOwner(fam));
 }
 
 function getDomainOwnerLabelOr(fam, fallback) {

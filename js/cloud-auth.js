@@ -374,7 +374,9 @@ function canSessionReviseReturnedISP() {
 /** True when the signed-in viewer owns the domain policy family (drafter / policy owner). */
 function isSessionDomainPolicyOwnerActor(fam) {
   if (!fam) return false;
-  var owner = ((state.domainOwners || {})[fam] || {});
+  var owner = typeof resolveEffectiveDomainOwner === 'function'
+    ? resolveEffectiveDomainOwner(fam)
+    : ((state.domainOwners || {})[fam] || {});
   var ownerName = (owner.name || '').trim().toLowerCase();
   var ownerEmail = typeof normalizeOwnerEmail === 'function'
     ? normalizeOwnerEmail(owner.email) : String(owner.email || '').trim().toLowerCase();
@@ -418,8 +420,17 @@ function isSessionDomainPolicyOwnerActor(fam) {
 }
 
 function canSessionReviseReturnedDomainPolicy(fam) {
-  if (((state.policyStatus || {})[fam] || {}).status !== 'Returned') return false;
-  return isSessionDomainPolicyOwnerActor(fam);
+  var ps = (state.policyStatus || {})[fam] || {};
+  if (ps.status !== 'Returned') return false;
+  if (ps.returnedForReassignment) return false;
+  if (isSessionDomainPolicyOwnerActor(fam)) return true;
+  // Program owner also owns domain policies — approver returns should still land with them
+  // even if the per-domain roster row was cleared.
+  if (state.cisoIsISSM && isSessionProgramOwnerActor()) {
+    if (ps.returnedForRevision) return true;
+    if ((state.domainPolicies || {})[fam]) return true;
+  }
+  return false;
 }
 
 function getSessionReturnedDomainPolicyFamilies() {

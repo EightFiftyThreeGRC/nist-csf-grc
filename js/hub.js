@@ -157,6 +157,22 @@ function getNextActions() {
     });
   });
 
+  if (typeof isSessionProgramOwnerActor === 'function' && isSessionProgramOwnerActor()) {
+    Object.keys(state.policyStatus || {}).forEach(function(fam) {
+      if (fam === 'ISP') return;
+      var ps = state.policyStatus[fam] || {};
+      if (ps.status !== 'Returned' || !ps.returnedForReassignment) return;
+      var title = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam;
+      actions.push({
+        priority: 1,
+        icon: '\u21A9',
+        label: 'Reassign policy: ' + title,
+        desc: 'A domain owner returned this policy for reassignment.',
+        action: "typeof openReturnedPolicyReassignment === 'function' ? openReturnedPolicyReassignment('" + fam.replace(/'/g, "\\'") + "') : startProgramSetup();"
+      });
+    });
+  }
+
   (state.assets || []).forEach(function(a) {
     var signoff = (state.sspSignoffs || {})[a.id] || {};
     if (signoff.status === 'Submitted') {

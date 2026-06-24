@@ -1801,6 +1801,7 @@ function confirmReturnToCISO(fam) {
   if (!state.policyStatus) state.policyStatus = {};
   if (!state.policyStatus[fam]) state.policyStatus[fam] = {};
   state.policyStatus[fam].status = 'Returned';
+  state.policyStatus[fam].returnedForReassignment = true;
   state.policyStatus[fam].returnedAt = new Date().toLocaleDateString();
   state.policyStatus[fam].returnedBy = previousOwner;
   // Explicitly route the returned policy back to CISO/program owner so it appears in their reassignment queue.
