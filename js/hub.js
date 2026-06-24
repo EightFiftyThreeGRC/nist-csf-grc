@@ -143,6 +143,183 @@ function getNextActions() {
   return actions.slice(0, 8);
 }
 
+function getHubSessionUser() {
+  if (!state.currentUserId || !state.users) return null;
+  return state.users.find(function(u) { return u.id === state.currentUserId; }) || null;
+}
+
+function getHubVisibleTabIds() {
+  var user = getHubSessionUser();
+  if (!user) return typeof TAB_IDS !== 'undefined' ? TAB_IDS.slice() : ['home', 'reports'];
+  return typeof getPersonVisibleTabIds === 'function' ? getPersonVisibleTabIds(user) : ['reports'];
+}
+
+function getHubPersonRoles(user) {
+  var roles = [];
+  if (!user) return roles;
+  (state._currentPersonIds || [user.id]).forEach(function(pid) {
+    var rec = (state.users || []).find(function(u) { return u.id === pid; });
+    if (!rec) return;
+    (rec.roles && rec.roles.length ? rec.roles : [rec.role]).forEach(function(r) {
+      if (roles.indexOf(r) === -1) roles.push(r);
+    });
+  });
+  return roles;
+}
+
+function countPublishedPolicyItems() {
+  var n = 0;
+  if (typeof getISPStatus === 'function' && getISPStatus() === 'Approved') n++;
+  var families = typeof getMasterPolicyFamilies === 'function' ? getMasterPolicyFamilies() : [];
+  families.forEach(function(fam) {
+    if (((state.policyStatus || {})[fam] || {}).status === 'Approved') n++;
+  });
+  return n;
+}
+
+function countImplementedControls() {
+  var n = 0;
+  (typeof getActiveControls === 'function' ? getActiveControls() : []).forEach(function(c) {
+    var st = (state.controlStatus || {})[c.id];
+    if (st && (st.status === 'Implemented' || st.status === 'Inherited')) n++;
+  });
+  return n;
+}
+
+function userHasPolicyDraftWork(user) {
+  if (typeof canSessionReviseReturnedISP === 'function' && canSessionReviseReturnedISP()) return true;
+  if (!user) {
+    if (typeof getISPStatus === 'function' && getISPStatus() !== 'Approved') return true;
+    var allFams = typeof getMasterPolicyFamilies === 'function' ? getMasterPolicyFamilies() : [];
+    return allFams.some(function(fam) {
+      var st = ((state.policyStatus || {})[fam] || {}).status || 'Not Started';
+      return st !== 'Approved';
+    });
+  }
+  var families = [];
+  (state._currentPersonIds || [user.id]).forEach(function(pid) {
+    var rec = (state.users || []).find(function(u) { return u.id === pid; });
+    if (!rec) return;
+    var recRoles = rec.roles && rec.roles.length ? rec.roles : [rec.role];
+    if (recRoles.indexOf('issm') !== -1 || recRoles.indexOf('custodian') !== -1 || recRoles.indexOf('ciso') !== -1) {
+      (rec.families || []).forEach(function(f) {
+        if (families.indexOf(f) === -1) families.push(f);
+      });
+    }
+  });
+  if (!families.length) return false;
+  return families.some(function(fam) {
+    var st = ((state.policyStatus || {})[fam] || {}).status || 'Not Started';
+    return st !== 'Approved';
+  });
+}
+
+function userHasControlDraftWork(user) {
+  var scoped = typeof getScopedControls === 'function' ? getScopedControls() : [];
+  if (!scoped.length) return false;
+  return scoped.some(function(c) {
+    var st = (state.controlStatus || {})[c.id];
+    var status = st ? st.status : 'Not Started';
+    return status !== 'Implemented' && status !== 'Inherited';
+  });
+}
+
+function userHasFrameworkMapping() {
+  if (!state.baseline) return false;
+  var fw = typeof getActiveFrameworkIds === 'function' ? getActiveFrameworkIds() : [];
+  var laws = typeof getActiveComplianceLawIds === 'function' ? getActiveComplianceLawIds() : [];
+  return fw.length > 0 || laws.length > 0;
+}
+
+function getScopedPoamOpenCount(user) {
+  if (typeof ensurePoamState === 'function') ensurePoamState();
+  var items = state.poamItems || [];
+  var tabs = getHubVisibleTabIds();
+  if (tabs.indexOf('poam') === -1) return 0;
+  var open = items.filter(function(p) {
+    return p.status !== 'Closed' && p.status !== 'Mitigated' && p.status !== 'Risk Accepted';
+  });
+  if (!user || !state.currentUserId) return open.length;
+  var roles = getHubPersonRoles(user);
+  if (roles.indexOf('ciso') !== -1 || roles.indexOf('assessor') !== -1 || roles.indexOf('ao') !== -1) {
+    return open.length;
+  }
+  var name = (user.name || '').trim().toLowerCase();
+  var email = (user.email || '').trim().toLowerCase();
+  return open.filter(function(p) {
+    var asn = (p.assignee || '').trim().toLowerCase();
+    return !asn || asn === name || (email && asn === email);
+  }).length;
+}
+
+function userHasAssetWorkspaceContent(user) {
+  var tabs = getHubVisibleTabIds();
+  if (tabs.indexOf('asset') === -1) return false;
+  var assetIds = typeof getCurrentPersonAssetIds === 'function' ? getCurrentPersonAssetIds() : null;
+  if (assetIds && assetIds.length) return true;
+  if (!user || !state.currentUserId) return (state.assets || []).length > 0;
+  var roles = getHubPersonRoles(user);
+  if (roles.indexOf('ao') !== -1 || roles.indexOf('ciso') !== -1 || roles.indexOf('assessor') !== -1) {
+    return (state.assets || []).length > 0;
+  }
+  return false;
+}
+
+/** Command Center workspace tiles — only surfaces areas with content for this viewer. */
+function getHubWorkspaces() {
+  var user = getHubSessionUser();
+  var tabs = getHubVisibleTabIds();
+  var workspaces = [];
+  var publishedPolicies = countPublishedPolicyItems();
+  var policyDraft = userHasPolicyDraftWork(user);
+  var implementedControls = countImplementedControls();
+  var controlDraft = userHasControlDraftWork(user);
+
+  if (publishedPolicies > 0 || policyDraft) {
+    var policyFn = (policyDraft && tabs.indexOf('policy') !== -1) ? 'goToPoliciesHome()' : 'goToPolicyLibrary()';
+    var policyDesc = policyDraft && tabs.indexOf('policy') !== -1
+      ? (publishedPolicies > 0 ? 'Your drafts & approved catalog' : 'Domain policy drafts & ISP')
+      : (publishedPolicies > 0 ? publishedPolicies + ' approved polic' + (publishedPolicies === 1 ? 'y' : 'ies') + ' in catalog' : 'Policy catalog');
+    workspaces.push({ icon: '📋', label: 'Policies', desc: policyDesc, fn: policyFn });
+  }
+
+  if (implementedControls > 0 || controlDraft) {
+    var ctrlFn = (controlDraft && tabs.indexOf('control') !== -1) ? 'goToControlWorkspace()' : 'goToControlLibrary()';
+    var ctrlDesc = controlDraft && tabs.indexOf('control') !== -1
+      ? (implementedControls > 0 ? 'Draft designs & ' + implementedControls + ' live controls' : 'Control implementation drafts')
+      : (implementedControls > 0 ? implementedControls + ' implemented control' + (implementedControls === 1 ? '' : 's') + ' in catalog' : 'Control catalog');
+    workspaces.push({ icon: '🔧', label: 'Controls', desc: ctrlDesc, fn: ctrlFn });
+  }
+
+  if (userHasAssetWorkspaceContent(user)) {
+    workspaces.push({ icon: '🖥️', label: 'Assets & SSP', desc: 'Inventory & attestations', fn: 'goToAssetWorkspace()' });
+  }
+
+  if (tabs.indexOf('reports') !== -1) {
+    workspaces.push({ icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')" });
+  }
+
+  if (tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping()) {
+    workspaces.push({ icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS alignment', fn: "showTab('frameworks')" });
+  }
+
+  var poamOpen = getScopedPoamOpenCount(user);
+  if (tabs.indexOf('poam') !== -1 && poamOpen > 0) {
+    workspaces.push({ icon: '📝', label: 'POA&M', desc: poamOpen + ' open finding' + (poamOpen === 1 ? '' : 's'), fn: "showTab('poam')" });
+  }
+
+  return workspaces;
+}
+
+function shouldShowHubFrameworkStrip() {
+  var tabs = getHubVisibleTabIds();
+  return tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping();
+}
+
+function shouldShowHubPoamStrip() {
+  return getScopedPoamOpenCount(getHubSessionUser()) > 0 && getHubVisibleTabIds().indexOf('poam') !== -1;
+}
+
 function updateCommandCenterPageHeader() {
   var subtitle = document.getElementById('home-page-subtitle');
   if (!subtitle || !state.cisoComplete) return;
@@ -188,14 +365,16 @@ function renderHomeTab() {
     }).join('')
     : '<div class="hub-empty-actions">You\'re caught up — open a workspace from the sidebar or the cards below.</div>';
 
-  var workspaces = [
-    { icon: '📋', label: 'Policies', desc: 'Domain policy builder & catalog', fn: 'goToPoliciesHome()' },
-    { icon: '🔧', label: 'Controls', desc: 'Implementation design', fn: 'goToControlWorkspace()' },
-    { icon: '🖥️', label: 'Assets & SSP', desc: 'Inventory & attestations', fn: 'goToAssetWorkspace()' },
-    { icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')" },
-    { icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS', fn: "showTab('frameworks')" },
-    { icon: '📝', label: 'POA&M', desc: 'Findings & remediation', fn: "showTab('poam')" }
-  ];
+  var workspaces = getHubWorkspaces();
+
+  var workspaceHtml = workspaces.length
+    ? workspaces.map(function(w) {
+      return '<button type="button" class="hub-workspace-card" onclick="' + w.fn + '">'
+        + '<span class="hub-workspace-icon">' + w.icon + '</span>'
+        + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
+        + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
+    }).join('')
+    : '<div class="hub-empty-actions">No workspaces with content for your role right now.</div>';
 
   body.innerHTML = ''
     + '<div class="hub-dashboard">'
@@ -205,18 +384,13 @@ function renderHomeTab() {
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + getPoamOpenCount() + '</div><div class="hub-kpi-label">Open POA&amp;M items</div></div>'
     + '</div>'
-    + (typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : '')
+    + (shouldShowHubFrameworkStrip() && typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : '')
     + '<div class="hub-lower-grid">'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'
-    + workspaces.map(function(w) {
-      return '<button type="button" class="hub-workspace-card" onclick="' + w.fn + '">'
-        + '<span class="hub-workspace-icon">' + w.icon + '</span>'
-        + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
-        + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
-    }).join('')
+    + workspaceHtml
     + '</div></div>'
     + '</div>'
-    + (typeof renderPoamSummaryHtml === 'function' ? renderPoamSummaryHtml() : '')
+    + (shouldShowHubPoamStrip() && typeof renderPoamSummaryHtml === 'function' ? renderPoamSummaryHtml() : '')
     + '</div>';
 }
