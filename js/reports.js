@@ -785,42 +785,10 @@ function userSeesProgramExecutiveDashboard(user) {
 // ─── ASSET OWNER REPORTS VIEW ────────────────────────────────────────────────
 // Callout when reviewer returned an SSP/SPSP (signoff.aoReturnedAt + not Submitted/Approved).
 function renderAssetOwnerSspReturnedCallout(user, sspLabel) {
-  if (typeof signoffIsReturnedForRevision !== 'function') return '';
-  var myAssetIds = (user.assets || []).map(String);
-  var uname = (user.name || '').trim().toLowerCase();
-  var rows = [];
-  (state.assets || []).forEach(function(a) {
-    if (!myAssetIds.includes(String(a.id))) return;
-    var sig = (state.sspSignoffs || {})[a.id] || {};
-    if (!signoffIsReturnedForRevision(sig)) return;
-    rows.push({ name: a.name || 'Unnamed', isProcess: false, sidJson: JSON.stringify(String(a.id)), sig: sig });
-  });
-  (state.processes || []).forEach(function(p) {
-    var mine = myAssetIds.includes(String(p.id)) || (p.owner || '').trim().toLowerCase() === uname;
-    if (!mine) return;
-    var sig = (state.sspSignoffs || {})[p.id] || {};
-    if (!signoffIsReturnedForRevision(sig)) return;
-    rows.push({ name: p.name || 'Unnamed', isProcess: true, sidJson: JSON.stringify(String(p.id)), sig: sig });
-  });
-  if (!rows.length) return '';
-  var body = rows.map(function(r) {
-    var notes = String(r.sig.aoReturnNotes || '').trim();
-    var by = _esc(String(r.sig.aoReturnedBy || '').trim() || 'Reviewer');
-    var on = _esc(r.sig.aoReturnedAt || '');
-    var openFn = r.isProcess ? 'openProcessSspFromLibrary' : 'openAssetWizardFromLibrary';
-    return '<div style="border-bottom:1px solid rgba(0,0,0,0.06);padding:12px 0;">'
-      + '<div style="font-weight:700;color:var(--navy);">' + _esc(r.name) + ' <span style="font-size:11px;font-weight:600;color:#c2410c;text-transform:uppercase;">' + (r.isProcess ? 'Process' : 'Asset') + ' · returned</span></div>'
-      + '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Returned by ' + by + (on ? ' · ' + on : '') + '</div>'
-      + '<div style="margin-top:8px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#78350f;line-height:1.45;"><strong>Reviewer notes</strong> — '
-      + (notes ? _esc(notes) : '<span style="font-style:italic;color:var(--text-muted);">None provided.</span>') + '</div>'
-      + '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;font-size:11px;" onclick=\'' + openFn + '(' + r.sidJson + ')\'>Open ' + _esc(sspLabel) + ' to revise →</button>'
-      + '</div>';
-  }).join('');
-  return '<div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:920px;">'
-    + '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">' + _esc(sspLabel) + ' returned for your revision</div>'
-    + '<div style="font-size:12px;color:#b45309;margin-bottom:12px;line-height:1.45;">Your reviewer sent these packages back. Address the notes, then sign and submit again from Step 4.</div>'
-    + body
-    + '</div>';
+  if (typeof renderReturnedSspWorkCallout === 'function') {
+    return renderReturnedSspWorkCallout(user);
+  }
+  return '';
 }
 
 // Full replacement for the reports tab when logged in as an asset-owner.
@@ -1198,6 +1166,21 @@ function renderReturnedWorkCallout(user) {
     }
   }
 
+  if (typeof getReturnedSspPackagesForUser === 'function' && user) {
+    getReturnedSspPackagesForUser(user).forEach(function(r) {
+      var notes = String(r.sign.aoReturnNotes || '').trim();
+      var sidEsc = String(r.scopeId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      var isProcJs = r.isProcess ? 'true' : 'false';
+      cards.push(
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:12px 14px;">'
+        + '<div><div style="font-size:13px;font-weight:700;color:#92400e;">' + escapeHTML(r.name || 'Package') + ' ' + escapeHTML(r.sspLabel || 'SSP') + ' returned</div>'
+        + '<div style="font-size:12px;color:#78350f;">' + escapeHTML(notes || 'Update attestations and resubmit from Step 4.') + '</div></div>'
+        + '<button class="btn btn-primary btn-sm" onclick="openReturnedSspForRevision(\'' + sidEsc + '\',' + isProcJs + ')">Open &amp; revise</button>'
+        + '</div>'
+      );
+    });
+  }
+
   if (user && user.role === 'control-owner') {
     var evidenceReq = (state.controlReviewQueue || []).filter(function(r) {
       if (!r || !r.controlId || r.status !== 'Evidence Requested') return false;
@@ -1395,7 +1378,8 @@ function renderApproverDashboard(user) {
     ? '<span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">Returned</span>'
     : '<span style="background:rgba(100,116,139,0.08);border:1px solid var(--border);color:var(--text-muted);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">Not Started</span>';
 
-  var html = '<div style="background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:1px solid #93c5fd;border-radius:12px;padding:20px;margin-bottom:20px;">'
+  var html = (typeof renderReturnedSspWorkCallout === 'function' ? renderReturnedSspWorkCallout(user) : '')
+    + '<div style="background:linear-gradient(135deg,#eff6ff,#f0f9ff);border:1px solid #93c5fd;border-radius:12px;padding:20px;margin-bottom:20px;">'
     + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">'
     + '<span style="font-size:24px;">\u2705</span>'
     + '<div><div style="font-size:16px;font-weight:800;color:#1e3a5f;">' + escapeHTML(user.name) + '</div>'
@@ -1499,7 +1483,10 @@ function renderReports() {
   // Empty state for scoped users with no assignments
   if (showMyView && controls.length === 0 && families.length === 0) {
     var uName = user ? user.name.split(' ')[0] : 'there';
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">\uD83D\uDCCA</div><div class="es-title">Welcome, ' + escapeHTML(uName) + '</div>'
+    var returnedSspHtml = (typeof renderReturnedSspWorkCallout === 'function' && user) ? renderReturnedSspWorkCallout(user) : '';
+    var returnedWorkHtml = typeof renderReturnedWorkCallout === 'function' ? renderReturnedWorkCallout(user) : '';
+    body.innerHTML = (returnedSspHtml || returnedWorkHtml)
+      + '<div class="empty-state"><div class="es-icon">\uD83D\uDCCA</div><div class="es-title">Welcome, ' + escapeHTML(uName) + '</div>'
       + '<p>No controls or policy domains have been assigned to you yet. Once your CISO or ISSM assigns work to you, your personal dashboard and reports will appear here.</p></div>'
       + (typeof renderReportsLibraryEntryHtml === 'function' && userHasReportsLibraryAccess(user) ? renderReportsLibraryEntryHtml() : '');
     return;

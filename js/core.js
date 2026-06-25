@@ -1165,6 +1165,7 @@ const state = {
   _assetLibraryMode: false,    // true = show global asset library, false = asset workspace
   _assetTypeLibraryMode: false, // true = show asset type library, false = asset workspace
   _sspReviewerReadOnly: false,  // true = AO/ISSM viewing submitted SSP in read-only package view (not owner wizard)
+  _sspOwnerRevisionMode: false, // true = owner revising a returned SSP/SPSP (allows asset tab for non-asset-owner roles)
   _sspReadOnlyExitTab: null,     // 'reports' | 'library' — where Back returns after read-only SSP view
   assetTypeRequests: [],        // [{id, action, typeName, reason, requestedBy, requestedAt, status, reviewedBy, reviewedAt, reviewReason}]
   policyCustodians: {},          // { 'AC': { name, role, email } }

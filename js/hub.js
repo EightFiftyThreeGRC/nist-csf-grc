@@ -17,6 +17,12 @@ function hubJsStringLiteral(s) {
   return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+/** Command Center → open a returned SSP/SPSP for owner revision. */
+function hubOpenReturnedSsp(scopeId, isProcess) {
+  if (typeof openReturnedSspForRevision === 'function') openReturnedSspForRevision(scopeId, !!isProcess);
+  else showToast('Unable to open returned SSP package.', true);
+}
+
 /** Command Center → open a queued SSP read-only (same path as Reports queue Open). */
 function hubOpenQueuedSsp(scopeId, isProcess) {
   if (typeof openSspReadOnlyFromQueue === 'function') {
@@ -116,6 +122,19 @@ function getNextActions() {
   });
 
   var hubUser = getHubSessionUser();
+  if (typeof getReturnedSspPackagesForUser === 'function') {
+    getReturnedSspPackagesForUser(hubUser).slice(0, 5).forEach(function(r) {
+      var sidEsc = hubJsStringLiteral(String(r.scopeId || ''));
+      var notes = String((r.sign && r.sign.aoReturnNotes) || '').trim();
+      actions.push({
+        priority: 0,
+        icon: '↩',
+        label: 'Revise ' + (r.sspLabel || 'SSP') + ': ' + (r.name || 'Package'),
+        desc: notes ? ('Returned: ' + notes.slice(0, 80) + (notes.length > 80 ? '\u2026' : '')) : 'Returned by reviewer — update and resubmit.',
+        action: "hubOpenReturnedSsp('" + sidEsc + "'," + (r.isProcess ? 'true' : 'false') + ")"
+      });
+    });
+  }
   if (typeof getSspReviewQueueItemsForUser === 'function') {
     getSspReviewQueueItemsForUser(hubUser).slice(0, 5).forEach(function(r) {
       var sidEsc = hubJsStringLiteral(String(r.assetId || ''));
@@ -547,4 +566,5 @@ function renderHomeTab() {
 }
 
 window.hubOpenQueuedSsp = hubOpenQueuedSsp;
+window.hubOpenReturnedSsp = hubOpenReturnedSsp;
 window.hubOpenReportsLibrary = hubOpenReportsLibrary;

@@ -1052,7 +1052,7 @@ function getAssetSSPControls(asset) {
 // ─── ENTER / EXIT SSP WIZARD ─────────────────────────────────────────────────
 function enterAssetSSP(assetId) {
   if (state._sspReviewerReadOnly) state._sspReviewerReadOnly = false;
-  if (!userCanAccessAssetWorkspace()) {
+  if (!state._sspOwnerRevisionMode && !userCanAccessAssetWorkspace()) {
     showToast('You do not have access to edit this SSP in the asset-owner workspace.', true);
     return;
   }
@@ -1098,6 +1098,7 @@ function enterProcessSSP(procId) {
 
 function exitAssetWizard() {
   state._sspReviewerReadOnly = false;
+  state._sspOwnerRevisionMode = false;
   state._sspReadOnlyExitTab = null;
   if (typeof _restoreAssetWizardLayoutAfterReadOnly === 'function') _restoreAssetWizardLayoutAfterReadOnly();
   state._selectedAssetId   = null;
@@ -2736,6 +2737,130 @@ function getSspSignoffFromState(scopeId) {
   return {};
 }
 
+function getSspSessionIdentityTokens(user) {
+  var names = [];
+  var emails = [];
+  function addName(n) {
+    var v = String(n || '').trim().toLowerCase();
+    if (v && names.indexOf(v) === -1) names.push(v);
+  }
+  function addEmail(e) {
+    var v = typeof normalizeOwnerEmail === 'function'
+      ? normalizeOwnerEmail(e || '')
+      : String(e || '').trim().toLowerCase();
+    if (v && emails.indexOf(v) === -1) emails.push(v);
+  }
+  if (user) {
+    addName(user.name);
+    addEmail(user.email);
+  }
+  if (typeof getSessionActorName === 'function') addName(getSessionActorName(''));
+  if (typeof getSessionEmailForApproval === 'function') addEmail(getSessionEmailForApproval());
+  var personIds = (state._currentPersonIds && state._currentPersonIds.length)
+    ? state._currentPersonIds.slice()
+    : (user && user.id ? [user.id] : []);
+  personIds.forEach(function(pid) {
+    var rec = (state.users || []).find(function(u) { return u.id === pid; });
+    if (!rec) return;
+    addName(rec.name);
+    addEmail(rec.email);
+  });
+  return { names: names, emails: emails };
+}
+
+function sspPackageOwnedBySessionUser(scopeId, isProcess, user) {
+  if (!user) return false;
+  var sid = String(scopeId);
+  var tokens = getSspSessionIdentityTokens(user);
+  var scopedIds = typeof getCurrentPersonAssetIds === 'function' ? getCurrentPersonAssetIds() : null;
+  if (scopedIds && scopedIds.indexOf(sid) !== -1) return true;
+  if ((user.assets || []).map(String).indexOf(sid) !== -1) return true;
+
+  if (isProcess) {
+    var proc = (state.processes || []).find(function(p) { return String(p.id) === sid; });
+    if (proc) {
+      var ownerName = String(proc.owner || '').trim().toLowerCase();
+      if (ownerName && tokens.names.indexOf(ownerName) !== -1) return true;
+    }
+  } else {
+    var asset = (state.assets || []).find(function(a) { return String(a.id) === sid; });
+    if (asset) {
+      var aOwner = String(asset.owner || '').trim().toLowerCase();
+      if (aOwner && tokens.names.indexOf(aOwner) !== -1) return true;
+      if (asset.ownerId && String(asset.ownerId) === String(user.id)) return true;
+    }
+  }
+
+  var sign = getSspSignoffFromState(sid);
+  var signedBy = String(sign.signedBy || '').trim().toLowerCase();
+  if (signedBy && tokens.names.indexOf(signedBy) !== -1) return true;
+  return false;
+}
+
+function getReturnedSspPackagesForUser(user) {
+  if (!user) return [];
+  var sspLabel = state.privacyOverlay ? 'SPSP' : 'SSP';
+  var rows = [];
+  (state.assets || []).forEach(function(a) {
+    var sig = getSspSignoffFromState(a.id);
+    if (!signoffIsReturnedForRevision(sig)) return;
+    if (!sspPackageOwnedBySessionUser(a.id, false, user)) return;
+    rows.push({ scopeId: String(a.id), isProcess: false, name: a.name || 'Unnamed', sign: sig, sspLabel: sspLabel });
+  });
+  (state.processes || []).forEach(function(p) {
+    var sig = getSspSignoffFromState(p.id);
+    if (!signoffIsReturnedForRevision(sig)) return;
+    if (!sspPackageOwnedBySessionUser(p.id, true, user)) return;
+    rows.push({ scopeId: String(p.id), isProcess: true, name: p.name || 'Unnamed', sign: sig, sspLabel: sspLabel });
+  });
+  return rows;
+}
+
+function openReturnedSspForRevision(scopeId, isProcess) {
+  var sid = String(scopeId);
+  var user = state.currentUserId ? (state.users || []).find(function(u) { return u.id === state.currentUserId; }) : null;
+  if (user && !sspPackageOwnedBySessionUser(sid, !!isProcess, user)) {
+    showToast('This returned package is not assigned to your profile.', true);
+    return;
+  }
+  state._sspOwnerRevisionMode = true;
+  state._sspReviewerReadOnly = false;
+  state._sspReadOnlyExitTab = null;
+  state._assetLibraryMode = false;
+  state._assetTypeLibraryMode = false;
+  if (isProcess) {
+    if (typeof enterProcessSSP === 'function') enterProcessSSP(sid);
+    return;
+  }
+  if (typeof enterAssetSSP === 'function') enterAssetSSP(sid);
+}
+
+function renderReturnedSspWorkCallout(user) {
+  if (!user || typeof getReturnedSspPackagesForUser !== 'function') return '';
+  var rows = getReturnedSspPackagesForUser(user);
+  if (!rows.length) return '';
+  var sspLabel = rows[0].sspLabel || (state.privacyOverlay ? 'SPSP' : 'SSP');
+  var body = rows.map(function(r) {
+    var notes = String(r.sign.aoReturnNotes || '').trim();
+    var by = _esc(String(r.sign.aoReturnedBy || '').trim() || 'Reviewer');
+    var on = _esc(r.sign.aoReturnedAt || '');
+    var sidEsc = sspRevEscJs(r.scopeId);
+    var isProcJs = r.isProcess ? 'true' : 'false';
+    return '<div style="border-bottom:1px solid rgba(0,0,0,0.06);padding:12px 0;">'
+      + '<div style="font-weight:700;color:var(--navy);">' + _esc(r.name) + ' <span style="font-size:11px;font-weight:600;color:#c2410c;text-transform:uppercase;">' + (r.isProcess ? 'Process' : 'Asset') + ' · returned</span></div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Returned by ' + by + (on ? ' · ' + on : '') + '</div>'
+      + '<div style="margin-top:8px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#78350f;line-height:1.45;"><strong>Reviewer notes</strong> — '
+      + (notes ? _esc(notes) : '<span style="font-style:italic;color:var(--text-muted);">None provided.</span>') + '</div>'
+      + '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;font-size:11px;" onclick="openReturnedSspForRevision(\'' + sidEsc + '\',' + isProcJs + ')">Open ' + _esc(sspLabel) + ' to revise →</button>'
+      + '</div>';
+  }).join('');
+  return '<div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:920px;">'
+    + '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px;">' + _esc(sspLabel) + ' returned for your revision</div>'
+    + '<div style="font-size:12px;color:#b45309;margin-bottom:12px;line-height:1.45;">Your reviewer sent these packages back. Address the notes, then sign and submit again from Step 4.</div>'
+    + body
+    + '</div>';
+}
+
 /** True when a pending SSP queue row is assigned to this session user or roster match. */
 function sspQueueRowMatchesReviewer(r, user) {
   if (!r || r.type !== 'ssp') return false;
@@ -3259,6 +3384,7 @@ function submitSSP() {
   }
   var revName = (prevSign.reviewerName || '').trim() || formatSspReviewerDisplay(prevSign);
   if (!confirm('Submit the SSP for "' + asset.name + '" signed by ' + signer + '?\n\nThis will send it to ' + revName + ' for review.')) return;
+  state._sspOwnerRevisionMode = false;
   state.sspSignoffs[asset.id] = Object.assign({}, prevSign, {
     signedBy: signer,
     signedDate: new Date().toISOString().slice(0,10),
@@ -3662,6 +3788,7 @@ function submitProcessSSP() {
   }
   var revProcName = (prevProcSign.reviewerName || '').trim() || formatSspReviewerDisplay(prevProcSign);
   if (!confirm('Submit the Process SSP for "' + proc.name + '" signed by ' + signer + '?\n\nThis will send it to ' + revProcName + ' for review.')) return;
+  state._sspOwnerRevisionMode = false;
   state.sspSignoffs[proc.id] = Object.assign({}, prevProcSign, {
     signedBy: signer,
     signedDate: new Date().toISOString().slice(0,10),
@@ -3722,3 +3849,6 @@ window.sspReviewerCanActOnPackage = sspReviewerCanActOnPackage;
 window.collectSspReviewerCommentsFromDraft = collectSspReviewerCommentsFromDraft;
 window.buildSspReturnNotesFromDraft = buildSspReturnNotesFromDraft;
 window.clearSspReviewerDraft = clearSspReviewerDraft;
+window.getReturnedSspPackagesForUser = getReturnedSspPackagesForUser;
+window.openReturnedSspForRevision = openReturnedSspForRevision;
+window.renderReturnedSspWorkCallout = renderReturnedSspWorkCallout;

@@ -829,6 +829,9 @@ function updateNotificationBadges() {
   if (typeof getSspReviewQueueItemsForUser === 'function') {
     reviewCount += getSspReviewQueueItemsForUser(user).length;
   }
+  if (typeof getReturnedSspPackagesForUser === 'function' && user) {
+    reviewCount += getReturnedSspPackagesForUser(user).length;
+  }
   var queue = state.controlReviewQueue || [];
   if (role === 'issm' && user && user.families) {
     reviewCount += queue.filter(function(r) {
@@ -993,6 +996,13 @@ function userCanAccessAssetWorkspace() {
 }
 
 function openAssetWizardFromLibrary(assetId) {
+  var sig = typeof getSspSignoffFromState === 'function' ? getSspSignoffFromState(assetId) : ((state.sspSignoffs || {})[assetId] || {});
+  if (typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(sig)) {
+    if (typeof openReturnedSspForRevision === 'function') {
+      openReturnedSspForRevision(assetId, false);
+      return;
+    }
+  }
   if (!userCanAccessAssetWorkspace()) {
     showToast('You do not have access to open the asset-owner SSP workspace for this system.', true);
     return;
@@ -1005,6 +1015,13 @@ function openAssetWizardFromLibrary(assetId) {
 
 /** Open a process SSP wizard from library / reports (no asset-owner-only gate). */
 function openProcessSspFromLibrary(procId) {
+  var sig = typeof getSspSignoffFromState === 'function' ? getSspSignoffFromState(procId) : ((state.sspSignoffs || {})[procId] || {});
+  if (typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(sig)) {
+    if (typeof openReturnedSspForRevision === 'function') {
+      openReturnedSspForRevision(procId, true);
+      return;
+    }
+  }
   state._assetLibraryMode = false;
   state._assetTypeLibraryMode = false;
   showTab('asset');

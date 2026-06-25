@@ -824,7 +824,7 @@ function showTab(tabId) {
       var allowLibraryTab =
         (tabId === 'policy' && (state._policyLibraryMode || state._policyDocView || !!state._policyDomain || state._ispReviewView || state._ispRevisionView)) ||
         (tabId === 'control' && state._controlLibraryMode) ||
-        (tabId === 'asset' && (state._assetTypeLibraryMode || state._assetLibraryMode || state._sspReviewerReadOnly));
+        (tabId === 'asset' && (state._assetTypeLibraryMode || state._assetLibraryMode || state._sspReviewerReadOnly || state._sspOwnerRevisionMode));
       if (vis.length && vis.indexOf(tabId) === -1 && !allowLibraryTab) {
         tabId = vis.indexOf('reports') !== -1 ? 'reports' : vis[0];
       }
