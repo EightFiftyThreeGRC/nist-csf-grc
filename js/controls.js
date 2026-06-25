@@ -3654,90 +3654,6 @@ function buildStep3PolicyContextHtml(ctrl, policyReqs) {
     + '</div>';
 }
 
-function buildAssetOwnerReqSuggestionsFromDesign(ctrlId, scopeKey) {
-  normalizeControlDesignState(ctrlId);
-  var cs = state.controlStatus[ctrlId] || {};
-  var parts = cs.designParts || {};
-  var pA = String(parts.a || '').trim();
-  var pB = String(parts.b || '').trim();
-  var pC = String(parts.c || '').trim();
-  var narrative = String(cs.narrative || '').trim();
-  var isp = state.infoSecPolicy || {};
-  var ispTitle = String(isp.title || '').trim()
-    || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
-  var refs = ispTitle;
-  if ((cs.externalDocRef || '').trim()) refs += ' · ' + String(cs.externalDocRef).trim();
-  if ((cs.externalDocTitle || '').trim() && designSourceUsesExternal(cs)) {
-    refs = String(cs.externalDocTitle).trim() + (cs.externalDocRef ? ' (' + cs.externalDocRef + ')' : '');
-  }
-
-  if (cs.designSource === 'external') {
-    return {
-      requirement: String(cs.externalDocSummary || '').trim()
-        || 'Implement and maintain ' + ctrlId + ' per the referenced document; ensure roles, review cycle, and dissemination are defined.',
-      evidenceNeeded: 'Current approved document, version/revision history, and records of distribution or acknowledgement.',
-      acceptanceCriteria: 'Document is approved, within its review cycle, and updates are communicated to affected roles.',
-      procedureRefs: refs
-    };
-  }
-
-  var actionLines = [];
-  if (pA) actionLines.push(pA);
-  if (pB && pB !== pA) actionLines.push(pB);
-  return {
-    requirement: narrative || actionLines.join('\n\n')
-      || 'Maintain ' + ctrlId + ' policy and procedures per the Information Security Policy and organizational standards.',
-    evidenceNeeded: pB
-      ? 'Procedure artifacts, distribution records, and evidence that personnel with defined roles can access current versions.'
-      : 'Approved policy/procedure document, version history, and distribution or acknowledgement records.',
-    acceptanceCriteria: pC
-      || 'Policy and procedures reviewed on the defined cycle; changes approved, versioned, and communicated to affected personnel.',
-    procedureRefs: refs
-  };
-}
-
-function designSourceUsesExternal(cs) {
-  return cs && cs.designSource === 'external';
-}
-
-function applyAssetOwnerReqSuggestions(ctrlId, scopeKey, fillEmptyOnly) {
-  var suggestions = buildAssetOwnerReqSuggestionsFromDesign(ctrlId, scopeKey);
-  var fields = ['requirement', 'evidenceNeeded', 'acceptanceCriteria', 'procedureRefs'];
-  var applied = 0;
-  fields.forEach(function(field) {
-    var nextVal = String(suggestions[field] || '').trim();
-    if (!nextVal) return;
-    normalizeControlDesignState(ctrlId);
-    var reqs = state.controlStatus[ctrlId].assetOwnerRequirements || [];
-    var existing = reqs.find(function(r) { return r.assetType === scopeKey; });
-    var prev = existing ? String(existing[field] || '').trim() : '';
-    if (fillEmptyOnly && prev) return;
-    setAssetOwnerReq(ctrlId, scopeKey, field, nextVal);
-    applied++;
-  });
-  return applied;
-}
-
-function suggestAssetOwnerReqsFromDesign(ctrlId, scopeKey) {
-  if (!controlHasStep2DesignContent(ctrlId)) {
-    showToast('Document the control design in Step 2 first.', true);
-    return;
-  }
-  normalizeControlDesignState(ctrlId);
-  var reqs = (state.controlStatus[ctrlId] || {}).assetOwnerRequirements || [];
-  var existing = reqs.find(function(r) { return r.assetType === scopeKey; });
-  var hasContent = existing && assetOwnerRequirementsHaveContent([existing]);
-  if (hasContent && !window.confirm('Replace existing requirement fields with suggestions from Step 2 design?')) return;
-  var applied = applyAssetOwnerReqSuggestions(ctrlId, scopeKey, hasContent ? false : true);
-  if (!applied) {
-    showToast('No suggestions could be generated from Step 2 design.', true);
-    return;
-  }
-  markDirty();
-  showToast('✅ Drafted Step 3 fields from Step 2 design — review and edit before bulk apply.');
-  renderControlStep3();
-}
-
 function renderControlStep3() {
   const body = document.getElementById('control-step-3-body');
   if (!body) return;
@@ -3804,7 +3720,7 @@ function renderControlStep3() {
     </div>
     ${minus1WithScope.length > 1 ? `
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#166534;line-height:1.55;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-      <div><strong>XX-1 shortcut:</strong> ${minus1WithScope.length} policy controls often share the same obligation pattern. Use <em>Suggest from Step 2</em> on one control, then <strong>Apply to controls…</strong> to copy across the set.</div>
+      <div><strong>XX-1 shortcut:</strong> ${minus1WithScope.length} policy controls often share the same obligation pattern — fill one, then use <strong>Apply to controls…</strong> to copy across the set.</div>
     </div>` : ''}
 
     <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap;width:fit-content;">
@@ -3832,13 +3748,8 @@ function renderControlStep3() {
         </div>` : scopeEntries.map(function(entry) {
           const reqKey = entry.reqKey.replace(/'/g, "\\'");
           const req   = existing.find(function(r) { return r.assetType === entry.reqKey; }) || { assetType: entry.reqKey, requirement: '', evidenceNeeded: '', acceptanceCriteria: '', procedureRefs: '' };
-          const safeScopeKey = entry.reqKey.replace(/'/g, "\\'");
-          const showSuggest = controlHasStep2DesignContent(c.id);
           return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;">
-            <div style="background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <div style="font-size:12px;font-weight:700;color:var(--navy);">${escapeHTML(entry.heading)}</div>
-              ${showSuggest ? '<button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="suggestAssetOwnerReqsFromDesign(\'' + cid + '\',\'' + safeScopeKey + '\')">Suggest from Step 2</button>' : ''}
-            </div>
+            <div style="background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--navy);">${escapeHTML(entry.heading)}</div>
             <div style="padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div>
                 <label class="form-label" style="font-size:10px;">Required implementation actions <span class="required">*</span></label>
@@ -3920,7 +3831,7 @@ function openBulkAssetOwnerReqModal(sourceCtrlId) {
   var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
   var sourceReqs = ((state.controlStatus[sourceCtrlId] || {}).assetOwnerRequirements || []);
   if (!assetOwnerRequirementsHaveContent(sourceReqs)) {
-    showToast('Add Step 3 requirement text first, or use Suggest from Step 2 to draft fields.', true);
+    showToast('Add Step 3 requirement text before bulk apply.', true);
     return;
   }
   var eligible = getStep3DesignedEligibleControls(sourceCtrlId);
