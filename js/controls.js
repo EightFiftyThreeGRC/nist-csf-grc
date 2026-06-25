@@ -432,12 +432,19 @@ function renderControlStep1() {
   const now  = new Date();
   const soon = new Date(now.getTime() + 30*24*60*60*1000);
 
-  const totalDesigned = controls.filter(c => {
-    const cs = state.controlStatus[c.id]||{};
-    return cs.designSource || (cs.approach && cs.approach.trim()) || (cs.designParts && Object.values(cs.designParts).some(v => v && v.trim()));
+  const totalDesigned = controls.filter(function(c) { return isControlDesigned(c.id); }).length;
+  const totalInProg = controls.filter(function(c) {
+    var st = (state.controlStatus[c.id] || {}).status;
+    return st === 'In Progress' || st === 'Planned';
   }).length;
-  const totalInProg = controls.filter(c => ['In Progress','Planned'].includes((state.controlStatus[c.id]||{}).status)).length;
-  const totalNA     = controls.filter(c => (state.controlStatus[c.id]||{}).status === 'Not Applicable').length;
+  const totalNA = controls.filter(function(c) {
+    var st = (state.controlStatus[c.id] || {}).status;
+    return st === 'Not Applicable' || st === 'Inherited';
+  }).length;
+  const totalNotStarted = controls.filter(function(c) {
+    var st = (state.controlStatus[c.id] || {}).status || 'Not Started';
+    return st === 'Not Started';
+  }).length;
   const pctDesigned = controls.length ? Math.round((totalDesigned / controls.length) * 100) : 0;
 
   const dueSoon = controls.filter(c => {
@@ -458,10 +465,10 @@ function renderControlStep1() {
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
       ${[
-        ['Designed',    totalDesigned,                                          '#166534','#dcfce7','✅'],
-        ['In Progress', totalInProg,                                            '#92400e','#fef3c7','🔄'],
-        ['Not Started', controls.length - totalDesigned - totalInProg - totalNA,'#1e3a5f','#eff6ff','⏳'],
-        ['N / A',       totalNA,                                                '#64748b','#f1f5f9','—'],
+        ['Designed',    totalDesigned,   '#166534','#dcfce7','✅'],
+        ['In Progress', totalInProg,     '#92400e','#fef3c7','🔄'],
+        ['Not Started', totalNotStarted, '#1e3a5f','#eff6ff','⏳'],
+        ['N / A',       totalNA,         '#64748b','#f1f5f9','—'],
       ].map(([label,count,color,bg,icon]) => `
         <div style="background:${bg};border:1px solid ${color}22;border-radius:10px;padding:14px 16px;border-left:3px solid ${color};">
           <div style="display:flex;align-items:center;justify-content:space-between;">
