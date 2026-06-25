@@ -1119,6 +1119,7 @@ const state = {
   policyDeadlines: {},      // { 'AC': '2026-06-01', ... }
   policyStatus: {},         // { 'AC': { status, version, notes, lastUpdated } }
   controlStatus: {},        // { 'AC-1': { status, evidence, narrative, owner } }
+  controlDesignSubmission: {},   // last control-design submission record { submittedAt, submitterName, designedCount, totalCount, notes }
   controlOwnerAttested: false,   // true = control owner has checked attestation
   _ctrlEvidenceFilter: 'all',    // 'all' | 'missing' | 'has'
   controlTestResults: {},   // { 'AC-1': { result, date, tester, findings } }
@@ -1135,9 +1136,12 @@ const state = {
   attestations: {},         // legacy — superseded by sspAttestations
   sspAttestations: {},      // { assetId|procId: { controlId: { status, explanation, date } } }
   sspSignoffs: {},          // { assetId|procId: { signedBy, signedDate, status, reviewerUserId, reviewerName, reviewerEmail, reviewerRole } }
+  sspInterconnections: {},  // { assetId|procId: [{ system, type, dataDirection, ... }] } SSP interconnection records
   customAssetTypes: [],     // user-defined asset types added by control owners
   customAssetTypeGroups: {}, // { 'OT Device':'Infrastructure', ... }
   customAssetTypeHeaders: [], // user-defined group headers shown in asset coverage
+  removedBuiltInAssetTypeKeys: [],   // built-in asset type keys the user has removed (persisted)
+  removedBuiltInAssetTypeGroups: [], // built-in asset type groups the user has removed (persisted)
   cisoComplete: false,
   infoSecPolicy: null,
   policySelectedControls: null,  // { 'AC': ['AC-1', 'AC-2', ...] }
@@ -1800,7 +1804,12 @@ function validateProgramShape(parsed) {
     if (!(k in parsed)) return;
     var exp = valType(STATE_DEFAULTS[k]);
     var got = valType(parsed[k]);
-    if (exp !== got) {
+    // Keys whose default is null are "unset" placeholders that hold an object,
+    // string, etc. once configured (e.g. baseline, infoSecPolicy, controlOwners).
+    // A real export therefore legitimately differs in type — only reject when the
+    // default has a concrete type that the import contradicts.
+    if (exp === 'null') return;
+    if (exp !== got && got !== 'null') {
       errors.push('Field "' + k + '" must be ' + exp + ', got ' + got);
     }
   });
