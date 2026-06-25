@@ -513,7 +513,7 @@ function renderControlStep1() {
             <th>Name</th>
             <th style="width:70px;">Family</th>
             <th style="width:140px;">Owner</th>
-            <th style="width:95px;">Due Date</th>
+            <th style="width:90px;">Design Done</th>
             <th style="width:120px;">Status</th>
             <th style="width:150px;">Actions</th>
           </tr>
@@ -534,19 +534,17 @@ function renderControlStep1() {
             const st  = cs.status || 'Not Started';
             const ownerName = co.name || 'Unassigned';
             const ownerAttr = ownerName.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-            const dd  = co.dueDate;
-            const isDueSoon = dd && new Date(dd)>=now && new Date(dd)<=soon && st!=='Implemented';
-            const ddStr = dd ? new Date(dd).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '—';
+            const designed = isControlDesigned(c.id);
             const cid = c.id.replace(/'/g,"\\'");
             const ownerKey = typeof getControlOwnerFilterKey === 'function' ? getControlOwnerFilterKey(co) : ownerAttr;
             const nameAttr = (c.n || '').replace(/"/g, '&quot;');
             const deselBaseline = cs.deselectDecision === 'Approved' && c.bl && (c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P')));
-            return `<tr data-id="${c.id}" data-name="${nameAttr}" data-family="${c.f}" data-status="${st}" data-owner="${ownerKey}" data-deselected="${deselBaseline?'1':'0'}" class="${deselBaseline?'tr-deselected-baseline':''}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
+            return `<tr data-id="${c.id}" data-name="${nameAttr}" data-family="${c.f}" data-status="${st}" data-owner="${ownerKey}" data-designed="${designed ? '1' : '0'}" data-deselected="${deselBaseline?'1':'0'}" class="${deselBaseline?'tr-deselected-baseline':''}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
               <td><span class="control-id">${c.id}</span></td>
               <td style="font-size:13px;">${c.n}</td>
               <td><span class="family-badge">${c.f}</span></td>
               <td style="font-size:12px;color:${typeof hasRealControlOwner === 'function' && hasRealControlOwner(co) ? 'var(--navy)' : 'var(--text-muted)'};font-style:${typeof hasRealControlOwner === 'function' && hasRealControlOwner(co) ? 'normal' : 'italic'};">${escapeHTML(typeof getControlOwnerDisplayName === 'function' ? getControlOwnerDisplayName(co) : ownerName)}</td>
-              <td style="font-size:12px;font-weight:${isDueSoon?'700':'400'};color:${isDueSoon?'#d97706':'var(--text-muted)'};">${ddStr}${isDueSoon?' ⚠️':''}</td>
+              <td style="font-size:12px;font-weight:700;color:${designed ? '#166534' : 'var(--text-muted)'};">${designed ? 'Yes' : 'No'}</td>
               <td>${chipHTML(st)}</td>
               <td onclick="event.stopPropagation();" style="white-space:nowrap;">
                 <button class="btn btn-sm" style="font-size:10px;padding:3px 7px;background:white;border:1px solid rgba(220,38,38,0.35);color:#dc2626;margin-right:3px;" onclick="returnControlToPolicyOwner('${cid}')" title="Return to policy owner — assigned in error">↩ Return</button>
