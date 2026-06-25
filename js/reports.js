@@ -1229,8 +1229,11 @@ function sspQueueRowMatchesAo(r, user) {
 }
 
 function aoOpenQueuedSsp(scopeId, isProcess) {
-  // Read-only package view for reviewers (not the asset-owner editable wizard).
-  if (typeof openSspReadOnlyFromQueue === 'function') openSspReadOnlyFromQueue(scopeId, isProcess, 'reports');
+  if (typeof openSspReadOnlyFromQueue === 'function') {
+    openSspReadOnlyFromQueue(scopeId, isProcess, 'reports');
+    return;
+  }
+  showToast('Unable to open SSP package.', true);
 }
 
 function aoRemoveSspQueueRow(scopeId, isProcess) {
@@ -1967,3 +1970,6 @@ window.openPublishedPolicyFromReports = openPublishedPolicyFromReports;
 window.backToReportsPolicyLibrary = backToReportsPolicyLibrary;
 window.renderReportsLibraryEntryHtml = renderReportsLibraryEntryHtml;
 window.userHasReportsLibraryAccess = userHasReportsLibraryAccess;
+window.aoOpenQueuedSsp = aoOpenQueuedSsp;
+window.aoApproveQueuedSsp = aoApproveQueuedSsp;
+window.aoReturnQueuedSsp = aoReturnQueuedSsp;

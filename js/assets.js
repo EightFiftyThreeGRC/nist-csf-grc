@@ -821,6 +821,23 @@ function renderAssetLibrary() {
 
 // ─── ASSET TAB DISPATCHER ────────────────────────────────────────────────────
 function renderAssetTab() {
+  if (state._sspReviewerReadOnly) {
+    var roWorkspace = document.getElementById('asset-workspace-panel');
+    var roAssetLib = document.getElementById('asset-library-panel');
+    var roTypeLib = document.getElementById('asset-type-library-panel');
+    if (roAssetLib) roAssetLib.style.display = 'none';
+    if (roTypeLib) roTypeLib.style.display = 'none';
+    if (roWorkspace) roWorkspace.style.display = '';
+    var roList = document.getElementById('asset-list-panel');
+    var roWiz = document.getElementById('asset-wizard-panel');
+    if (roList) roList.style.display = 'none';
+    if (roWiz) roWiz.style.display = 'flex';
+    currentStep.asset = 1;
+    if (typeof _applySspReadOnlyLayout === 'function') _applySspReadOnlyLayout();
+    if (typeof renderAssetWizardChrome === 'function') renderAssetWizardChrome();
+    if (typeof renderSspReadOnlyReviewInWizard === 'function') renderSspReadOnlyReviewInWizard();
+    return;
+  }
   var workspacePanel = document.getElementById('asset-workspace-panel');
   var assetLibraryPanel = document.getElementById('asset-library-panel');
   var libraryPanel = document.getElementById('asset-type-library-panel');
@@ -1161,6 +1178,8 @@ function openSspReadOnlyFromQueue(scopeId, isProcess, exitTab) {
   if (isProcess && !proc) { showToast('Process not found.', true); return; }
   if (!isProcess && !asset) { showToast('Asset not found.', true); return; }
 
+  state._reportsLibraryView = null;
+  state._reportsLibraryPolicyFam = null;
   state._sspReadOnlyExitTab = exitTab === 'library' ? 'library' : 'reports';
   state._sspReviewerReadOnly = true;
   state._assetTypeLibraryMode = false;
@@ -1524,6 +1543,22 @@ function assetSSPNext(fromStep) {
 function renderAssetWizardChrome() {
   var chrome = document.getElementById('asset-wizard-chrome');
   if (!chrome) return;
+  if (state._sspReviewerReadOnly) {
+    var isProcRo = !!state._selectedProcessId;
+    var roItem = isProcRo
+      ? (state.processes || []).find(function(p) { return String(p.id) === String(state._selectedProcessId); })
+      : (state.assets || []).find(function(a) { return String(a.id) === String(state._selectedAssetId); });
+    if (!roItem) return;
+    var roLabel = state.privacyOverlay ? 'SPSP' : 'SSP';
+    var roBack = state._sspReadOnlyExitTab === 'library' ? '← Back to Asset Library' : '← Back to Reports';
+    chrome.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;flex-wrap:wrap;">'
+      + '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#4338ca;">Read-only ' + roLabel + ' review</div>'
+      + '<div style="font-size:16px;font-weight:800;color:var(--navy);margin-top:4px;">' + _esc(roItem.name || 'Package') + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (isProcRo ? 'Process SSP' : _esc(roItem.type || 'System')) + '</div></div>'
+      + '<button type="button" class="btn btn-secondary btn-sm" onclick="closeSspReadOnlyReview()">' + roBack + '</button>'
+      + '</div>';
+    return;
+  }
   var step = currentStep.asset || 1;
   var isPrivacy = state.privacyOverlay;
   var sspLabel  = isPrivacy ? 'SPSP' : 'SSP';
@@ -3336,3 +3371,5 @@ window.syncAssetSspFooterNav = syncAssetSspFooterNav;
 window.sspQueueRowMatchesReviewer = sspQueueRowMatchesReviewer;
 window.getSspReviewQueueItemsForUser = getSspReviewQueueItemsForUser;
 window.userMayReceiveSspReviews = userMayReceiveSspReviews;
+window.openSspReadOnlyFromQueue = openSspReadOnlyFromQueue;
+window.closeSspReadOnlyReview = closeSspReadOnlyReview;
