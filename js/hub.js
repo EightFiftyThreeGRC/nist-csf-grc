@@ -12,6 +12,23 @@ function startProgramSetup() {
   goToStep('ciso', 1);
 }
 
+/** Escape a value for embedding in an HTML onclick single-quoted JS string literal. */
+function hubJsStringLiteral(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+/** Command Center → open a queued SSP read-only (same path as Reports queue Open). */
+function hubOpenQueuedSsp(scopeId, isProcess) {
+  if (typeof aoOpenQueuedSsp === 'function') aoOpenQueuedSsp(scopeId, !!isProcess);
+  else showToast('Unable to open SSP package.', true);
+}
+
+/** Command Center → Reports → Program library page. */
+function hubOpenReportsLibrary(page) {
+  if (typeof goToReportsLibrary === 'function') goToReportsLibrary(page === 'controls' ? 'controls' : 'policies');
+  else if (typeof showTab === 'function') showTab('reports');
+}
+
 function renderOnboardingHome() {
   var body = document.getElementById('home-body');
   var pageHeader = document.querySelector('#tab-home .page-header');
