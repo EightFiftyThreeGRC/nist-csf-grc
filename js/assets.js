@@ -195,13 +195,66 @@ const BUILTIN_PROGRAM_PROCESSES = [
     description: 'Security awareness, role-based training, and personnel security.' },
 ];
 
-/** Create built-in process rows (e.g. IS Governance) once baseline is set; idempotent. */
+/** True when control implementation status has left "Not Started" (e.g. Planned). */
+function controlStatusIsPlannedOrBeyond(status) {
+  var st = status || 'Not Started';
+  return st !== 'Not Started';
+}
+
+/** Controls explicitly scoped to a process via Step 2 coverage or linkedProcesses. */
+function getControlsScopedToProcess(proc, plannedOnly) {
+  if (!proc) return [];
+  var procId = String(proc.id || '');
+  var typeKey = String(proc.typeKey || '').trim();
+  if (!typeKey && (proc.category === 'is-governance' || procId === 'proc-is-governance')) {
+    typeKey = 'proc_is_governance';
+  }
+  return getActiveControls().filter(function(c) {
+    var cs = state.controlStatus[c.id] || {};
+    if (plannedOnly && !controlStatusIsPlannedOrBeyond(cs.status)) return false;
+    var cov = cs.assetCoverage || {};
+    if (typeKey && cov[typeKey]) return true;
+    if (procId && (cs.linkedProcesses || []).some(function(pid) {
+      return String(pid) === procId || String(pid) === String(proc.name || '');
+    })) return true;
+    return false;
+  });
+}
+
+function processHasScopedPlannedControls(proc) {
+  return getControlsScopedToProcess(proc, true).length > 0;
+}
+
+function builtinProcessDefHasScopedPlannedControls(def) {
+  return getControlsScopedToProcess({
+    id: def.id,
+    typeKey: def.typeKey,
+    category: def.category,
+    name: def.name
+  }, true).length > 0;
+}
+
+/** Create built-in process rows only when control design has scoped them at Planned+. */
 function ensureBuiltinProgramProcesses() {
   if (!state.baseline) return false;
   if (!state.processes) state.processes = [];
   var defaultOwner = (state.programOwner || '').trim();
   var added = false;
+  var touched = false;
+
+  state.processes = state.processes.filter(function(p) {
+    if (!p || !p._builtin) return true;
+    var def = BUILTIN_PROGRAM_PROCESSES.find(function(d) {
+      return String(p.id) === d.id || (d.typeKey && p.typeKey === d.typeKey);
+    });
+    if (!def) return true;
+    if (processHasScopedPlannedControls(p)) return true;
+    touched = true;
+    return false;
+  });
+
   BUILTIN_PROGRAM_PROCESSES.forEach(function(def) {
+    if (!builtinProcessDefHasScopedPlannedControls(def)) return;
     var existing = state.processes.find(function(p) {
       if (!p) return false;
       if (String(p.id) === def.id) return true;
@@ -209,11 +262,11 @@ function ensureBuiltinProgramProcesses() {
       return String(p.name || '').trim().toLowerCase() === def.name.toLowerCase();
     });
     if (existing) {
-      if (!existing.typeKey) existing.typeKey = def.typeKey;
-      if (!existing.category) existing.category = def.category;
-      if (!existing.description && def.description) existing.description = def.description;
-      if (!existing.owner && defaultOwner) existing.owner = defaultOwner;
-      if (!existing._builtin) existing._builtin = true;
+      if (!existing.typeKey) { existing.typeKey = def.typeKey; touched = true; }
+      if (!existing.category) { existing.category = def.category; touched = true; }
+      if (!existing.description && def.description) { existing.description = def.description; touched = true; }
+      if (!existing.owner && defaultOwner) { existing.owner = defaultOwner; touched = true; }
+      if (!existing._builtin) { existing._builtin = true; touched = true; }
       return;
     }
     state.processes.push({
@@ -227,7 +280,7 @@ function ensureBuiltinProgramProcesses() {
     });
     added = true;
   });
-  if (added) markDirty();
+  if (added || touched) markDirty();
   return added;
 }
 window.ensureBuiltinProgramProcesses = ensureBuiltinProgramProcesses;
@@ -874,7 +927,10 @@ function renderAssetHome() {
   var isCloudOwner = typeof isCloudOwnerSession === 'function' && isCloudOwnerSession();
 
   var assets    = (state.assets    || []).filter(function(a){ return !myAssetIds || myAssetIds.includes(String(a.id)); });
-  var processes = (state.processes || []).filter(function(p){ return !myAssetIds || myAssetIds.includes(String(p.id)); });
+  var processes = (state.processes || []).filter(function(p) {
+    if (myAssetIds && !myAssetIds.includes(String(p.id))) return false;
+    return processHasScopedPlannedControls(p);
+  });
   var sspLabel  = state.privacyOverlay ? 'SPSP' : 'SSP';
 
   function sspRow(item, isProc) {
@@ -929,7 +985,7 @@ function renderAssetHome() {
         + '<strong>Program owner.</strong> Register systems and processes, or open any row to complete SSP attestations.</div>'
       : '')
     + sectionTable(assets, false, '🖥️', 'Assets', 'No assets registered yet. Click Register to add a system, application, or infrastructure component.')
-    + sectionTable(processes, true, '⚙️', 'Processes', 'No processes registered yet. Click Register to add an operational process in scope for this program.');
+    + sectionTable(processes, true, '⚙️', 'Processes', 'No processes in scope yet. When control design selects a process scope (e.g. IS Governance) and moves a control to Planned, it appears here.');
 }
 
 // ─── GET CONTROLS FOR AN ASSET'S SSP ─────────────────────────────────────────
@@ -2861,18 +2917,7 @@ function confirmAddProcess() {
 
 // ─── GET CONTROLS FOR A PROCESS SSP ──────────────────────────────────────────
 function getProcessSSPControls(proc) {
-  if (!proc) return [];
-  if (proc.category === 'is-governance' || proc.typeKey === 'proc_is_governance' || proc.id === 'proc-is-governance') {
-    return getActiveControls().filter(function(c) {
-      if (typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id)) return true;
-      return !!((state.controlStatus[c.id] || {}).assetCoverage || {})['proc_is_governance'];
-    });
-  }
-  var cat = PROCESS_CATEGORIES.find(function(c){ return c.id === proc.category; });
-  if (!cat) return [];
-  var famSet = {};
-  cat.families.forEach(function(f){ famSet[f] = true; });
-  return getActiveControls().filter(function(c){ return famSet[c.f]; });
+  return getControlsScopedToProcess(proc, true);
 }
 
 // ─── PROCESS SSP STEPS ────────────────────────────────────────────────────────
