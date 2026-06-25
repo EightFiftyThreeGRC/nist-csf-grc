@@ -347,7 +347,7 @@ function getHubWorkspaces() {
     var policyDesc = policyDraft && tabs.indexOf('policy') !== -1
       ? (publishedPolicies > 0 ? 'Your drafts & approved catalog' : 'Domain policy drafts & ISP')
       : (publishedPolicies > 0 ? publishedPolicies + ' approved polic' + (publishedPolicies === 1 ? 'y' : 'ies') + ' in catalog' : 'Policy catalog');
-    workspaces.push({ icon: '📋', label: 'Policies', desc: policyDesc, fn: policyFn });
+    workspaces.push({ icon: '📋', label: 'Policies', desc: policyDesc, fn: policyFn, group: 'design' });
   }
 
   if (implementedControls > 0 || controlDraft) {
@@ -355,27 +355,39 @@ function getHubWorkspaces() {
     var ctrlDesc = controlDraft && tabs.indexOf('control') !== -1
       ? (implementedControls > 0 ? 'Draft designs & ' + implementedControls + ' live controls' : 'Control implementation drafts')
       : (implementedControls > 0 ? implementedControls + ' implemented control' + (implementedControls === 1 ? '' : 's') + ' in catalog' : 'Control catalog');
-    workspaces.push({ icon: '🔧', label: 'Controls', desc: ctrlDesc, fn: ctrlFn });
+    workspaces.push({ icon: '🔧', label: 'Controls', desc: ctrlDesc, fn: ctrlFn, group: 'design' });
   }
 
   if (userHasAssetWorkspaceContent(user)) {
-    workspaces.push({ icon: '🖥️', label: 'Assets & SSP', desc: 'Inventory & attestations', fn: 'goToAssetWorkspace()' });
+    workspaces.push({ icon: '🖥️', label: 'Assets & SSP', desc: 'Inventory & attestations', fn: 'goToAssetWorkspace()', group: 'compliance' });
   }
 
   if (tabs.indexOf('reports') !== -1) {
-    workspaces.push({ icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')" });
+    workspaces.push({ icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')", group: 'program' });
   }
 
   if (tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping()) {
-    workspaces.push({ icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS alignment', fn: "showTab('frameworks')" });
+    workspaces.push({ icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS alignment', fn: "showTab('frameworks')", group: 'program' });
   }
 
   var poamOpen = getScopedPoamOpenCount(user);
   if (tabs.indexOf('poam') !== -1 && poamOpen > 0) {
-    workspaces.push({ icon: '📝', label: 'POA&M', desc: poamOpen + ' open finding' + (poamOpen === 1 ? '' : 's'), fn: "showTab('poam')" });
+    workspaces.push({ icon: '📝', label: 'POA&M', desc: poamOpen + ' open finding' + (poamOpen === 1 ? '' : 's'), fn: "showTab('poam')", group: 'program' });
   }
 
   return workspaces;
+}
+
+function renderHubWorkspaceGroupHtml(title, items) {
+  if (!items || !items.length) return '';
+  return '<div class="hub-workspace-group">'
+    + '<div class="hub-workspace-group-label">' + escapeHTML(title) + '</div>'
+    + '<div class="hub-workspace-grid">' + items.map(function(w) {
+      return '<button type="button" class="hub-workspace-card" onclick="' + w.fn + '">'
+        + '<span class="hub-workspace-icon">' + w.icon + '</span>'
+        + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
+        + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
+    }).join('') + '</div></div>';
 }
 
 function shouldShowHubFrameworkStrip() {
@@ -433,14 +445,14 @@ function renderHomeTab() {
     : '<div class="hub-empty-actions">You\'re caught up — open a workspace from the sidebar or the cards below.</div>';
 
   var workspaces = getHubWorkspaces();
+  var designWorkspaces = workspaces.filter(function(w) { return w.group === 'design'; });
+  var complianceWorkspaces = workspaces.filter(function(w) { return w.group === 'compliance'; });
+  var programWorkspaces = workspaces.filter(function(w) { return w.group === 'program'; });
 
   var workspaceHtml = workspaces.length
-    ? workspaces.map(function(w) {
-      return '<button type="button" class="hub-workspace-card" onclick="' + w.fn + '">'
-        + '<span class="hub-workspace-icon">' + w.icon + '</span>'
-        + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
-        + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
-    }).join('')
+    ? renderHubWorkspaceGroupHtml('Policy & control design', designWorkspaces)
+      + renderHubWorkspaceGroupHtml('Asset & process compliance', complianceWorkspaces)
+      + (programWorkspaces.length ? renderHubWorkspaceGroupHtml('Program', programWorkspaces) : '')
     : '<div class="hub-empty-actions">No workspaces with content for your role right now.</div>';
 
   body.innerHTML = ''

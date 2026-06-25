@@ -651,11 +651,15 @@ function renderSidebarBadges() {
   // Populate Policies sidebar
   const pList = document.getElementById('sidebar-policies-list');
   const wsSection = document.getElementById('sidebar-workspaces-section');
+  const designSection = document.getElementById('sidebar-design-workspace-section');
+  const complianceSection = document.getElementById('sidebar-compliance-workspace-section');
   if (pList) {
     var showPolicySidebar = !user || visibleTabs.includes('policy') || visibleTabs.includes('ciso') || (hasApprover && !isTier1OnlyApprover);
-    if (wsSection) {
-      wsSection.style.display = showPolicySidebar || (!isTier1OnlyApprover && (visibleTabs.includes('control') || visibleTabs.includes('asset'))) ? '' : 'none';
-    }
+    var showDesignWorkspace = showPolicySidebar || (!isTier1OnlyApprover && visibleTabs.includes('control'));
+    var showComplianceWorkspace = !user || (!isTier1OnlyApprover && visibleTabs.includes('asset'));
+    if (designSection) designSection.style.display = showDesignWorkspace ? '' : 'none';
+    if (complianceSection) complianceSection.style.display = showComplianceWorkspace ? '' : 'none';
+    if (wsSection) wsSection.style.display = (showDesignWorkspace || showComplianceWorkspace) ? '' : 'none';
 
     const ispDone = !!(state.infoSecPolicy && state.infoSecPolicy.title);
     const showISP = !user || userRole === 'ciso' || hasApprover;
@@ -819,7 +823,8 @@ function renderSidebarAssets() {
   var role = user ? user.role : 'admin';
   var visibleTabs = (typeof getRoleTabs === 'function') ? getRoleTabs(role) : (ROLE_TABS[role] || TAB_IDS);
   var wsSection = document.getElementById('sidebar-workspaces-section');
-  if (wsSection && !visibleTabs.includes('asset') && role !== 'admin' && user) {
+  var complianceSection = document.getElementById('sidebar-compliance-workspace-section');
+  if (complianceSection && !visibleTabs.includes('asset') && role !== 'admin' && user) {
     return;
   }
 
