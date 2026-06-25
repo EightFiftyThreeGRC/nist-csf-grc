@@ -162,6 +162,7 @@ var FIPS199_GUIDANCE = {
 
 // Process categories — each maps to a set of control families for SSP coverage
 const PROCESS_CATEGORIES = [
+  { id:'is-governance', label:'IS Governance',                    families:[] },
   { id:'risk-mgmt',     label:'Risk Management',                    families:['RA','CA','PL'] },
   { id:'vuln-mgmt',     label:'Vulnerability Management',           families:['RA','SI','CA'] },
   { id:'iam',           label:'Identity & Access Management',       families:['AC','IA','PS'] },
@@ -171,6 +172,65 @@ const PROCESS_CATEGORIES = [
   { id:'bcp',           label:'Business Continuity & Contingency',  families:['CP','MA','PE'] },
   { id:'awareness',     label:'Security Awareness & Training',      families:['AT','PS','PL'] },
 ];
+
+/** Built-in organizational processes — auto-registered when the program is ready (assets are not). */
+const BUILTIN_PROGRAM_PROCESSES = [
+  { id: 'proc-is-governance', typeKey: 'proc_is_governance', name: 'IS Governance', category: 'is-governance',
+    description: 'Tier 1/2 policy governance, program management, and organizational security procedures (XX-1 controls).' },
+  { id: 'proc-risk-mgmt', typeKey: 'proc_risk_mgmt', name: 'Risk Management', category: 'risk-mgmt',
+    description: 'Enterprise and system risk assessment, authorization, and planning processes.' },
+  { id: 'proc-vuln-mgmt', typeKey: 'proc_vuln_mgmt', name: 'Vulnerability Management', category: 'vuln-mgmt',
+    description: 'Vulnerability scanning, remediation tracking, and assessment support.' },
+  { id: 'proc-iam', typeKey: 'proc_iam', name: 'Identity & Access Management', category: 'iam',
+    description: 'Identity lifecycle, access provisioning, and authentication services.' },
+  { id: 'proc-config-change', typeKey: 'proc_config_change', name: 'Configuration & Change Management', category: 'config-change',
+    description: 'Baseline configuration, change control, and maintenance coordination.' },
+  { id: 'proc-supply-chain', typeKey: 'proc_supply_chain', name: 'Third-Party / Supply Chain Management', category: 'supply-chain',
+    description: 'Vendor risk, acquisition security, and supply chain oversight.' },
+  { id: 'proc-incident-resp', typeKey: 'proc_incident_resp', name: 'Incident Response', category: 'incident-resp',
+    description: 'Security incident handling, reporting, and coordination.' },
+  { id: 'proc-bcp', typeKey: 'proc_bcp', name: 'Business Continuity & Contingency', category: 'bcp',
+    description: 'Continuity planning, backup, and contingency operations.' },
+  { id: 'proc-awareness', typeKey: 'proc_awareness', name: 'Security Awareness & Training', category: 'awareness',
+    description: 'Security awareness, role-based training, and personnel security.' },
+];
+
+/** Create built-in process rows (e.g. IS Governance) once baseline is set; idempotent. */
+function ensureBuiltinProgramProcesses() {
+  if (!state.baseline) return false;
+  if (!state.processes) state.processes = [];
+  var defaultOwner = (state.programOwner || '').trim();
+  var added = false;
+  BUILTIN_PROGRAM_PROCESSES.forEach(function(def) {
+    var existing = state.processes.find(function(p) {
+      if (!p) return false;
+      if (String(p.id) === def.id) return true;
+      if (def.typeKey && String(p.typeKey || '') === def.typeKey) return true;
+      return String(p.name || '').trim().toLowerCase() === def.name.toLowerCase();
+    });
+    if (existing) {
+      if (!existing.typeKey) existing.typeKey = def.typeKey;
+      if (!existing.category) existing.category = def.category;
+      if (!existing.description && def.description) existing.description = def.description;
+      if (!existing.owner && defaultOwner) existing.owner = defaultOwner;
+      if (!existing._builtin) existing._builtin = true;
+      return;
+    }
+    state.processes.push({
+      id: def.id,
+      name: def.name,
+      category: def.category,
+      typeKey: def.typeKey,
+      owner: defaultOwner,
+      description: def.description || '',
+      _builtin: true
+    });
+    added = true;
+  });
+  if (added) markDirty();
+  return added;
+}
+window.ensureBuiltinProgramProcesses = ensureBuiltinProgramProcesses;
 
 function userCanApproveAssetTypeRequests() {
   if (!state.currentUserId) return true; // admin mode
@@ -805,6 +865,8 @@ function renderAssetHome() {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">🏗️</div><div class="es-title">Program Not Ready Yet</div><p>The CISO must complete program setup before System Security Plans can be created.</p></div>';
     return;
   }
+
+  ensureBuiltinProgramProcesses();
 
   // When logged in as an asset-owner, only show their assigned assets/processes
   var myAssetIds = getCurrentPersonAssetIds();
@@ -2800,6 +2862,12 @@ function confirmAddProcess() {
 // ─── GET CONTROLS FOR A PROCESS SSP ──────────────────────────────────────────
 function getProcessSSPControls(proc) {
   if (!proc) return [];
+  if (proc.category === 'is-governance' || proc.typeKey === 'proc_is_governance' || proc.id === 'proc-is-governance') {
+    return getActiveControls().filter(function(c) {
+      if (typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id)) return true;
+      return !!((state.controlStatus[c.id] || {}).assetCoverage || {})['proc_is_governance'];
+    });
+  }
   var cat = PROCESS_CATEGORIES.find(function(c){ return c.id === proc.category; });
   if (!cat) return [];
   var famSet = {};

@@ -1475,9 +1475,12 @@ function ensureIspOrganizationalDesignDefaults(ctrlId) {
 }
 
 function findIsGovernanceProcessId() {
+  if (typeof ensureBuiltinProgramProcesses === 'function') ensureBuiltinProgramProcesses();
   var processes = state.processes || [];
   for (var i = 0; i < processes.length; i++) {
     var p = processes[i];
+    if (!p) continue;
+    if (p.id === 'proc-is-governance' || p.typeKey === 'proc_is_governance') return String(p.id);
     var name = String(p.name || p.id || '').trim().toLowerCase();
     if (name === 'is governance') return String(p.id || p.name);
   }
