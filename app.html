@@ -539,22 +539,22 @@
               <div class="wizard-step-footer">
                 <span id="asset-step-2-count" style="font-size:12px;color:var(--text-muted);align-self:center;"></span>
                 <div style="display:flex;gap:8px;align-items:center;">
-                <button class="btn btn-secondary" onclick="goToStep('asset',1)">← Back</button>
-                <button class="btn btn-primary" onclick="goToStep('asset',3)">Interconnections →</button>
+                <button class="btn btn-secondary" onclick="assetSspGoBack(2)">← Back</button>
+                <button class="btn btn-primary" onclick="assetSspGoNext(2)">Interconnections →</button>
                 </div>
               </div>
             </div>
             <div class="wizard-step" id="asset-step-3">
               <div class="wizard-step-body" id="asset-step-3-body"></div>
               <div class="wizard-step-footer">
-                <button class="btn btn-secondary" onclick="goToStep('asset',2)">← Back</button>
-                <button class="btn btn-primary" onclick="goToStep('asset',4)">Review &amp; Sign-Off →</button>
+                <button class="btn btn-secondary" onclick="assetSspGoBack(3)">← Back</button>
+                <button class="btn btn-primary" onclick="assetSspGoNext(3)">Review &amp; Sign-Off →</button>
               </div>
             </div>
             <div class="wizard-step" id="asset-step-4">
               <div class="wizard-step-body" id="asset-step-4-body"></div>
               <div class="wizard-step-footer">
-                <button class="btn btn-secondary" onclick="goToStep('asset',3)">← Back</button>
+                <button class="btn btn-secondary" onclick="assetSspGoBack(4)">← Back</button>
                 <button class="btn btn-navy" id="asset-submit-btn" onclick="submitSSP()">✓ Sign &amp; Submit SSP</button>
               </div>
             </div>

@@ -903,6 +903,7 @@ function goToStep(tabId, step) {
     var hasAsset = !!(state._selectedAssetId && (state.assets || []).find(function(a){ return String(a.id) === String(state._selectedAssetId); }));
     var hasProc = !!(state._selectedProcessId && (state.processes || []).find(function(p){ return String(p.id) === String(state._selectedProcessId); }));
     if (!hasAsset && !hasProc) step = 1;
+    if (hasProc && step === 3) step = 4;
   }
   // Validate CISO step progression
   if (tabId === 'ciso' && step > 1) {
@@ -941,7 +942,12 @@ function goToStep(tabId, step) {
   }
   if (tabId==='policy') { renderPolicyWizardChrome(step); renderPolicyStep(step); }
   if (tabId==='control') renderControlStep(step);
-  if (tabId==='asset') { renderAssetWizardChrome(); renderAssetStep(step); }
+  if (tabId==='asset') {
+    renderAssetWizardChrome();
+    renderAssetStep(step);
+    if (typeof syncAssetSspStepNavLayout === 'function') syncAssetSspStepNavLayout(step);
+    if (typeof syncAssetSspFooterNav === 'function') syncAssetSspFooterNav();
+  }
 }
 
 

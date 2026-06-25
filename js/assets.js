@@ -902,11 +902,15 @@ function renderAssetStep(step) {
     renderSspReadOnlyReviewInWizard();
     return;
   }
+  step = normalizeAssetSspStep(step);
+  if (step !== currentStep.asset) currentStep.asset = step;
   var isProc = !!state._selectedProcessId;
   if (step===1) { isProc ? renderProcessSSPStep1() : renderAssetSSPStep1(); }
   if (step===2) { isProc ? renderProcessSSPStep4_Attestations() : renderAssetSSPStep4_Attestations(); }
-  if (step===3) { isProc ? renderProcessSSPStep3_Interconnections() : renderAssetSSPStep3_Interconnections(); }
+  if (step===3 && !isProc) { renderAssetSSPStep3_Interconnections(); }
   if (step===4) { isProc ? renderProcessSSPStep5_SignOff() : renderAssetSSPStep5_SignOff(); }
+  syncAssetSspStepNavLayout(step);
+  syncAssetSspFooterNav();
 }
 
 // ─── ASSET & PROCESS HOME ────────────────────────────────────────────────────
@@ -1447,8 +1451,71 @@ function renderSspReadOnlyReviewInWizard() {
     + '<div style="margin-top:24px;"><button type="button" class="btn btn-secondary" onclick="closeSspReadOnlyReview()">' + backLabel + '</button></div>';
 }
 
+// ─── PROCESS vs ASSET SSP STEP ROUTING ───────────────────────────────────────
+function isProcessSspScope() {
+  return !!(state._selectedProcessId && (state.processes || []).find(function(p) {
+    return String(p.id) === String(state._selectedProcessId);
+  }));
+}
+
+function normalizeAssetSspStep(step) {
+  if (isProcessSspScope() && step === 3) return 4;
+  return step;
+}
+
+function getAssetSspNextStep(fromStep) {
+  if (isProcessSspScope() && fromStep === 2) return 4;
+  return Math.min(fromStep + 1, 4);
+}
+
+function getAssetSspPrevStep(fromStep) {
+  if (isProcessSspScope() && fromStep === 4) return 2;
+  return Math.max(fromStep - 1, 1);
+}
+
+function assetSspGoNext(fromStep) {
+  goToStep('asset', getAssetSspNextStep(fromStep));
+}
+
+function assetSspGoBack(fromStep) {
+  goToStep('asset', getAssetSspPrevStep(fromStep));
+}
+
+function syncAssetSspStepNavLayout(step) {
+  step = step == null ? (currentStep.asset || 1) : step;
+  var isProc = isProcessSspScope();
+  var item3 = document.getElementById('asset-step-item-3');
+  var conn3 = document.getElementById('asset-conn-3');
+  if (item3) item3.style.display = isProc ? 'none' : '';
+  if (conn3) conn3.style.display = isProc ? 'none' : '';
+
+  var item4 = document.getElementById('asset-step-item-4');
+  if (item4) {
+    var numEl = item4.querySelector('.step-num');
+    if (numEl) numEl.textContent = isProc ? 'Step 3' : 'Step 4';
+    var circle4 = document.getElementById('asset-circle-4');
+    if (isProc && circle4) {
+      var active4 = step === 4;
+      circle4.className = 'step-circle ' + (active4 ? 'active' : (step > 4 ? 'done' : 'pending'));
+      circle4.textContent = step > 4 ? '✓' : '3';
+      item4.classList.toggle('active', active4);
+    }
+    var conn2 = document.getElementById('asset-conn-2');
+    if (isProc && conn2) conn2.classList.toggle('done', step >= 4);
+  }
+}
+
+function syncAssetSspFooterNav() {
+  var isProc = isProcessSspScope();
+  var step2 = document.getElementById('asset-step-2');
+  if (step2) {
+    var nextBtn = step2.querySelector('.wizard-step-footer .btn-primary');
+    if (nextBtn) nextBtn.textContent = isProc ? 'Review & Sign-Off →' : 'Interconnections →';
+  }
+}
+
 function assetSSPNext(fromStep) {
-  goToStep('asset', fromStep + 1);
+  assetSspGoNext(fromStep);
 }
 
 // ─── WIZARD CHROME ───────────────────────────────────────────────────────────
@@ -1473,12 +1540,18 @@ function renderAssetWizardChrome() {
     step1Label = 'Asset Profile';
   }
 
-  var steps = [
-    { n:1, label:step1Label },
-    { n:2, label:'Control Attestations' },
-    { n:3, label:'Interconnections' },
-    { n:4, label:'Review & Sign Off' }
-  ];
+  var steps = isProc
+    ? [
+        { n:1, label:step1Label, display:1 },
+        { n:2, label:'Control Attestations', display:2 },
+        { n:4, label:'Review & Sign Off', display:3 }
+      ]
+    : [
+        { n:1, label:step1Label, display:1 },
+        { n:2, label:'Control Attestations', display:2 },
+        { n:3, label:'Interconnections', display:3 },
+        { n:4, label:'Review & Sign Off', display:4 }
+      ];
 
   var stepsHtml = steps.map(function(s) {
     var active  = step === s.n;
@@ -1487,8 +1560,8 @@ function renderAssetWizardChrome() {
       ? 'background:var(--teal);color:white;'
       : done ? 'background:var(--green);color:white;' : 'background:var(--border);color:var(--text-muted);';
     return '<div class="step-item' + (active?' active':'') + '" onclick="goToStep(\'asset\',' + s.n + ')" style="cursor:pointer;">'
-      + '<div class="step-circle" style="' + circleStyle + (done?'font-size:12px;':' ') + '">' + (done?'✓':s.n) + '</div>'
-      + '<div class="step-info"><div class="step-num">Step ' + s.n + '</div><div class="step-name">' + s.label + '</div></div>'
+      + '<div class="step-circle" style="' + circleStyle + (done?'font-size:12px;':' ') + '">' + (done?'✓':s.display) + '</div>'
+      + '<div class="step-info"><div class="step-num">Step ' + s.display + '</div><div class="step-name">' + s.label + '</div></div>'
       + '</div>';
   }).join('<div class="step-connector"></div>');
 
@@ -1502,6 +1575,8 @@ function renderAssetWizardChrome() {
     + stepsHtml
     + '</div>'
     + '</div>';
+  syncAssetSspStepNavLayout(step);
+  syncAssetSspFooterNav();
 }
 
 // ─── FIPS 199 + program baseline (V2/V3 baseline elevation) ─────────────────
@@ -3198,3 +3273,9 @@ function submitProcessSSP() {
 // Legacy stubs (keep so old snapshots don't break)
 function saveAttestation() { showToast('✅ Attestations saved!'); }
 function addAsset() { openAddAssetModal(); }
+
+window.isProcessSspScope = isProcessSspScope;
+window.assetSspGoNext = assetSspGoNext;
+window.assetSspGoBack = assetSspGoBack;
+window.syncAssetSspStepNavLayout = syncAssetSspStepNavLayout;
+window.syncAssetSspFooterNav = syncAssetSspFooterNav;
