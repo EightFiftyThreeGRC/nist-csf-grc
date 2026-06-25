@@ -1696,6 +1696,7 @@ function buildSspAttestationReviewBlocksHtml(controls, attests, sign, scopeId, c
       + '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.35px;color:var(--text-muted);margin-bottom:4px;">Evidence location</div>'
       + '<div style="font-size:12px;color:#475569;line-height:1.5;">' + evCell + '</div></div>'
       + '</div>'
+      + '</div>'
       + commentBlock
       + '</div>';
   }).join('');
