@@ -1842,7 +1842,10 @@ function saveToStorage() {
     }
   } catch (e) {
     console.warn('saveToStorage', e);
-    showToast('Could not save to browser storage (quota or private mode). Use Export JSON for a file backup.', true);
+    var cloud = typeof isCloudSessionActive === 'function' && isCloudSessionActive();
+    showToast(cloud
+      ? 'Could not sync your program. Check your connection and try again.'
+      : 'Could not save to browser storage (quota or private mode).', true);
   }
 }
 
@@ -1976,11 +1979,12 @@ window.markDirty = markDirty;
 function _updateSaveIndicator(saved) {
   var el = document.getElementById('saveIndicator');
   if (!el) return;
+  var cloud = typeof isCloudSessionActive === 'function' && isCloudSessionActive();
   if (saved) {
-    el.textContent = '✓ Saved';
+    el.textContent = cloud ? '✓ Synced' : '✓ Saved';
     el.style.color = 'var(--teal)';
   } else {
-    el.textContent = '… Saving';
+    el.textContent = cloud ? '… Syncing' : '… Saving';
     el.style.color = 'var(--text-muted)';
   }
 }

@@ -61,15 +61,14 @@ Technical characteristics:
 1. Copy or configure `js/cloud-config.js` with your Supabase project URL and anon key (see `MULTI_USER_SETUP.md`).
 2. Serve the repository root from any static file server, for example `python -m http.server 8765` or `npx serve .`.
 3. Open `app.html` in a modern browser and sign in (or create an account).
-4. Use the Snapshots modal to load a built-in demo program, or start a fresh one.
+4. Complete program setup or continue an existing cloud program.
 
 ### Smoke test before shipping
 
 1. `node --check js/<each file>.js` — syntax validation across all modules.
 2. Sign in and walk the CISO wizard end to end (Step 1 → Step 5, including the "different approver" path on Step 3).
-3. Load each built-in XMPL snapshot, then Reset, and confirm no ghost state remains.
-4. Export JSON, re-import it, and confirm the program round-trips cleanly.
-5. Add roster users and confirm each role sees the intended tabs after signing in with that account.
+3. Reset the program and confirm the cloud program returns to a fresh state.
+4. Add roster users and confirm each role sees the intended tabs after signing in with that account.
 
 ## Documentation
 

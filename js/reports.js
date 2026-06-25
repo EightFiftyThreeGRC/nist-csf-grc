@@ -1377,7 +1377,6 @@ function renderReports() {
       + '<div style="display:flex;flex-wrap:wrap;gap:10px;">'
       + '<button type="button" class="btn btn-primary" onclick="goToPoliciesHome()">Open domain policies</button>'
       + '<button type="button" class="btn btn-secondary" onclick="showTab(\'users\')">Users &amp; roles</button>'
-      + '<button type="button" class="btn btn-secondary" onclick="exportProgramJson()">Export JSON backup</button>'
       + '</div></div>';
   }
 
