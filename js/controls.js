@@ -3565,6 +3565,189 @@ function toggleAssetMapping(controlId, assetId, checked) {
 }
 
 // ── STEP 3: ASSET OWNER REQUIREMENTS ─────────────────────────────────────────
+function assetOwnerRequirementsHaveContent(reqs) {
+  return (reqs || []).some(function(r) {
+    return (r.requirement || '').trim() || (r.evidenceNeeded || '').trim()
+      || (r.acceptanceCriteria || '').trim() || (r.procedureRefs || '').trim();
+  });
+}
+
+function controlHasStep2DesignContent(ctrlId) {
+  normalizeControlDesignState(ctrlId);
+  var cs = state.controlStatus[ctrlId] || {};
+  if (cs.designSource === 'external') {
+    return !!((cs.externalDocTitle || '').trim() && (cs.externalDocRef || '').trim());
+  }
+  if (cs.designParts && Object.values(cs.designParts).some(function(v) { return v && String(v).trim(); })) return true;
+  return !!((cs.approach || '').trim() || (cs.narrative || '').trim());
+}
+
+function isIsGovernanceScopeEntry(entry) {
+  if (!entry) return false;
+  return entry.label === 'IS Governance' || entry.reqKey === 'IS Governance'
+    || String(entry.heading || '').indexOf('IS Governance') !== -1;
+}
+
+function buildStep3DesignContextHtml(ctrl) {
+  normalizeControlDesignState(ctrl.id);
+  var cs = state.controlStatus[ctrl.id] || {};
+  var cid = ctrl.id.replace(/'/g, "\\'");
+  var designSource = cs.designSource || 'inline';
+  var hasDesign = controlHasStep2DesignContent(ctrl.id);
+  if (!hasDesign) {
+    return '<div style="background:#f8fafc;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--text-muted);line-height:1.5;">'
+      + '<strong>No Step 2 design captured yet.</strong> Document the control design in Step 2 first — sub-requirement text will appear here as reference when defining obligations.'
+      + ' <button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;margin-left:6px;vertical-align:middle;" onclick="goToControlDetail(\'' + cid + '\')">Open Step 2 →</button>'
+      + '</div>';
+  }
+
+  var body = '';
+  if (designSource === 'external') {
+    body = '<div style="display:grid;gap:8px;font-size:11px;color:var(--navy);line-height:1.55;">'
+      + '<div><span style="font-weight:700;color:var(--text-muted);">Document:</span> ' + escapeHTML(cs.externalDocTitle || '—') + '</div>'
+      + '<div><span style="font-weight:700;color:var(--text-muted);">Location:</span> ' + escapeHTML(cs.externalDocRef || '—') + '</div>'
+      + ((cs.externalDocSummary || '').trim()
+        ? '<div><span style="font-weight:700;color:var(--text-muted);">Coverage summary:</span> ' + escapeHTML(cs.externalDocSummary) + '</div>'
+        : '')
+      + '</div>';
+  } else {
+    var nistParts = parseControlParts(ctrl.id);
+    var partKeys = nistParts ? Object.keys(nistParts) : [];
+    if (partKeys.length) {
+      body = partKeys.map(function(letter) {
+        var saved = String((cs.designParts || {})[letter] || '').trim();
+        var nistSnippet = String((nistParts[letter] || '')).trim();
+        var preview = saved || '<span style="color:var(--text-muted);font-style:italic;">Not documented in Step 2</span>';
+        return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;background:white;">'
+          + '<div style="font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px;">Sub-requirement ' + letter.toUpperCase() + '</div>'
+          + '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;line-height:1.45;">' + escapeHTML(nistSnippet.length > 220 ? nistSnippet.slice(0, 220) + '…' : nistSnippet) + '</div>'
+          + '<div style="font-size:11px;color:var(--navy);line-height:1.55;white-space:pre-line;">' + (saved ? escapeHTML(saved) : preview) + '</div>'
+          + '</div>';
+      }).join('');
+    } else if ((cs.approach || '').trim()) {
+      body = '<div style="font-size:11px;color:var(--navy);line-height:1.55;white-space:pre-line;">' + escapeHTML(cs.approach) + '</div>';
+    }
+    if ((cs.narrative || '').trim()) {
+      body += '<div style="margin-top:8px;padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;font-size:11px;color:#166534;line-height:1.55;">'
+        + '<div style="font-weight:700;margin-bottom:4px;">Auditor-ready narrative</div>'
+        + escapeHTML(cs.narrative)
+        + '</div>';
+    }
+  }
+
+  return '<details style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:12px;overflow:hidden;" open>'
+    + '<summary style="padding:10px 12px;font-size:11px;font-weight:700;color:#1d4ed8;cursor:pointer;list-style-position:inside;">📎 Step 2 design reference (use this to draft obligations below)</summary>'
+    + '<div style="padding:0 12px 12px;display:grid;gap:8px;">' + body + '</div>'
+    + '</details>';
+}
+
+function buildStep3PolicyContextHtml(ctrl, policyReqs) {
+  if (!policyReqs.length) return '';
+  return '<div style="background:#faf5ff;border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#6366f1;margin-bottom:8px;">Policy objectives linked to ' + escapeHTML(ctrl.id) + '</div>'
+    + policyReqs.map(function(r) {
+        return '<div style="border-left:3px solid #6366f1;padding:6px 10px;margin-bottom:8px;background:rgba(99,102,241,0.04);border-radius:0 6px 6px 0;">'
+          + '<div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:3px;">' + escapeHTML(r.reqId || 'Requirement') + ' · ' + escapeHTML(r.policyTitle || '') + '</div>'
+          + '<div style="font-size:11px;color:var(--navy);line-height:1.55;">' + escapeHTML(r.reqText || 'No objective text captured.') + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+function buildIspGovernanceStep3GuidanceHtml(ctrl) {
+  if (!(typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(ctrl.id))) return '';
+  return '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#166534;line-height:1.55;">'
+    + '<div style="font-weight:700;margin-bottom:4px;">IS Governance scope — organizational policy control</div>'
+    + 'For XX-1 controls, obligations are governance activities (develop, disseminate, review policy/procedures), not operational asset tasks. '
+    + 'Map Step 2 sub-requirements: <strong>(a)</strong> → implementation actions, <strong>(b)</strong> → procedures &amp; evidence, <strong>(c)</strong> → review cycle &amp; acceptance criteria. '
+    + 'The same pattern usually applies across all XX-1 controls — fill one, then use <strong>Apply to controls…</strong>.'
+    + '</div>';
+}
+
+function buildAssetOwnerReqSuggestionsFromDesign(ctrlId, scopeKey) {
+  normalizeControlDesignState(ctrlId);
+  var cs = state.controlStatus[ctrlId] || {};
+  var parts = cs.designParts || {};
+  var pA = String(parts.a || '').trim();
+  var pB = String(parts.b || '').trim();
+  var pC = String(parts.c || '').trim();
+  var narrative = String(cs.narrative || '').trim();
+  var isp = state.infoSecPolicy || {};
+  var ispTitle = String(isp.title || '').trim()
+    || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Information Security Policy');
+  var refs = ispTitle;
+  if ((cs.externalDocRef || '').trim()) refs += ' · ' + String(cs.externalDocRef).trim();
+  if ((cs.externalDocTitle || '').trim() && designSourceUsesExternal(cs)) {
+    refs = String(cs.externalDocTitle).trim() + (cs.externalDocRef ? ' (' + cs.externalDocRef + ')' : '');
+  }
+
+  if (cs.designSource === 'external') {
+    return {
+      requirement: String(cs.externalDocSummary || '').trim()
+        || 'Implement and maintain ' + ctrlId + ' per the referenced document; ensure roles, review cycle, and dissemination are defined.',
+      evidenceNeeded: 'Current approved document, version/revision history, and records of distribution or acknowledgement.',
+      acceptanceCriteria: 'Document is approved, within its review cycle, and updates are communicated to affected roles.',
+      procedureRefs: refs
+    };
+  }
+
+  var actionLines = [];
+  if (pA) actionLines.push(pA);
+  if (pB && pB !== pA) actionLines.push(pB);
+  return {
+    requirement: narrative || actionLines.join('\n\n')
+      || 'Maintain ' + ctrlId + ' policy and procedures per the Information Security Policy and organizational standards.',
+    evidenceNeeded: pB
+      ? 'Procedure artifacts, distribution records, and evidence that personnel with defined roles can access current versions.'
+      : 'Approved policy/procedure document, version history, and distribution or acknowledgement records.',
+    acceptanceCriteria: pC
+      || 'Policy and procedures reviewed on the defined cycle; changes approved, versioned, and communicated to affected personnel.',
+    procedureRefs: refs
+  };
+}
+
+function designSourceUsesExternal(cs) {
+  return cs && cs.designSource === 'external';
+}
+
+function applyAssetOwnerReqSuggestions(ctrlId, scopeKey, fillEmptyOnly) {
+  var suggestions = buildAssetOwnerReqSuggestionsFromDesign(ctrlId, scopeKey);
+  var fields = ['requirement', 'evidenceNeeded', 'acceptanceCriteria', 'procedureRefs'];
+  var applied = 0;
+  fields.forEach(function(field) {
+    var nextVal = String(suggestions[field] || '').trim();
+    if (!nextVal) return;
+    normalizeControlDesignState(ctrlId);
+    var reqs = state.controlStatus[ctrlId].assetOwnerRequirements || [];
+    var existing = reqs.find(function(r) { return r.assetType === scopeKey; });
+    var prev = existing ? String(existing[field] || '').trim() : '';
+    if (fillEmptyOnly && prev) return;
+    setAssetOwnerReq(ctrlId, scopeKey, field, nextVal);
+    applied++;
+  });
+  return applied;
+}
+
+function suggestAssetOwnerReqsFromDesign(ctrlId, scopeKey) {
+  if (!controlHasStep2DesignContent(ctrlId)) {
+    showToast('Document the control design in Step 2 first.', true);
+    return;
+  }
+  normalizeControlDesignState(ctrlId);
+  var reqs = (state.controlStatus[ctrlId] || {}).assetOwnerRequirements || [];
+  var existing = reqs.find(function(r) { return r.assetType === scopeKey; });
+  var hasContent = existing && assetOwnerRequirementsHaveContent([existing]);
+  if (hasContent && !window.confirm('Replace existing requirement fields with suggestions from Step 2 design?')) return;
+  var applied = applyAssetOwnerReqSuggestions(ctrlId, scopeKey, hasContent ? false : true);
+  if (!applied) {
+    showToast('No suggestions could be generated from Step 2 design.', true);
+    return;
+  }
+  markDirty();
+  showToast('✅ Drafted Step 3 fields from Step 2 design — review and edit before bulk apply.');
+  renderControlStep3();
+}
+
 function renderControlStep3() {
   const body = document.getElementById('control-step-3-body');
   if (!body) return;
@@ -3599,6 +3782,10 @@ function renderControlStep3() {
   const uniqueTypes = [...new Set(designedControls.flatMap(function(c) {
     return getControlScopeEntries(c.id).map(function(e) { return e.heading; });
   }))].length;
+  const minus1Designed = designedControls.filter(function(c) {
+    return typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id);
+  });
+  const minus1WithScope = minus1Designed.filter(function(c) { return getControlScopeEntries(c.id).length > 0; });
 
   body.innerHTML = `
     <div class="section-title">Asset-Type Requirements &amp; Required Evidence</div>
@@ -3625,6 +3812,10 @@ function renderControlStep3() {
       <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#92400e;">
       <strong>💡 Design intent:</strong> You are defining implementation obligations, not attesting compliance. Asset owners will later attest in their own workspace using the requirements/evidence expectations you define here.
     </div>
+    ${minus1WithScope.length > 1 ? `
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#166534;line-height:1.55;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div><strong>XX-1 shortcut:</strong> ${minus1WithScope.length} policy controls share IS Governance scope. Use <em>Suggest from Step 2</em> on one control, then <strong>Apply to controls…</strong> to copy obligations across the set.</div>
+    </div>` : ''}
 
     <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap;width:fit-content;">
       ${[['all','All Controls',designedControls.length]].concat(allFams.map(f => [f, f + ' — ' + (FAMILIES[f]||f), designedControls.filter(c=>c.f===f).length])).map(([val,label,count]) =>
@@ -3651,24 +3842,29 @@ function renderControlStep3() {
         </div>` : scopeEntries.map(function(entry) {
           const reqKey = entry.reqKey.replace(/'/g, "\\'");
           const req   = existing.find(function(r) { return r.assetType === entry.reqKey; }) || { assetType: entry.reqKey, requirement: '', evidenceNeeded: '', acceptanceCriteria: '', procedureRefs: '' };
+          const safeScopeKey = entry.reqKey.replace(/'/g, "\\'");
+          const showSuggest = controlHasStep2DesignContent(c.id);
           return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;">
-            <div style="background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--navy);">${escapeHTML(entry.heading)}</div>
+            <div style="background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="font-size:12px;font-weight:700;color:var(--navy);">${escapeHTML(entry.heading)}</div>
+              ${showSuggest ? '<button type="button" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px;" onclick="suggestAssetOwnerReqsFromDesign(\'' + cid + '\',\'' + safeScopeKey + '\')">Suggest from Step 2</button>' : ''}
+            </div>
             <div style="padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div>
                 <label class="form-label" style="font-size:10px;">Required implementation actions <span class="required">*</span></label>
-                <textarea class="form-input" rows="3" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. Review all service accounts quarterly, revoke stale accounts, and document manager approval before reactivation." oninput="setAssetOwnerReq('${cid}','${reqKey}','requirement',this.value)">${escapeHTML(req.requirement||'')}</textarea>
+                <textarea class="form-input" rows="3" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="${isIsGovernanceScopeEntry(entry) && typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id) ? 'e.g. Maintain approved policy; define roles; disseminate to personnel; review on annual cycle.' : 'e.g. Review all service accounts quarterly, revoke stale accounts, and document manager approval before reactivation.'}" oninput="setAssetOwnerReq('${cid}','${reqKey}','requirement',this.value)">${escapeHTML(req.requirement||'')}</textarea>
               </div>
               <div>
                 <label class="form-label" style="font-size:10px;">Required evidence artifacts</label>
-                <textarea class="form-input" rows="3" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. Signed review report, identity export with timestamps, workflow ticket showing approver and closure." oninput="setAssetOwnerReq('${cid}','${reqKey}','evidenceNeeded',this.value)">${escapeHTML(req.evidenceNeeded||'')}</textarea>
+                <textarea class="form-input" rows="3" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="${isIsGovernanceScopeEntry(entry) && typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id) ? 'e.g. Approved policy document, version history, distribution/acknowledgement records.' : 'e.g. Signed review report, identity export with timestamps, workflow ticket showing approver and closure.'}" oninput="setAssetOwnerReq('${cid}','${reqKey}','evidenceNeeded',this.value)">${escapeHTML(req.evidenceNeeded||'')}</textarea>
               </div>
               <div style="grid-column:1 / -1;">
                 <label class="form-label" style="font-size:10px;">Evidence acceptance criteria</label>
-                <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. Must be from current quarter, include asset owner + approver names, and show closure of all exceptions." oninput="setAssetOwnerReq('${cid}','${reqKey}','acceptanceCriteria',this.value)">${escapeHTML(req.acceptanceCriteria||'')}</textarea>
+                <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="${isIsGovernanceScopeEntry(entry) && typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id) ? 'e.g. Policy reviewed within defined cycle; updates approved and communicated.' : 'e.g. Must be from current quarter, include asset owner + approver names, and show closure of all exceptions.'}" oninput="setAssetOwnerReq('${cid}','${reqKey}','acceptanceCriteria',this.value)">${escapeHTML(req.acceptanceCriteria||'')}</textarea>
               </div>
               <div style="grid-column:1 / -1;">
                 <label class="form-label" style="font-size:10px;">Procedure / standard references</label>
-                <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. CP Policy v2.1 §4.3, BCP SOP-07, DR Test Runbook 2026-Q2" oninput="setAssetOwnerReq('${cid}','${reqKey}','procedureRefs',this.value)">${escapeHTML(req.procedureRefs||'')}</textarea>
+                <textarea class="form-input" rows="2" style="font-size:11px;line-height:1.6;resize:vertical;" placeholder="e.g. ${escapeHTML(((state.infoSecPolicy || {}).title || 'Information Security Policy'))}, domain policy sections, SOP IDs" oninput="setAssetOwnerReq('${cid}','${reqKey}','procedureRefs',this.value)">${escapeHTML(req.procedureRefs||'')}</textarea>
               </div>
             </div>
           </div>`;
@@ -3688,7 +3884,9 @@ function renderControlStep3() {
             ${chipHTML(ctrlStatus)}
           </div>
           <div style="padding:16px 18px;">
-            ${pReqs.length > 0 ? `<div style="background:#faf5ff;border:1px solid rgba(99,102,241,0.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#6366f1;"><strong>Policy reqs:</strong> ${pReqs.map(r=>escapeHTML(r.reqId)).join(', ')} — ${escapeHTML(pReqs[0].policyTitle)}</div>` : ''}
+            ${buildStep3DesignContextHtml(c)}
+            ${buildStep3PolicyContextHtml(c, pReqs)}
+            ${scopeEntries.some(function(e) { return isIsGovernanceScopeEntry(e); }) ? buildIspGovernanceStep3GuidanceHtml(c) : ''}
             ${typeBlocks}
           </div>
         </div>`;
@@ -3732,8 +3930,8 @@ function openBulkAssetOwnerReqModal(sourceCtrlId) {
   normalizeControlDesignState(sourceCtrlId);
   var source = CONTROLS.find(function(c) { return c.id === sourceCtrlId; });
   var sourceReqs = ((state.controlStatus[sourceCtrlId] || {}).assetOwnerRequirements || []);
-  if (!sourceReqs.length) {
-    showToast('Add at least one Step 3 requirement block before bulk apply.', true);
+  if (!assetOwnerRequirementsHaveContent(sourceReqs)) {
+    showToast('Add Step 3 requirement text first, or use Suggest from Step 2 to draft fields.', true);
     return;
   }
   var eligible = getStep3DesignedEligibleControls(sourceCtrlId);
@@ -3742,12 +3940,15 @@ function openBulkAssetOwnerReqModal(sourceCtrlId) {
     return;
   }
   var selected = {};
-  var defaultFamily = source ? source.f : '';
-  eligible.forEach(function(c) { selected[c.id] = !!(defaultFamily && c.f === defaultFamily); });
+  var sourceIsMinus1 = typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(sourceCtrlId);
+  eligible.forEach(function(c) {
+    if (sourceIsMinus1 && isPolicyAndProceduresControl(c.id)) selected[c.id] = true;
+    else selected[c.id] = !!(source && c.f === source.f);
+  });
 
   window._bulkAssetOwnerReqState = {
     sourceCtrlId: sourceCtrlId,
-    familyFilter: defaultFamily,
+    familyFilter: source && source.f ? source.f : '',
     search: '',
     selected: selected
   };
@@ -3815,6 +4016,7 @@ function renderBulkAssetOwnerReqModalBody() {
     + (sourceControl && sourceControl.f ? ' · default scope: ' + escapeHTML(sourceControl.f) : '')
     + '  </div>'
     + '  <div style="display:flex;gap:8px;">'
+    + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkAssetOwnerReqSelectMinus1()">Select all XX-1</button>'
     + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkAssetOwnerReqSelectFiltered(true)">Select all eligible</button>'
     + '    <button type="button" class="btn btn-secondary btn-sm" onclick="bulkAssetOwnerReqSelectFiltered(false)">Clear</button>'
     + '  </div>'
@@ -3863,6 +4065,15 @@ function bulkAssetOwnerReqSelectFiltered(checked) {
     if (familyFilter && c.f !== familyFilter) return;
     if (q && String(c.id).toLowerCase().indexOf(q) === -1 && String(c.n || '').toLowerCase().indexOf(q) === -1) return;
     st.selected[c.id] = !!checked;
+  });
+  renderBulkAssetOwnerReqModalBody();
+}
+
+function bulkAssetOwnerReqSelectMinus1() {
+  var st = window._bulkAssetOwnerReqState;
+  if (!st) return;
+  getStep3DesignedEligibleControls(st.sourceCtrlId).forEach(function(c) {
+    st.selected[c.id] = typeof isPolicyAndProceduresControl === 'function' && isPolicyAndProceduresControl(c.id);
   });
   renderBulkAssetOwnerReqModalBody();
 }
@@ -3924,6 +4135,7 @@ function applyBulkAssetOwnerReqToSelected() {
 function setAssetOwnerReq(ctrlId, assetTypeLabel, field, value) {
   normalizeControlDesignState(ctrlId);
   if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
+  if (!state.controlStatus[ctrlId].assetOwnerRequirements) state.controlStatus[ctrlId].assetOwnerRequirements = [];
   const reqs = state.controlStatus[ctrlId].assetOwnerRequirements;
   let existing = reqs.find(r => r.assetType === assetTypeLabel);
   var prev = existing ? existing[field] : undefined;
