@@ -1385,7 +1385,7 @@ function buildSspInterconnectionsReadOnlyHtml(scopeId) {
       + '<td style="padding:8px 10px;font-size:11px;color:#475569;">' + _esc(r.notes || '') + '</td>'
       + '</tr>';
   }).join('');
-  return '<div class="table-scroll"><table class="control-table" style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f8fafc;">'
+  return '<div class="table-scroll"><table class="control-table control-table--readonly" style="width:100%;border-collapse:collapse;"><thead><tr>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Connection / system</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Direction</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Sensitivity</th>'
@@ -1393,6 +1393,15 @@ function buildSspInterconnectionsReadOnlyHtml(scopeId) {
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">ISA / agreement</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Notes</th>'
     + '</tr></thead><tbody>' + tr + '</tbody></table></div>';
+}
+
+function formatSspReadOnlyEvidenceCell(raw) {
+  var ev = String(raw || '').trim();
+  if (!ev) return '—';
+  if (/^https?:\/\//i.test(ev)) {
+    return '<a href="' + _esc(ev) + '" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;word-break:break-all;">' + _esc(ev) + '</a>';
+  }
+  return _esc(ev);
 }
 
 function renderSspReadOnlyReviewInWizard() {
@@ -1419,13 +1428,13 @@ function renderSspReadOnlyReviewInWizard() {
     var a = attests[c.id] || {};
     var status = a.status ? _esc(a.status) : '<span style="color:var(--text-muted);">—</span>';
     var expl = (a.explanation || '').trim();
-    var ev = (a.evidenceLocation || '').trim();
+    var evCell = formatSspReadOnlyEvidenceCell(a.evidenceLocation);
     return '<tr style="border-bottom:1px solid var(--border);">'
       + '<td style="padding:8px 10px;font-family:monospace;font-size:12px;font-weight:700;">' + _esc(c.id) + '</td>'
       + '<td style="padding:8px 10px;font-size:12px;">' + _esc(_controlShortName(c.id)) + '</td>'
       + '<td style="padding:8px 10px;font-size:12px;">' + status + '</td>'
       + '<td style="padding:8px 10px;font-size:11px;color:#475569;">' + (expl ? _esc(expl) : '—') + '</td>'
-      + '<td style="padding:8px 10px;font-size:11px;color:#475569;">' + (ev ? _esc(ev) : '—') + '</td>'
+      + '<td style="padding:8px 10px;font-size:11px;color:#475569;">' + evCell + '</td>'
       + '</tr>';
   }).join('');
 
@@ -1460,12 +1469,12 @@ function renderSspReadOnlyReviewInWizard() {
     + signBlock
     + returnBlock
     + '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Control attestations</div>'
-    + '<div class="table-scroll" style="margin-bottom:22px;"><table class="control-table" style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f8fafc;">'
+    + '<div class="table-scroll" style="margin-bottom:22px;"><table class="control-table control-table--readonly" style="width:100%;border-collapse:collapse;"><thead><tr>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Control</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Requirement</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Status</th>'
     + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Explanation</th>'
-    + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Evidence</th>'
+    + '<th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;">Evidence location</th>'
     + '</tr></thead><tbody>' + (attRows || '<tr><td colspan="5" style="padding:16px;color:var(--text-muted);">No controls in scope.</td></tr>') + '</tbody></table></div>'
     + '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Interconnections</div>'
     + interHtml
