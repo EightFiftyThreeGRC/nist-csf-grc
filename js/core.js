@@ -2003,7 +2003,13 @@ function _updateSaveIndicator(saved) {
 
 function getActiveControls() {
   if (!state.baseline) return [];
+  var pm = state.pmControls || {};
   return CONTROLS.filter(c => {
+    // Program Management controls are program-level: they are in scope only when
+    // explicitly selected in CISO setup (state.pmControls), not merely because
+    // they carry a baseline tag. Counting all 37 PM controls regardless of
+    // selection inflated the "controls in scope" total (e.g. 186 vs 149 + selected).
+    if (c.f === 'PM') return !!pm[c.id];
     const inBaseline = c.bl.includes(state.baseline);
     const inPrivacy = state.privacyOverlay && c.bl.includes('P');
     return inBaseline || inPrivacy;

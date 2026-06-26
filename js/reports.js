@@ -1517,10 +1517,10 @@ function renderReports() {
   const passed = testResults.filter(r=>r.result==='Pass').length;
   const failed = testResults.filter(r=>r.result==='Fail').length;
   // Use the same control set everywhere on the dashboard — the `controls` array
-  // from getActiveControls()/getScopedControls() already includes PM controls
-  // that apply to the selected baseline. Adding state.pmControls on top of that
-  // double-counts them, causing the "Total in Scope" card to exceed the sum of
-  // the Implementation-Status bars.
+  // from getActiveControls()/getScopedControls() already includes the PM controls
+  // the program selected in setup (state.pmControls). Adding state.pmControls on
+  // top of that double-counts them, causing the "Total in Scope" card to exceed
+  // the sum of the Implementation-Status bars.
   const authTotalInReports = controls.length;
   const coveragePct = authTotalInReports ? Math.round((implemented/authTotalInReports)*100) : 0;
 
