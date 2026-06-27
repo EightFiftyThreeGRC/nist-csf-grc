@@ -2407,7 +2407,7 @@ function buildEvidenceArtifactSectionHTML(ctrl) {
         + '<input class="form-input" style="font-size:12px;margin-bottom:8px;" placeholder="Relative path in library (e.g., AC/AC-2/review-report.pdf)" value="' + escapeHTML(evRow.spPath || '') + '" oninput="applySharePointPathToEvidence(\'' + cid + '\',' + idx + ',this.value)">'
         + '<input class="form-input" style="font-size:12px;margin-bottom:8px;" placeholder="Or paste full SharePoint link" value="' + escapeHTML(evRow.url || evRow.ref || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'url\',this.value)">'
         + '<input class="form-input" style="font-size:12px;" placeholder="How this document proves the control" value="' + escapeHTML(evRow.description || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'description\',this.value)">'
-        + (evRow.url && isSharePointUrl(evRow.url) ? '<a href="' + escapeHTML(evRow.url) + '" target="_blank" rel="noopener noreferrer" class="sp-evidence-link">Open in SharePoint ↗</a>' : '')
+        + (evRow.url && isSharePointUrl(evRow.url) && safeUrl(evRow.url) ? '<a href="' + escapeHTML(safeUrl(evRow.url)) + '" target="_blank" rel="noopener noreferrer" class="sp-evidence-link">Open in SharePoint ↗</a>' : '')
         + '</div>'
       : '<div style="margin-top:8px;">'
         + buildEvidenceProgramDocPickerHtml(cid, idx, evRow)
@@ -2423,7 +2423,7 @@ function buildEvidenceArtifactSectionHTML(ctrl) {
         + '<div style="margin-top:8px;">'
         + '<input class="form-input" style="font-size:12px;margin-bottom:8px;" placeholder="Description / how this proves the control" value="' + escapeHTML(evRow.description || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'description\',this.value)">'
         + '<input class="form-input" style="font-size:12px;" placeholder="Where evidence is stored — URL, SharePoint path, file share, or ticket link" value="' + escapeHTML(evRow.url || evRow.ref || '') + '" oninput="setEvidenceField(\'' + cid + '\',' + idx + ',\'url\',this.value)">'
-        + (evRow.url ? '<a href="' + escapeHTML(evRow.url) + '" target="_blank" rel="noopener noreferrer" class="sp-evidence-link" style="display:inline-block;margin-top:6px;font-size:11px;">Open location ↗</a>' : '')
+        + (evRow.url && safeUrl(evRow.url) ? '<a href="' + escapeHTML(safeUrl(evRow.url)) + '" target="_blank" rel="noopener noreferrer" class="sp-evidence-link" style="display:inline-block;margin-top:6px;font-size:11px;">Open location ↗</a>' : '')
         + '</div>'
         + '</div>';
     return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:#fafbff;">'

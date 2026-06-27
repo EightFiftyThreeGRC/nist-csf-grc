@@ -1210,6 +1210,7 @@ const state = {
   entraSession: null, // { email, name, oid, matchedUserId, signedInAt } when signed in via Entra
   _frameworkFilter: '',
   _frameworkSearch: '',
+  _restrictedViewer: false,      // true = signed-in cloud user whose roster profile didn't resolve; reports-only, no owner powers
 };
 const STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
 const STATE_ALLOWED_KEYS = Object.keys(STATE_DEFAULTS);
@@ -1796,6 +1797,12 @@ function validateProgramShape(parsed) {
     if (isPlainObject(v)) return 'object';
     return typeof v;
   }
+  // Null-default keys that must hold an object (not a primitive) once configured.
+  // The app indexes into these, so a string/number import would break .find/[] access.
+  var NULL_DEFAULT_OBJECT_KEYS = {
+    infoSecPolicy: 1, domainPolicies: 1, controlOwners: 1,
+    policySelectedControls: 1, infoSecPolicyReviewDraft: 1, entraSession: 1
+  };
   STATE_ALLOWED_KEYS.forEach(function(k) {
     if (!(k in parsed)) return;
     var exp = valType(STATE_DEFAULTS[k]);
@@ -1803,8 +1810,14 @@ function validateProgramShape(parsed) {
     // Keys whose default is null are "unset" placeholders that hold an object,
     // string, etc. once configured (e.g. baseline, infoSecPolicy, controlOwners).
     // A real export therefore legitimately differs in type — only reject when the
-    // default has a concrete type that the import contradicts.
-    if (exp === 'null') return;
+    // default has a concrete type that the import contradicts, or when a known
+    // object-container key arrives as a non-object primitive.
+    if (exp === 'null') {
+      if (NULL_DEFAULT_OBJECT_KEYS[k] && got !== 'null' && got !== 'object') {
+        errors.push('Field "' + k + '" must be object or null, got ' + got);
+      }
+      return;
+    }
     if (exp !== got && got !== 'null') {
       errors.push('Field "' + k + '" must be ' + exp + ', got ' + got);
     }
@@ -1821,6 +1834,36 @@ function escapeHTML(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 const _esc = escapeHTML;
+
+/**
+ * Return a URL safe to place in an href, or '' if the scheme is dangerous.
+ * Allows http(s), mailto, and relative/scheme-less paths; blocks javascript:,
+ * data:, vbscript:, etc. so a user-supplied evidence/reference URL can't run
+ * script on click. Always HTML-escape the result before embedding.
+ */
+function safeUrl(raw) {
+  var u = String(raw == null ? '' : raw).trim().replace(/[\u0000-\u001f\u007f]/g, '');
+  if (!u) return '';
+  var m = /^([a-z][a-z0-9+.\-]*):/i.exec(u);
+  if (m) {
+    var scheme = m[1].toLowerCase();
+    if (scheme !== 'http' && scheme !== 'https' && scheme !== 'mailto') return '';
+  }
+  return u;
+}
+try { window.safeUrl = safeUrl; } catch (e) {}
+
+/**
+ * True only for the genuine program-owner / admin session (no signed-in roster
+ * user AND not a restricted, unprovisioned viewer). Use this instead of a raw
+ * `!state.currentUserId` check before granting program-wide powers, so that a
+ * cloud user whose email is on the roster but whose profile didn't resolve does
+ * not inherit owner authority.
+ */
+function isAdminSession() {
+  return !state.currentUserId && !state._restrictedViewer;
+}
+try { window.isAdminSession = isAdminSession; } catch (e) {}
 
 function buildPersistedPayload() {
   var payload = {};

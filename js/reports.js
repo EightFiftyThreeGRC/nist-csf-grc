@@ -290,7 +290,7 @@ function viewISPModal() {
             + '<span style="font-size:13px;color:var(--teal);">🔗</span>'
             + '<div><div style="font-size:13px;font-weight:700;color:var(--navy);">' + escapeHTML(d.title) + '</div>'
             + (d.desc ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' + escapeHTML(d.desc) + '</div>' : '')
-            + (d.url ? '<div style="font-size:12px;margin-top:2px;"><a href="' + escapeHTML(d.url) + '" target="_blank" style="color:var(--teal);text-decoration:none;">' + escapeHTML(d.url) + '</a></div>' : '')
+            + (d.url && safeUrl(d.url) ? '<div style="font-size:12px;margin-top:2px;"><a href="' + escapeHTML(safeUrl(d.url)) + '" target="_blank" rel="noopener noreferrer" style="color:var(--teal);text-decoration:none;">' + escapeHTML(d.url) + '</a></div>' : (d.url ? '<div style="font-size:12px;margin-top:2px;color:var(--text-muted);">' + escapeHTML(d.url) + '</div>' : ''))
             + '</div></div>';
         }).join('')
         + '</div>';
@@ -378,7 +378,11 @@ function cisoApprovePolicy(fam) {
   markDirty();
   document.getElementById('cisoReviewOverlay')?.remove();
   showToast('✅ Policy approved — ' + getPolicyMergedTitle(fam));
-  renderReports();
+  if (typeof cloudPushNow === 'function' && typeof isCloudSessionActive === 'function' && isCloudSessionActive()) {
+    cloudPushNow().finally(renderReports);
+  } else {
+    renderReports();
+  }
 }
 
 function cisoReturnPolicy(fam) {
@@ -432,7 +436,11 @@ function cisoReturnPolicy(fam) {
   markDirty();
   document.getElementById('cisoReviewOverlay')?.remove();
   showToast('↩ Policy returned to submitter — ' + getPolicyMergedTitle(fam));
-  renderReports();
+  if (typeof cloudPushNow === 'function' && typeof isCloudSessionActive === 'function' && isCloudSessionActive()) {
+    cloudPushNow().finally(renderReports);
+  } else {
+    renderReports();
+  }
 }
 
 function renderProgramDashboard(controls, families) {
@@ -903,13 +911,11 @@ function renderAssetOwnerReport(user) {
 function shouldShowISPApprovalCallout(user) {
   var p = (state.policyStatus || {}).ISP || {};
   if (p.status !== 'Under Review') return false;
-  if (typeof canSessionApproveISP === 'function' && canSessionApproveISP()) return true;
-  if (!state.currentUserId) return true;
-  if (!user) return false;
-  if (user.role === 'ciso' || user.role === 'admin' || user.role === 'approver') return true;
-  var sub = String(p.submittedTo || '').trim().toLowerCase();
-  if (sub && String(user.name || '').trim().toLowerCase() === sub) return true;
-  return false;
+  // Only the session that can actually approve sees the "Review & approve" CTA.
+  // The ISP must be approved by someone other than the program owner (SoD), so a
+  // raw !currentUserId / role==ciso fallback would show the owner a CTA they
+  // cannot act on.
+  return typeof canSessionApproveISP === 'function' && canSessionApproveISP();
 }
 
 function renderISPApprovalCallout(user) {
@@ -1233,6 +1239,7 @@ function aoApproveQueuedSsp(scopeId, isProcess, opts) {
   opts = opts || {};
   var sid = String(scopeId);
   var u = state.currentUserId ? (state.users || []).find(function(x) { return x.id === state.currentUserId; }) : null;
+  var actor = typeof getSessionActorName === 'function' ? getSessionActorName('AO') : (u ? u.name : 'AO');
   var label = isProcess ? 'Process SSP' : (state.privacyOverlay ? 'SPSP' : 'SSP');
   if (!confirm('Approve this ' + label + ' for authorization?')) return;
   if (!state.sspSignoffs) state.sspSignoffs = {};
@@ -1242,7 +1249,7 @@ function aoApproveQueuedSsp(scopeId, isProcess, opts) {
     : { overall: '', byControl: {} };
   state.sspSignoffs[sid] = Object.assign({}, prev, {
     status: 'Approved',
-    approvedBy: u ? u.name : 'AO',
+    approvedBy: actor,
     approvedDate: new Date().toISOString().slice(0, 10),
     reviewerApprovalNotes: collected.overall || '',
     reviewerControlComments: Object.assign({}, collected.byControl)
@@ -1250,17 +1257,24 @@ function aoApproveQueuedSsp(scopeId, isProcess, opts) {
   if (typeof clearSspReviewerDraft === 'function') clearSspReviewerDraft(sid);
   aoRemoveSspQueueRow(sid, isProcess);
   try {
-    var auditMsg = label + ' approved by AO (' + (u ? u.name : 'AO') + ')';
+    var auditMsg = label + ' approved by AO (' + actor + ')';
     if (collected.overall) auditMsg += ': ' + collected.overall;
     addAuditEntry(isProcess ? 'process' : 'asset', sid, auditMsg);
   } catch (e) {}
   markDirty();
   if (typeof updateNotificationBadges === 'function') updateNotificationBadges();
   showToast('\u2705 ' + label + ' approved.');
-  if (opts.fromReview && typeof closeSspReadOnlyReview === 'function') {
-    closeSspReadOnlyReview();
-  } else if (typeof renderReports === 'function') {
-    renderReports();
+  var afterApprove = function() {
+    if (opts.fromReview && typeof closeSspReadOnlyReview === 'function') {
+      closeSspReadOnlyReview();
+    } else if (typeof renderReports === 'function') {
+      renderReports();
+    }
+  };
+  if (typeof cloudPushNow === 'function' && typeof isCloudSessionActive === 'function' && isCloudSessionActive()) {
+    cloudPushNow().finally(afterApprove);
+  } else {
+    afterApprove();
   }
 }
 
@@ -1284,7 +1298,8 @@ function aoReturnQueuedSsp(scopeId, isProcess, opts) {
     return;
   }
   var u = state.currentUserId ? (state.users || []).find(function(x) { return x.id === state.currentUserId; }) : null;
-  var returnedBy = u ? (u.name || '').trim() : '';
+  var returnedBy = (u && (u.name || '').trim())
+    || (typeof getSessionActorName === 'function' ? getSessionActorName('') : '');
   if (!state.sspSignoffs) state.sspSignoffs = {};
   var prev = state.sspSignoffs[sid] || {};
   var next = Object.assign({}, prev);

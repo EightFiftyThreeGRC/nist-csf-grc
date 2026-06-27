@@ -2973,7 +2973,7 @@ function renderISPPolicyViewerPanel() {
           + '<span style="color:var(--teal);">🔗</span>'
           + '<div><span style="font-weight:600;color:var(--navy);">' + _esc(d.title) + '</span>'
           + (d.desc ? '<div style="color:var(--text-muted);font-size:12px;">' + _esc(d.desc) + '</div>' : '')
-          + (d.url ? '<div style="font-size:12px;"><a href="' + _esc(d.url) + '" target="_blank" style="color:var(--teal);">' + _esc(d.url) + '</a></div>' : '')
+          + (d.url && safeUrl(d.url) ? '<div style="font-size:12px;"><a href="' + _esc(safeUrl(d.url)) + '" target="_blank" rel="noopener noreferrer" style="color:var(--teal);">' + _esc(d.url) + '</a></div>' : (d.url ? '<div style="font-size:12px;color:var(--text-muted);">' + _esc(d.url) + '</div>' : ''))
           + '</div></div>';
       });
       ispHTML += '</div>';
