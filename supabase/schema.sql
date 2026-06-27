@@ -78,7 +78,13 @@ create policy programs_insert on public.programs
   with check (owner_id = auth.uid());
 
 -- Update: owner or any roster member may edit (single-blob, last-write-wins).
--- owner_id is immutable here because USING also gates the pre-update row.
+-- NOTE: owner_id is NOT made immutable by these policies alone — the WITH CHECK
+-- below passes if the *new* row has owner_id = auth.uid(), so a roster member
+-- could otherwise set owner_id to themselves and take over the program. The
+-- programs_owner_immutable trigger (further down) blocks that.
+-- Residual Phase-1 limitation: any roster member can still edit the single-blob
+-- state (including adding users to the roster). True per-action separation of
+-- duties requires the Phase 2 normalized tables described at the top of this file.
 drop policy if exists programs_update on public.programs;
 create policy programs_update on public.programs
   for update
@@ -115,6 +121,29 @@ drop trigger if exists programs_touch_updated_at on public.programs;
 create trigger programs_touch_updated_at
   before update on public.programs
   for each row execute function public.touch_program_updated_at();
+
+-- ----------------------------------------------------------------------------
+-- Prevent program takeover: owner_id must never change on UPDATE. Without this,
+-- a roster member could set owner_id = auth.uid() and satisfy the update policy's
+-- WITH CHECK, becoming the owner. Normal app saves never touch owner_id, so this
+-- is transparent to legitimate writes.
+-- ----------------------------------------------------------------------------
+create or replace function public.enforce_program_owner_immutable()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.owner_id is distinct from old.owner_id then
+    raise exception 'owner_id is immutable';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists programs_owner_immutable on public.programs;
+create trigger programs_owner_immutable
+  before update on public.programs
+  for each row execute function public.enforce_program_owner_immutable();
 
 -- ----------------------------------------------------------------------------
 -- Realtime (optional but recommended): lets other signed-in users see changes
