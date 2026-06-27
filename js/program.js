@@ -904,7 +904,9 @@ function renderSidebarAssets() {
     var attests = (state.sspAttestations||{})[a.id] || {};
     var controls = getAssetSSPControls(a);
     var done = controls.filter(function(c){ return (attests[c.id]||{}).status; }).length;
+    var isRet = typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(signoff);
     var statusDot = signoff.status === 'Approved'  ? 'var(--green)'
+                  : isRet                          ? '#c2410c'
                   : signoff.status === 'Submitted' ? 'var(--accent)'
                   : done > 0                       ? '#f59e0b'
                   :                                  'var(--border)';

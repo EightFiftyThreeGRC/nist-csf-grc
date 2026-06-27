@@ -789,11 +789,15 @@ function renderAssetLibrary() {
         + assets.map(function(a){
           var aidEsc = String(a.id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
           var sign = getSspSignoffFromState(a.id);
-          var rawSt = sign.status || 'Not Started';
           var normSt = normalizeSspSignoffStatus(sign.status);
-          var displaySt = (typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(sign))
-            ? 'Returned for revision'
-            : (normSt || rawSt);
+          var libIsRet = typeof signoffIsReturnedForRevision === 'function' && signoffIsReturnedForRevision(sign);
+          var libControls = typeof getAssetSSPControls === 'function' ? getAssetSSPControls(a) : [];
+          var libAttests = (state.sspAttestations || {})[a.id] || {};
+          var libDone = libControls.filter(function(c){ return (libAttests[c.id] || {}).status; }).length;
+          var displaySt = normSt === 'Approved' ? 'Approved'
+            : libIsRet ? 'Returned for revision'
+            : normSt === 'Submitted' ? 'Submitted'
+            : libDone > 0 ? 'In Progress' : 'Not Started';
           var canViewPkg = normSt === 'Submitted' || normSt === 'Approved';
           var hasLog = canViewPkg || !!(sign.signedBy || '').trim() || !!(sign.signedDate || '').trim()
             || sign.aoReturnedAt || !!(sign.approvedBy || '').trim();
