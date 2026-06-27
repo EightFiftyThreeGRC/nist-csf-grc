@@ -600,7 +600,7 @@ function renderControlStep1() {
             const ownerKey = typeof getControlOwnerFilterKey === 'function' ? getControlOwnerFilterKey(co) : ownerAttr;
             const nameAttr = (c.n || '').replace(/"/g, '&quot;');
             const deselBaseline = cs.deselectDecision === 'Approved' && c.bl && (c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P')));
-            return `<tr data-id="${c.id}" data-name="${nameAttr}" data-family="${c.f}" data-status="${st}" data-owner="${ownerKey}" data-designed="${designed ? '1' : '0'}" data-deselected="${deselBaseline?'1':'0'}" class="${deselBaseline?'tr-deselected-baseline':''}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
+            return `<tr data-id="${c.id}" data-name="${nameAttr}" data-family="${c.f}" data-status="${st}" data-owner="${escapeHTML(ownerKey)}" data-designed="${designed ? '1' : '0'}" data-deselected="${deselBaseline?'1':'0'}" class="${deselBaseline?'tr-deselected-baseline':''}" style="cursor:pointer;" onmouseover="this.style.background='rgba(13,148,136,0.04)'" onmouseout="this.style.background=''" onclick="goToControlDetail('${cid}')">
               <td><span class="control-id">${c.id}</span></td>
               <td style="font-size:13px;">${c.n}</td>
               <td><span class="family-badge">${c.f}</span></td>

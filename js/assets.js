@@ -572,7 +572,10 @@ function renderAssetTypeLibrary() {
       ? '<div class="table-scroll"><table class="control-table"><thead><tr><th>Type</th><th style="width:90px;">Source</th><th style="width:200px;">Header Group</th><th style="width:110px;">Actions</th></tr></thead><tbody>'
         + activeTypeRows.map(function(row){
           var selected = row.group || 'Custom';
-          var safeType = row.label.replace(/'/g,"\\'");
+          // Escape for a single-quoted JS string inside a double-quoted HTML
+          // attribute: backslash + single-quote (JS), then HTML-escape so a
+          // double-quote or angle bracket in a user-defined type name can't break out.
+          var safeType = escapeHTML(String(row.label || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
           var isElev = typeof isElevatedCustomAssetTypeName === 'function' && isElevatedCustomAssetTypeName(row.label);
           var sourceLabel = isElev ? 'ELEVATED' : row.source;
           var typeCell = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
@@ -586,7 +589,7 @@ function renderAssetTypeLibrary() {
           return '<tr><td>' + typeCell + '</td>'
             + '<td style="font-size:11px;color:#334155;font-weight:700;text-transform:uppercase;">' + escapeHTML(sourceLabel) + '</td>'
             + '<td>' + groupCell + '</td>'
-            + '<td><button class="btn btn-sm" style="font-size:10px;padding:3px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;" onclick="requestOrApplyAssetTypeChange(\'delete\',\'' + safeType + '\',\'' + selected.replace(/'/g,"\\'") + '\')">Delete</button></td></tr>';
+            + '<td><button class="btn btn-sm" style="font-size:10px;padding:3px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;" onclick="requestOrApplyAssetTypeChange(\'delete\',\'' + safeType + '\',\'' + escapeHTML(String(selected).replace(/\\/g, '\\\\').replace(/'/g, "\\'")) + '\')">Delete</button></td></tr>';
         }).join('')
         + '</tbody></table></div>'
       : '<div style="font-size:12px;color:var(--text-muted);">No active asset types available.</div>')

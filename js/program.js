@@ -1238,8 +1238,8 @@ function renderCISOStep2Baseline() {
       <div class="summary-kv"><span class="sk">Baseline:</span><span class="sv">${state.baseline==='L'?'Low Impact':state.baseline==='M'?'Moderate Impact':'High Impact'}</span></div>
       <div class="summary-kv"><span class="sk">Privacy Overlay:</span><span class="sv">${state.privacyOverlay?'Yes — PT (Privacy) family included':'No'}</span></div>
       <div class="summary-kv"><span class="sk">Total Controls in Scope:</span><span class="sv">${BASELINE_COUNTS[state.baseline] || 0} controls across ${getActiveFamilies().filter(f=>f!=='PM').length} families${Object.values(state.pmControls||{}).filter(Boolean).length ? ' + ' + Object.values(state.pmControls||{}).filter(Boolean).length + ' PM controls' : ''}</span></div>
-      <div class="summary-kv"><span class="sk">Organization:</span><span class="sv">${state.orgName||'Not yet set'}</span></div>
-      <div class="summary-kv"><span class="sk">Program Owner:</span><span class="sv">${state.programOwner ? state.programOwner + ' — ' + (((state.programOwnerTitle || '').trim()) || getDefaultProgramOwnerTitle()) + (state.programOwnerEmail ? ' &lt;' + state.programOwnerEmail + '&gt;' : '') : 'Not yet assigned'}</span></div>
+      <div class="summary-kv"><span class="sk">Organization:</span><span class="sv">${escapeHTML(state.orgName||'Not yet set')}</span></div>
+      <div class="summary-kv"><span class="sk">Program Owner:</span><span class="sv">${state.programOwner ? escapeHTML(state.programOwner) + ' — ' + escapeHTML(((state.programOwnerTitle || '').trim()) || getDefaultProgramOwnerTitle()) + (state.programOwnerEmail ? ' &lt;' + escapeHTML(state.programOwnerEmail) + '&gt;' : '') : 'Not yet assigned'}</span></div>
     </div>` : ''}
   `;
 }

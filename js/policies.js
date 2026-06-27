@@ -1045,9 +1045,9 @@ function renderPolicyList() {
           + (((state.policyStatus[masterFam]||{}).submittedAt) ? '<span style="color:var(--text-muted);font-weight:500;"> · submitted ' + escapeHTML((state.policyStatus[masterFam]||{}).submittedAt) + '</span>' : '')
           + '</div>'
           : '')
-        + '<div style="font-weight:700; font-size:14px; color:var(--navy); margin-bottom:2px;">' + mergedTitle + '</div>'
+        + '<div style="font-weight:700; font-size:14px; color:var(--navy); margin-bottom:2px;">' + escapeHTML(mergedTitle) + '</div>'
         + '<div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">' + ctrlCount + ' controls in baseline'
-        + (custodian ? ' \u00B7 Custodian: ' + custodian : '') + '</div>'
+        + (custodian ? ' \u00B7 Custodian: ' + escapeHTML(custodian) : '') + '</div>'
         + actionBtn
         + '</div>';
     });
@@ -1914,7 +1914,7 @@ function renderPolicyStep1() {
     </div>
     <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px;">Domain</div>
     <div style="background:rgba(13,148,136,0.05); border:1px solid rgba(13,148,136,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
-      <div style="font-size:13px; font-weight:700; color:var(--navy); margin-bottom:4px;">${mergedTitle}</div>
+      <div style="font-size:13px; font-weight:700; color:var(--navy); margin-bottom:4px;">${escapeHTML(mergedTitle)}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">${allBadgesHtml}</div>
       <div style="font-size:12px; color:var(--text-muted);">${ctrls} controls &middot; ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} baseline</div>
       <div style="margin-top:8px;">${chipHTML(status)}</div>
@@ -1925,7 +1925,7 @@ function renderPolicyStep1() {
   if (body) body.innerHTML = `
     <div style="max-width:620px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">${allBadgesHtml}</div>
-      <div style="font-size:20px; font-weight:800; color:var(--navy); margin-bottom:6px;">${mergedTitle}</div>
+      <div style="font-size:20px; font-weight:800; color:var(--navy); margin-bottom:6px;">${escapeHTML(mergedTitle)}</div>
       <div style="font-size:13px; color:var(--text-muted); margin-bottom:28px;">${dd.purpose ? dd.purpose.slice(0,120) + '\u2026' : 'Domain-specific security policy'}</div>
       <!-- Policy Owner -->
       <div style="border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; background:white;">
@@ -1940,9 +1940,9 @@ function renderPolicyStep1() {
                 <div style="font-size:11px; color:var(--text-muted);">This suggestion will be visible to the CISO on the dashboard.</div>
               </div>
             ` : `
-              <div style="font-size:15px; font-weight:700; color:var(--navy);">${owner.name || '\u2014'}</div>
-              ${owner.role ? `<div style="font-size:13px; color:var(--text-muted);">${owner.role}</div>` : ''}
-              ${owner.email ? `<div style="font-size:12px; color:var(--teal); margin-top:4px;">${owner.email}</div>` : ''}
+              <div style="font-size:15px; font-weight:700; color:var(--navy);">${escapeHTML(owner.name || '\u2014')}</div>
+              ${owner.role ? `<div style="font-size:13px; color:var(--text-muted);">${escapeHTML(owner.role)}</div>` : ''}
+              ${owner.email ? `<div style="font-size:12px; color:var(--teal); margin-top:4px;">${escapeHTML(owner.email)}</div>` : ''}
             `}
           </div>
           ${owner.name
@@ -2174,7 +2174,7 @@ function renderPolicyStep2() {
   if (body) body.innerHTML = `
     <div style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">${allBadgesHtml2}</div>
-      <div style="font-size:16px; font-weight:700; color:var(--navy);">${mergedTitle} — Controls</div>
+      <div style="font-size:16px; font-weight:700; color:var(--navy);">${escapeHTML(mergedTitle)} — Controls</div>
       <div style="font-size:13px; color:var(--text-muted);">${baselineControls.length} required by your ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} baseline${state.privacyOverlay?' + Privacy':''}. ${allFamControls.length - baselineControls.length > 0 ? (allFamControls.length - baselineControls.length) + ' additional controls available.' : ''}</div>
     </div>
     <div class="filter-bar" style="margin-bottom:12px;">
@@ -4322,7 +4322,7 @@ function showSubmitModal() {
     + '<div style="background:#f9fafb;border-radius:10px;padding:16px;margin-bottom:20px;">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Domain</div><div style="font-size:14px;font-weight:700;color:var(--navy);">' + (FAMILIES[fam]||fam) + '</div></div>'
-    + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Policy Title</div><div style="font-size:13px;font-weight:600;color:var(--navy);">' + (dp&&dp.title||'Untitled') + '</div></div>'
+    + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Policy Title</div><div style="font-size:13px;font-weight:600;color:var(--navy);">' + escapeHTML(dp&&dp.title||'Untitled') + '</div></div>'
     + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Controls</div><div style="font-size:14px;font-weight:700;color:var(--navy);">' + selected.length + ' in policy</div></div>'
     + '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Ready for sign-up</div><div style="font-size:14px;font-weight:700;color:' + (inviteReady===selected.length?'var(--teal)':'var(--amber)') + ';">' + inviteReady + ' / ' + selected.length + '</div></div>'
     + '</div></div>'
