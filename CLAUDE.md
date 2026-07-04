@@ -271,6 +271,7 @@ When `privacyOverlay` is true, the ISP auto-injects tiered privacy requirements 
 ## Reference Documents
 
 - `CONTROL_OWNER_SPEC.md` — combined compliance + UX specification for the Control Owner wizard (NIST SP 800-53A alignment, status taxonomy, data schema, attestation workflow, and UX patterns)
+- `PHASE2_RISKS_ISSUES_SPEC.md` — design spec for the Phase 2 Risks & Issues dimension (risk register + POA&M-compatible issues, triage hooks from Phase-1 signals, SoD, milestones)
 - `README.md` — public project overview and operator smoke-test runbook
 
 Legacy audit artifacts (`missing-controls.js`, `nist-controls-audit.xlsx`, `acme_grc_state.json`) and one-off repair scripts (`repair.js`, `fix_encoding.js`) remain in the tree for historical reference only.
