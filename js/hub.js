@@ -500,3 +500,75 @@ function renderHomeTab() {
     + (shouldShowHubRiskStrip() && typeof renderRiskSummaryHtml === 'function' ? renderRiskSummaryHtml() : '')
     + '</div>';
 }
+
+function getActiveTabIdFromDom() {
+  var el = document.querySelector('.tab-panel.active');
+  return el && el.id ? el.id.replace(/^tab-/, '') : 'home';
+}
+
+/** Top-of-app program lifecycle roadmap (Phase 1–3). */
+function renderProgramPhaseBar() {
+  var bar = document.getElementById('program-phase-bar');
+  if (!bar) return;
+
+  var phase1Complete = !!state.cisoComplete;
+  var tab = getActiveTabIdFromDom();
+  var phase1Tabs = { ciso: 1, policy: 1, control: 1, asset: 1 };
+  var focusPhase = !phase1Complete ? 1 : (tab === 'risk' ? 2 : (phase1Tabs[tab] ? 1 : 2));
+
+  var phases = [
+    {
+      n: 1,
+      label: 'Phase 1',
+      title: 'Set up program governance',
+      desc: 'ISP, domain policies, controls, assets & SSP attestation',
+      state: phase1Complete ? 'complete' : 'active',
+      focused: focusPhase === 1,
+      action: "showTab('ciso')",
+      status: phase1Complete ? 'Complete' : 'In progress'
+    },
+    {
+      n: 2,
+      label: 'Phase 2',
+      title: 'Record issues & risks',
+      desc: 'Triage gaps, risk register, and POA&M-compatible remediation',
+      state: !phase1Complete ? 'locked' : 'active',
+      focused: focusPhase === 2 && phase1Complete,
+      action: "state._riskView='triage';showTab('risk');",
+      status: !phase1Complete ? 'After Phase 1' : 'Active'
+    },
+    {
+      n: 3,
+      label: 'Phase 3',
+      title: 'Continuous monitoring',
+      desc: 'In-production control testing, process audits, and high-risk area reviews',
+      state: 'planned',
+      focused: false,
+      action: '',
+      status: 'Coming soon'
+    }
+  ];
+
+  var html = '<div class="program-phase-track">';
+  phases.forEach(function(p, idx) {
+    if (idx > 0) {
+      html += '<div class="program-phase-connector' + (phases[idx - 1].state === 'complete' ? ' program-phase-connector--done' : '') + '" aria-hidden="true"></div>';
+    }
+    var cls = 'program-phase-step program-phase-step--' + p.state + (p.focused ? ' program-phase-step--active' : '');
+    var inner = '<span class="program-phase-eyebrow">' + escapeHTML(p.label) + '</span>'
+      + '<span class="program-phase-title">' + escapeHTML(p.title) + '</span>'
+      + '<span class="program-phase-desc">' + escapeHTML(p.desc) + '</span>'
+      + '<span class="program-phase-status">' + escapeHTML(p.status) + '</span>';
+    if (p.action && p.state !== 'locked' && p.state !== 'planned') {
+      html += '<button type="button" class="' + cls + '" onclick="' + p.action + '">' + inner + '</button>';
+    } else {
+      html += '<div class="' + cls + '" title="' + (p.state === 'planned' ? 'Planned: ongoing assessment and internal audit workflows' : 'Complete Phase 1 first') + '">' + inner + '</div>';
+    }
+  });
+  html += '</div>';
+  bar.innerHTML = html;
+}
+
+try {
+  window.renderProgramPhaseBar = renderProgramPhaseBar;
+} catch (e) {}

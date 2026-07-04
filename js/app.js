@@ -869,6 +869,7 @@ function showTab(tabId) {
   updateNotificationBadges();
   enhanceKeyboardAccessibility();
   if (typeof applySetupFocusMode === 'function') applySetupFocusMode();
+  if (typeof renderProgramPhaseBar === 'function') renderProgramPhaseBar();
 }
 
 
@@ -1259,6 +1260,7 @@ document.addEventListener('keydown', function(ev) {
 function bootAfterStateReady() {
   try { renderSidebarBadges(); } catch (e) { console.warn('renderSidebarBadges:', e); }
   try { applySetupFocusMode(); } catch (e) { console.warn('applySetupFocusMode:', e); }
+  try { if (typeof renderProgramPhaseBar === 'function') renderProgramPhaseBar(); } catch (e) { console.warn('renderProgramPhaseBar:', e); }
   try { showTab('home'); } catch (e) { console.warn('showTab:', e); }
 }
 window.bootAfterStateReady = bootAfterStateReady;

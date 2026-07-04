@@ -193,6 +193,113 @@
       background-color: var(--bg);
     }
 
+    /* Program lifecycle phase roadmap (top of main) */
+    .program-phase-bar {
+      flex-shrink: 0;
+      padding: 12px 40px 0;
+      background: var(--bg);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .program-phase-track {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      max-width: 1100px;
+    }
+    .program-phase-step {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--white);
+      text-align: left;
+      cursor: default;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    button.program-phase-step {
+      cursor: pointer;
+    }
+    button.program-phase-step:hover {
+      border-color: rgba(13, 148, 136, 0.35);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .program-phase-step--active {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
+      background: linear-gradient(180deg, #f0fdfa 0%, var(--white) 100%);
+    }
+    .program-phase-step--complete {
+      border-color: #86efac;
+      background: linear-gradient(180deg, #f0fdf4 0%, var(--white) 100%);
+    }
+    .program-phase-step--planned {
+      opacity: 0.72;
+      background: #f8fafc;
+    }
+    .program-phase-step--locked {
+      opacity: 0.55;
+    }
+    .program-phase-eyebrow {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .program-phase-step--active .program-phase-eyebrow { color: var(--teal); }
+    .program-phase-step--complete .program-phase-eyebrow { color: #166534; }
+    .program-phase-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.35;
+    }
+    .program-phase-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .program-phase-status {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .program-phase-step--active .program-phase-status { color: var(--teal); }
+    .program-phase-step--complete .program-phase-status { color: #166534; }
+    .program-phase-step--planned .program-phase-status { color: #64748b; }
+    .program-phase-connector {
+      flex: 0 0 20px;
+      align-self: center;
+      height: 2px;
+      background: var(--border);
+      margin: 0 -2px;
+    }
+    .program-phase-connector--done {
+      background: #86efac;
+    }
+
+    @media (max-width: 900px) {
+      .program-phase-bar {
+        padding: 10px 16px 0;
+        overflow-x: auto;
+      }
+      .program-phase-track {
+        flex-direction: column;
+        min-width: 0;
+      }
+      .program-phase-connector {
+        flex: 0 0 12px;
+        width: 2px;
+        height: 12px;
+        margin: 0 auto;
+      }
+    }
+
     .page-body {
       width: 100%;
       flex: 1;
