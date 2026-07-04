@@ -69,7 +69,6 @@ function renderOnboardingHome() {
     + '<div class="onboard-step-rail">' + stepChips + '</div>'
     + '<div class="onboard-actions">'
     + '<button type="button" class="btn btn-primary onboard-cta" onclick="startProgramSetup()">' + (hasStarted ? 'Continue setup' : 'Start program setup') + '</button>'
-    + '<button type="button" class="btn btn-secondary" onclick="openWizardVideo(\'assets/videos/01-program-setup.mp4\', \'Program setup walkthrough\')">▶ Watch walkthrough</button>'
     + '</div>'
     + (hasStarted
       ? '<p class="onboard-resume">You\'re on step ' + progress.step + ' — <strong>' + escapeHTML(progress.label) + '</strong>. Pick up where you left off.</p>'

@@ -443,6 +443,212 @@ function cisoReturnPolicy(fam) {
   }
 }
 
+// ─── TEAM WORKLOAD PANEL ─────────────────────────────────────────────────────
+// Program-owner view: everything assigned, by person — policies owned, control
+// design progress, pending reviews, and open risks/issues. Answers "who is doing
+// what and how far along are they" without opening each workspace.
+function renderTeamWorkloadPanelHtml(controls, families) {
+  try {
+    var people = {};
+    var nameIndex = {}; // normalized name -> people key (merges roster + assignment records)
+    function normName(n) { return String(n || '').trim().toLowerCase(); }
+    function normEmail(e) { return String(e || '').trim().toLowerCase(); }
+    function getPerson(name, email, role) {
+      var e = normEmail(email), n = normName(name);
+      if (!e && !n) return null;
+      var key = e ? 'e:' + e : 'n:' + n;
+      if (!people[key] && n && nameIndex[n]) key = nameIndex[n];
+      if (!people[key]) {
+        people[key] = {
+          name: String(name || '').trim(), email: String(email || '').trim(), role: String(role || '').trim(),
+          polOwned: 0, polApproved: 0, polInReview: 0, polReturned: 0, polOther: 0,
+          ctrlTotal: 0, ctrlDesigned: 0, ctrlImplemented: 0, ctrlInProgress: 0,
+          reviews: [], sspOwned: 0, sspSubmitted: 0, openIssues: 0, openRisks: 0
+        };
+      }
+      var p = people[key];
+      if (!p.name && name) p.name = String(name).trim();
+      if (!p.email && email) p.email = String(email).trim();
+      if (!p.role && role) p.role = String(role).trim();
+      if (n && !nameIndex[n]) nameIndex[n] = key;
+      return p;
+    }
+
+    (state.users || []).forEach(function(u) { getPerson(u.name, u.email, u.role); });
+
+    // Policies — count per merge-target family (one card per policy document).
+    var mergedAway = state.policyMerges || {};
+    var policyFams = (families || []).filter(function(f) { return f !== 'PM' && !mergedAway[f]; });
+    var polUnassigned = 0;
+    policyFams.forEach(function(f) {
+      var o = (state.domainOwners || {})[f] || {};
+      var st = ((state.policyStatus || {})[f] || {}).status || 'Not Started';
+      var p = getPerson(o.name, o.email, o.role || 'Policy owner');
+      if (!p) { polUnassigned++; return; }
+      p.polOwned++;
+      if (st === 'Approved') p.polApproved++;
+      else if (st === 'Under Review') p.polInReview++;
+      else if (st === 'Returned') p.polReturned++;
+      else p.polOther++;
+    });
+
+    // Policies waiting on a reviewer (incl. ISP), attributed to that reviewer.
+    var reviewFams = policyFams.slice();
+    if ((state.policyStatus || {}).ISP) reviewFams.push('ISP');
+    reviewFams.forEach(function(f) {
+      var ps = (state.policyStatus || {})[f] || {};
+      if (ps.status !== 'Under Review') return;
+      var p = getPerson(ps.submittedTo, ps.submittedToEmail, ps.submittedToRole);
+      if (p) p.reviews.push((f === 'ISP' ? 'ISP' : 'Policy ' + f) + ' approval');
+    });
+
+    // Controls — owner assignment, design + implementation progress.
+    var ctrlUnassigned = 0;
+    (controls || []).forEach(function(c) {
+      var o = (state.controlOwners || {})[c.id];
+      var cs = (state.controlStatus || {})[c.id] || {};
+      if (cs.status === 'Not Applicable') return;
+      var p = o ? getPerson(o.name, o.email, o.role || 'Control owner') : null;
+      if (!p) { ctrlUnassigned++; return; }
+      p.ctrlTotal++;
+      if (typeof isControlDesigned === 'function' && isControlDesigned(c.id)) p.ctrlDesigned++;
+      if (cs.status === 'Implemented') p.ctrlImplemented++;
+      else if (cs.status === 'In Progress') p.ctrlInProgress++;
+    });
+
+    // Control-design packages sitting in someone's review queue.
+    (state.controlReviewQueue || []).forEach(function(r) {
+      if (!r || r.type === 'baseline-elevation' || r.type === 'ssp') return;
+      var p = getPerson(r.reviewerName || r.policyOwner, r.reviewerEmail || r.policyOwnerEmail, '');
+      if (p) p.reviews.push('Control design ' + (r.controlId || ''));
+    });
+
+    // SSP scopes — owners plus packages awaiting a designated reviewer.
+    var scopes = (state.assets || []).concat(state.processes || []);
+    scopes.forEach(function(s) {
+      var sg = (state.sspSignoffs || {})[s.id] || {};
+      var p = getPerson(s.owner, s.ownerEmail, 'Asset owner');
+      if (p) {
+        p.sspOwned++;
+        if (sg.status === 'Submitted' || sg.status === 'Approved') p.sspSubmitted++;
+      }
+      if (sg.status === 'Submitted') {
+        var rev = getPerson(sg.reviewerName, sg.reviewerEmail, sg.reviewerRole);
+        if (rev) rev.reviews.push('SSP review: ' + (s.name || s.id));
+      }
+    });
+
+    // Open remediation issues and risks.
+    (state.issues || []).forEach(function(i) {
+      if (typeof issueIsOpen === 'function' && !issueIsOpen(i)) return;
+      var p = getPerson(i.assigneeName, i.assigneeEmail, '');
+      if (p) p.openIssues++;
+    });
+    (state.risks || []).forEach(function(r) {
+      if (r && (r.status === 'Closed' || r.status === 'Accepted')) return;
+      var p = getPerson(r.ownerName, r.ownerEmail, '');
+      if (p) p.openRisks++;
+    });
+
+    var rows = Object.keys(people).map(function(k) { return people[k]; }).filter(function(p) {
+      return p.name && (p.polOwned || p.ctrlTotal || p.reviews.length || p.sspOwned || p.openIssues || p.openRisks || p.role);
+    });
+    if (!rows.length && !polUnassigned && !ctrlUnassigned) return '';
+
+    rows.sort(function(a, b) {
+      var wa = a.reviews.length * 3 + a.polOwned + a.ctrlTotal + a.openIssues + a.openRisks;
+      var wb = b.reviews.length * 3 + b.polOwned + b.ctrlTotal + b.openIssues + b.openRisks;
+      return wb - wa;
+    });
+
+    var ROLE_LABELS = {
+      'ciso': 'CISO / Program owner', 'issm': 'ISSM', 'control-owner': 'Control owner',
+      'asset-owner': 'Asset owner', 'custodian': 'Custodian', 'assessor': 'Assessor',
+      'ao': 'Authorizing Official', 'approver': 'Policy approver', 'admin': 'Admin'
+    };
+    function chip(text, fg, bg) {
+      return '<span style="display:inline-block;font-size:11px;font-weight:600;color:' + fg + ';background:' + bg + ';border-radius:10px;padding:2px 8px;margin:1px 2px 1px 0;white-space:nowrap;">' + text + '</span>';
+    }
+    function miniBar(done, total, color) {
+      var pct = total ? Math.round(done / total * 100) : 0;
+      return '<div style="display:flex;align-items:center;gap:8px;min-width:130px;">'
+        + '<div style="flex:1;height:6px;background:rgba(15,31,61,0.07);border-radius:3px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:3px;"></div></div>'
+        + '<span style="font-size:11px;font-weight:700;color:var(--navy);white-space:nowrap;">' + done + '/' + total + '</span></div>';
+    }
+
+    var bodyRows = rows.map(function(p) {
+      var roleLabel = ROLE_LABELS[p.role] || (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : '—');
+      var polCell = p.polOwned
+        ? '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:3px;">' + p.polOwned + ' polic' + (p.polOwned === 1 ? 'y' : 'ies') + '</div>'
+          + chip(p.polApproved + ' approved', '#166534', '#dcfce7')
+          + (p.polInReview ? chip(p.polInReview + ' in review', '#92400e', '#fef3c7') : '')
+          + (p.polReturned ? chip(p.polReturned + ' returned', '#9a3412', '#ffedd5') : '')
+          + (p.polOther ? chip(p.polOther + ' not started', '#475569', '#f1f5f9') : '')
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      var ctrlCell = p.ctrlTotal
+        ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">designed</div>' + miniBar(p.ctrlDesigned, p.ctrlTotal, 'var(--teal)')
+          + (p.ctrlImplemented || p.ctrlInProgress
+              ? '<div style="margin-top:4px;">' + (p.ctrlImplemented ? chip(p.ctrlImplemented + ' implemented', '#166534', '#dcfce7') : '') + (p.ctrlInProgress ? chip(p.ctrlInProgress + ' in progress', '#1d4ed8', '#dbeafe') : '') + '</div>'
+              : '')
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      var revCell = p.reviews.length
+        ? '<div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:3px;">' + p.reviews.length + ' waiting</div>'
+          + p.reviews.slice(0, 4).map(function(r) { return '<div style="font-size:11px;color:#92400e;line-height:1.5;">• ' + escapeHTML(r) + '</div>'; }).join('')
+          + (p.reviews.length > 4 ? '<div style="font-size:11px;color:var(--text-muted);">+' + (p.reviews.length - 4) + ' more</div>' : '')
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      var sspCell = p.sspOwned
+        ? '<div style="font-size:12px;font-weight:700;color:var(--navy);">' + p.sspSubmitted + '/' + p.sspOwned + ' submitted</div>'
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      var riCell = (p.openIssues || p.openRisks)
+        ? (p.openIssues ? chip(p.openIssues + ' issue' + (p.openIssues === 1 ? '' : 's'), '#9a3412', '#ffedd5') : '')
+          + (p.openRisks ? chip(p.openRisks + ' risk' + (p.openRisks === 1 ? '' : 's'), '#991b1b', '#fee2e2') : '')
+        : '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      return '<tr style="border-bottom:1px solid var(--border);vertical-align:top;">'
+        + '<td style="padding:12px 10px 12px 0;min-width:150px;">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--navy);">' + escapeHTML(p.name) + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + escapeHTML(roleLabel) + '</div>'
+        + (p.email ? '<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">' + escapeHTML(p.email) + '</div>' : '')
+        + '</td>'
+        + '<td style="padding:12px 10px;">' + polCell + '</td>'
+        + '<td style="padding:12px 10px;">' + ctrlCell + '</td>'
+        + '<td style="padding:12px 10px;">' + revCell + '</td>'
+        + '<td style="padding:12px 10px;">' + sspCell + '</td>'
+        + '<td style="padding:12px 0 12px 10px;">' + riCell + '</td>'
+        + '</tr>';
+    }).join('');
+
+    var unassignedNote = (polUnassigned || ctrlUnassigned)
+      ? '<div style="margin-top:10px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;">'
+        + '<strong>Unassigned:</strong> '
+        + (polUnassigned ? polUnassigned + ' polic' + (polUnassigned === 1 ? 'y' : 'ies') : '')
+        + (polUnassigned && ctrlUnassigned ? ' · ' : '')
+        + (ctrlUnassigned ? ctrlUnassigned + ' control' + (ctrlUnassigned === 1 ? '' : 's') : '')
+        + ' with no owner yet — assign them in Program Setup or Domain Policies.</div>'
+      : '';
+
+    return '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:18px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+      + '<span style="font-size:15px;">👥</span>'
+      + '<span style="font-size:14px;font-weight:700;color:var(--navy);">Team workload</span>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Everything assigned, by person — policy ownership, control design progress, pending reviews, and open risks &amp; issues.</div>'
+      + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
+      + '<thead><tr style="border-bottom:2px solid var(--border);">'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 10px 8px 0;">Person</th>'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 10px 8px;">Policies</th>'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 10px 8px;">Controls</th>'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 10px 8px;">In their review queue</th>'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 10px 8px;">SSP scopes</th>'
+      + '<th style="text-align:left;font-size:10px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--text-muted);padding:0 0 8px 10px;">Risks &amp; issues</th>'
+      + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
+      + unassignedNote
+      + '</div>';
+  } catch (e) {
+    return '';
+  }
+}
+
 function renderProgramDashboard(controls, families) {
   const baseline    = state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High';
   const privSuffix  = state.privacyOverlay ? ' + Privacy' : '';
@@ -732,6 +938,8 @@ function renderProgramDashboard(controls, families) {
 
       </div><!-- /right column -->
     </div><!-- /2-col grid -->
+
+    ${renderTeamWorkloadPanelHtml(controls, families)}
 
     <!-- ╔══ Footer: task count + roadmap ══╗ -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:rgba(15,31,61,0.03);border:1px solid var(--border);border-radius:8px;margin-bottom:20px;">
