@@ -271,7 +271,7 @@
     body.setup-focus-mode #sidebar-program-section #nav-reports,
     body.setup-focus-mode #sidebar-program-section #sidebar-reports-list,
     body.setup-focus-mode #sidebar-program-section #nav-frameworks,
-    body.setup-focus-mode #sidebar-program-section #nav-poam,
+    body.setup-focus-mode #sidebar-program-section #nav-risk,
     body.setup-focus-mode #sidebar-program-section #nav-users { display: none !important; }
     body.setup-focus-mode #sidebar-program-section .sidebar-section-label { display: none; }
     body.setup-focus-mode .profile-btn-wrap { opacity: 0.65; }

@@ -134,11 +134,9 @@ function getNextActions() {
     actions.push({ priority: 3, icon: isReturn ? '↩' : '🔧', label: (isReturn ? 'Reassign control: ' : 'Review control: ') + r.controlId, desc: (r.status || 'Pending review'), action: action });
   });
 
-  (state.poamItems || []).forEach(function(p) {
-    if (p.dueDate && p.dueDate < today && p.status !== 'Closed' && p.status !== 'Mitigated') {
-      actions.push({ priority: 0, icon: '⚠️', label: 'Overdue POA&M', desc: p.finding.slice(0, 60), action: "showTab('poam');" });
-    }
-  });
+  if (typeof getRiskHubNextActions === 'function') {
+    getRiskHubNextActions().forEach(function(a) { actions.push(a); });
+  }
 
   if (typeof getISPStatus === 'function' && getISPStatus() === 'Under Review') {
     var ispTitle = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '')
@@ -330,25 +328,9 @@ function userHasFrameworkMapping() {
   return fw.length > 0 || laws.length > 0;
 }
 
-function getScopedPoamOpenCount(user) {
-  if (typeof ensurePoamState === 'function') ensurePoamState();
-  var items = state.poamItems || [];
-  var tabs = getHubVisibleTabIds();
-  if (tabs.indexOf('poam') === -1) return 0;
-  var open = items.filter(function(p) {
-    return p.status !== 'Closed' && p.status !== 'Mitigated' && p.status !== 'Risk Accepted';
-  });
-  if (!user || !state.currentUserId) return open.length;
-  var roles = getHubPersonRoles(user);
-  if (roles.indexOf('ciso') !== -1 || roles.indexOf('assessor') !== -1 || roles.indexOf('ao') !== -1) {
-    return open.length;
-  }
-  var name = (user.name || '').trim().toLowerCase();
-  var email = (user.email || '').trim().toLowerCase();
-  return open.filter(function(p) {
-    var asn = (p.assignee || '').trim().toLowerCase();
-    return !asn || asn === name || (email && asn === email);
-  }).length;
+function getScopedRiskIssueOpenCount(user) {
+  if (typeof getScopedIssueOpenCount === 'function') return getScopedIssueOpenCount(user);
+  return typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0;
 }
 
 function userHasAssetWorkspaceContent(user) {
@@ -411,9 +393,10 @@ function getHubWorkspaces() {
     workspaces.push({ icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS alignment', fn: "showTab('frameworks')", group: 'program' });
   }
 
-  var poamOpen = getScopedPoamOpenCount(user);
-  if (tabs.indexOf('poam') !== -1 && poamOpen > 0) {
-    workspaces.push({ icon: '📝', label: 'POA&M', desc: poamOpen + ' open finding' + (poamOpen === 1 ? '' : 's'), fn: "showTab('poam')", group: 'program' });
+  var riskOpen = getScopedRiskIssueOpenCount(user);
+  if (tabs.indexOf('risk') !== -1 && riskOpen > 0) {
+    var riskLabel = typeof hasPm4PoamControl === 'function' && hasPm4PoamControl() ? 'POA&M & risks' : 'Risks & issues';
+    workspaces.push({ icon: '⚡', label: 'Risks & Issues', desc: riskOpen + ' open ' + riskLabel, fn: "showTab('risk')", group: 'program' });
   }
 
   return workspaces;
@@ -436,8 +419,11 @@ function shouldShowHubFrameworkStrip() {
   return tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping();
 }
 
-function shouldShowHubPoamStrip() {
-  return getScopedPoamOpenCount(getHubSessionUser()) > 0 && getHubVisibleTabIds().indexOf('poam') !== -1;
+function shouldShowHubRiskStrip() {
+  var tabs = getHubVisibleTabIds();
+  if (tabs.indexOf('risk') === -1) return false;
+  return (typeof getCombinedOpenRiskIssueCount === 'function' && getCombinedOpenRiskIssueCount() > 0)
+    || (typeof getTriagePendingCount === 'function' && getTriagePendingCount() > 0);
 }
 
 function updateCommandCenterPageHeader() {
@@ -502,7 +488,7 @@ function renderHomeTab() {
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + implPct + '%</div><div class="hub-kpi-label">Controls implemented</div><div class="hub-kpi-sub">' + implemented + ' / ' + ctrlTotal + '</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + ownerCount + '</div><div class="hub-kpi-label">Policy owners</div><div class="hub-kpi-sub">' + domainsAssigned + ' / ' + domainTotal + ' domains rostered</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + getPoamOpenCount() + '</div><div class="hub-kpi-label">Open POA&amp;M items</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + (typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0) + '</div><div class="hub-kpi-label">Open risks &amp; issues</div></div>'
     + '</div>'
     + (shouldShowHubFrameworkStrip() && typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : '')
     + '<div class="hub-lower-grid">'
@@ -511,6 +497,6 @@ function renderHomeTab() {
     + workspaceHtml
     + '</div></div>'
     + '</div>'
-    + (shouldShowHubPoamStrip() && typeof renderPoamSummaryHtml === 'function' ? renderPoamSummaryHtml() : '')
+    + (shouldShowHubRiskStrip() && typeof renderRiskSummaryHtml === 'function' ? renderRiskSummaryHtml() : '')
     + '</div>';
 }

@@ -1077,13 +1077,13 @@ const ROLE_TABS = {
   // AOs still record decisions through openAtoDecisionModal() launched from the
   // Reports dashboard. Asssessors no longer have a dedicated workspace —
   // assessment data persists in state but is not edited via UI.
-  'ciso':          ['home','ciso','policy','asset','frameworks','poam','reports'],
-  'issm':          ['home','policy','asset','frameworks','poam','reports'],
-  'control-owner': ['home','control','frameworks','poam','reports'],
-  'asset-owner':   ['home','asset','poam','reports'],
+  'ciso':          ['home','ciso','policy','asset','frameworks','risk','reports'],
+  'issm':          ['home','policy','asset','frameworks','risk','reports'],
+  'control-owner': ['home','control','frameworks','risk','reports'],
+  'asset-owner':   ['home','asset','risk','reports'],
   'custodian':     ['home','policy','reports'],
-  'assessor':      ['home','poam','reports'],
-  'ao':            ['home','asset','poam','reports','users'],
+  'assessor':      ['home','risk','reports'],
+  'ao':            ['home','asset','risk','reports','users'],
   'approver':      ['home','reports'],
 };
 
@@ -1184,8 +1184,10 @@ const state = {
   infoSecPolicySuggestions: [],  // [{ id, createdAt, suggestedBy, summary, status: Proposed|Approved|Rejected|Promoted }]
   infoSecPolicyReviewDraft: null, // { version, createdAt, updatedAt, content, promotedSuggestionIds } — annual review working draft seeded from approved suggestions
 
-  // POA&M / Findings tracking
-  poamItems: [],                 // [{ id, controlId, finding, severity, status, dueDate, assignee, createdDate, closedDate, mitigationPlan, evidenceRef }]
+  // Phase 2 — Risks & Issues (replaces legacy poamItems)
+  risks: [],                     // risk register — see js/risk.js
+  issues: [],                    // POA&M-compatible issues list
+  riskTriageDismissals: {},      // { 'h1:asset-3:AC-2': { by, at } }
   controlEvidence: {},           // { 'AC-1': { url, hash, attestationDate, type, description } }
   auditTrail: [],                // [{ t, cat, ref, msg }] activity log for reports / accountability
   changeLog: [],                 // field-level edits: { t, u, p, o, n } — capped FIFO
@@ -1207,8 +1209,11 @@ const state = {
   entraSession: null, // { email, name, oid, matchedUserId, signedInAt } when signed in via Entra
   _frameworkFilter: '',
   _frameworkSearch: '',
-  _poamFilter: 'open',
-  _poamSearch: '',
+  _riskView: 'triage',           // 'triage' | 'risks' | 'issues'
+  _riskFilter: 'open',
+  _riskSearch: '',
+  _issueFilter: 'open',
+  _issueSearch: '',
 };
 const STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
 const STATE_ALLOWED_KEYS = Object.keys(STATE_DEFAULTS);
@@ -1267,7 +1272,50 @@ function normalizeStateShape() {
   });
   migrateRegMappingStateShape();
   migrateISPWorkflowStatus();
+  migratePoamItemsToIssues();
   ensurePmControlsAssignedToCiso();
+}
+
+/** One-time migration: legacy Phase-1 poamItems → Phase-2 issues records. */
+function migratePoamItemsToIssues() {
+  var legacy = state.poamItems;
+  if (!Array.isArray(legacy) || !legacy.length) {
+    if (legacy !== undefined) delete state.poamItems;
+    return;
+  }
+  if (!Array.isArray(state.issues)) state.issues = [];
+  var actor = typeof getSessionActorName === 'function' ? getSessionActorName('') : '';
+  legacy.forEach(function(p) {
+    if (!p || typeof p !== 'object') return;
+    if (state.issues.some(function(i) { return i && i.id === p.id; })) return;
+    var sev = ['Critical', 'High', 'Medium', 'Low'].indexOf(p.severity) !== -1 ? p.severity : 'Medium';
+    var st = p.status || 'Open';
+    if (st === 'Mitigated') st = 'Remediated';
+    state.issues.push({
+      id: p.id || ('issue-mig-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+      title: String(p.finding || 'Migrated finding').slice(0, 120),
+      description: String(p.finding || ''),
+      source: 'manual',
+      sourceKey: '',
+      controlIds: p.controlId ? [String(p.controlId).trim().toUpperCase()] : [],
+      scopeId: '',
+      severity: sev,
+      remediationPlan: String(p.mitigationPlan || ''),
+      milestones: [],
+      dueDate: p.dueDate || '',
+      assigneeName: String(p.assignee || ''),
+      assigneeEmail: '',
+      status: st,
+      verification: null,
+      evidenceRef: String(p.evidenceRef || ''),
+      riskId: '',
+      createdAt: p.createdDate || new Date().toISOString().slice(0, 10),
+      createdBy: actor,
+      closedAt: p.closedDate || '',
+      closedBy: ''
+    });
+  });
+  delete state.poamItems;
 }
 
 function migrateRegMappingStateShape() {

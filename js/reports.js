@@ -1558,6 +1558,7 @@ function renderReports() {
     ${typeof renderAuthorizationStatusPanelHtml === 'function' ? renderAuthorizationStatusPanelHtml() : ''}
     ${renderReturnedWorkCallout(user)}
     ${userHasReportsLibraryAccess(user) ? renderReportsLibraryEntryHtml() : ''}
+    ${typeof renderRiskPosturePanelHtml === 'function' ? renderRiskPosturePanelHtml() : ''}
     ${renderSspApprovalQueueHtml(user)}
     ${isScoped && showMyView ? renderMyDashboard(controls, families) : ''}
     ${renderISPApprovalCallout(user)}

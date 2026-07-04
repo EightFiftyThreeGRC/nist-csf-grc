@@ -1527,7 +1527,7 @@ function buildSspOwnerReviewerCommentCalloutHtml(scopeId, controlId) {
     + _esc(note) + '</div>';
 }
 
-function buildSspAttestationReviewRowsHtml(controls, attests, sign, scopeId, canReview) {
+function buildSspAttestationReviewRowsHtml(controls, attests, sign, scopeId, canReview, isProcess) {
   var draft = canReview ? ensureSspReviewerDraft(scopeId) : null;
   var persisted = sign.reviewerControlComments || {};
   var sidJs = sspRevEscJs(String(scopeId));
@@ -1553,6 +1553,7 @@ function buildSspAttestationReviewRowsHtml(controls, attests, sign, scopeId, can
         + '<textarea class="form-input" style="width:100%;font-size:12px;resize:vertical;min-height:52px;" rows="2"'
         + ' placeholder="Call out issues or questions for this control only…"'
         + ' oninput="setSspReviewerDraftControlComment(\'' + sidJs + '\',\'' + sspRevEscJs(c.id) + '\',this.value)">' + _esc(draftVal) + '</textarea>'
+        + '<div style="margin-top:8px;"><button type="button" class="btn btn-secondary btn-sm" onclick="openRaiseIssueFromSspReview(\'' + sidJs + '\',\'' + sspRevEscJs(c.id) + '\',' + (isProcess ? 'true' : 'false') + ')">Raise issue</button></div>'
         + '</td></tr>';
     } else if (persistedNote) {
       commentHtml = '<tr><td colspan="5" style="padding:8px 10px 14px 42px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:12px;color:#78350f;line-height:1.45;">'
@@ -1617,7 +1618,7 @@ function renderSspReadOnlyReviewInWizard() {
   var interHtml = buildSspInterconnectionsReadOnlyHtml(item.id);
   var canReview = state._sspReviewerReadOnly && sspReviewerCanActOnPackage(item.id);
 
-  var attRows = buildSspAttestationReviewRowsHtml(controls, attests, sign, item.id, canReview);
+  var attRows = buildSspAttestationReviewRowsHtml(controls, attests, sign, item.id, canReview, isProc);
   var decisionPanel = buildSspReviewerDecisionPanelHtml(item.id, isProc, canReview);
 
   var signBlock = '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px;">'

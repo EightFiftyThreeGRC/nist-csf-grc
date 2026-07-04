@@ -865,8 +865,8 @@ function updateNotificationBadges() {
   }
   setBadge('badge-asset', assetCount);
 
-  if (typeof getPoamOverdueCount === 'function') {
-    setBadge('badge-poam', getPoamOverdueCount());
+  if (typeof getRiskOverdueBadgeCount === 'function') {
+    setBadge('badge-risk', getRiskOverdueBadgeCount());
   }
 }
 
