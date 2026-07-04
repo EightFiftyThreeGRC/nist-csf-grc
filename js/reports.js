@@ -54,13 +54,9 @@ function userHasReportsLibraryAccess(user) {
 }
 
 function renderReportsLibraryEntryHtml() {
-  return '<div style="background:linear-gradient(135deg,#f0fdf4,#ecfeff);border:1px solid #86efac;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:100%;">'
-    + '<div style="font-size:14px;font-weight:800;color:#14532d;margin-bottom:6px;">📚 Program library</div>'
-    + '<div style="font-size:12px;color:#166534;line-height:1.55;margin-bottom:14px;">Authoritative read-only catalogs for staff and auditors — <strong>approved policies</strong> and <strong>control requirements</strong> at Planned status or beyond, without entering design workspaces.</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:10px;">'
-    + '<button type="button" class="btn btn-primary btn-sm" onclick="goToReportsLibrary(\'policies\')">Published policies</button>'
-    + '<button type="button" class="btn btn-secondary btn-sm" onclick="goToReportsLibrary(\'controls\')">Control requirements</button>'
-    + '</div></div>';
+  // Library entry banner removed 2026-07-04 — the library is reachable from the
+  // sidebar (Reports ▸ Library). Function kept so existing call sites are no-ops.
+  return '';
 }
 
 function renderReportsLibraryShell() {
@@ -795,149 +791,21 @@ function renderProgramDashboard(controls, families) {
   }).length;
 
   return `
-    <!-- ╔══ Phase 1 Complete banner ══╗ -->
-    ${state._reportsPhase1BannerHidden ? '' : `
-    <div style="border:1px solid #86efac;border-radius:10px;background:linear-gradient(135deg,#f0fdf4,#e8fdf3);overflow:hidden;margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #86efac;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="background:#166534;color:white;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:0.6px;white-space:nowrap;">PHASE 1 · COMPLETE</span>
-          <span style="font-size:13px;font-weight:700;color:#166534;">Establish Program Governance</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:#166534;opacity:0.75;">✓ All steps complete</span>
-          <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="setReportsPhase1BannerHidden(true)">Hide</button>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;">
-        <div style="width:22px;height:22px;border-radius:50%;background:#166534;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span style="color:white;font-size:11px;font-weight:700;">✓</span>
-        </div>
-        <div>
-          <div style="font-size:13px;font-weight:600;color:#166534;">Establish Program Governance Setup Complete</div>
-          <div style="font-size:11px;color:#15803d;margin-top:3px;">Your governance program foundation is in place — ${baseline}${privSuffix} baseline · ${authCount} controls across ${policyFams.length} families · Cyber Program Owner: <strong>${escapeHTML(state.programOwner||'—')}</strong></div>
-        </div>
-      </div>
-    </div>`}
-
     ${deselectBaselineDash ? '<div class="callout-deselected-baseline" style="border:1px solid #f59e0b;background:#fffbeb;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:12px;color:#92400e;line-height:1.5;"><strong>Baseline scope note:</strong> ' + deselectBaselineDash + ' control(s) are formally <em>de-selected</em> from the active baseline. They remain in the catalog for audit traceability — open the Control Library and filter <strong>De-selected (baseline)</strong> to review them.</div>' : ''}
 
     ${typeof renderBaselineElevationReportsSummaryHtml === 'function' ? renderBaselineElevationReportsSummaryHtml() : ''}
     ${typeof renderBaselineElevationCisoCardsHtml === 'function' ? renderBaselineElevationCisoCardsHtml() : ''}
     ${typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : ''}
 
-    <!-- ╔══ Executive Summary header ══╗ -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-size:16px;font-weight:800;color:var(--navy);">Executive Summary</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(13,148,136,0.09);border:1px solid rgba(13,148,136,0.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--teal);">🔔 Approvals${polInReview.length>0?' · '+polInReview.length:''}</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(13,148,136,0.09);border:1px solid rgba(13,148,136,0.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--teal);">📋 Policy</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(13,148,136,0.09);border:1px solid rgba(13,148,136,0.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--teal);">🔧 Controls</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(13,148,136,0.09);border:1px solid rgba(13,148,136,0.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--teal);">🎯 Objectives</span>
+    ${polInReview.length ? `
+    <!-- Awaiting Your Approval — only rendered when something actually needs sign-off -->
+    <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:14px;font-weight:700;color:var(--navy);">Awaiting your approval</span>
+        <span style="background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;">${polInReview.length}</span>
       </div>
-    </div>
-
-    <!-- ╔══ Main 2-col layout ══╗ -->
-    <div style="display:grid;grid-template-columns:1fr 1.55fr;gap:20px;margin-bottom:18px;align-items:start;">
-
-      <!-- LEFT: Awaiting Your Approval inbox -->
-      <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:15px;">📬</span>
-          <span style="font-size:14px;font-weight:700;color:var(--navy);">Awaiting Your Approval</span>
-          ${polInReview.length > 0 ? '<span style="background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;">' + polInReview.length + '</span>' : ''}
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">Policies submitted for CISO sign-off</div>
-        ${awaitingHTML || '<div style="text-align:center;padding:30px 16px;">'
-          + '<div style="font-size:24px;margin-bottom:8px;">📭</div>'
-          + '<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px;">Nothing awaiting approval</div>'
-          + '<div style="font-size:11px;color:var(--text-muted);">Policy owners will submit domain policies here when ready for your review.</div>'
-          + '</div>'}
-      </div>
-
-      <!-- RIGHT: Three stacked status cards -->
-      <div style="display:flex;flex-direction:column;gap:14px;">
-
-        <!-- Policy Status -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span>📋</span>
-              <span style="font-size:13px;font-weight:700;color:var(--navy);">Policy Status</span>
-            </div>
-            <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${polApproved}/${policyFams.length}</span>
-          </div>
-          <div style="font-size:21px;font-weight:800;color:${polApproved===policyFams.length&&policyFams.length>0?'var(--green)':'var(--navy)'};">${polPct}% Approved</div>
-          ${pBar(polPct,'var(--teal)')}
-          <div style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:12px;">
-            ${dot('var(--green)','Approved',polApproved)}
-            ${dot('var(--amber)','In Review',polInReview.length)}
-            ${dot('#3b82f6','Draft',polDraft)}
-            ${dot('#d1d5db','Not Started',polNotStarted)}
-          </div>
-          <div id="policy-roadmap-toggle" style="display:none;border-top:1px solid var(--border);padding-top:12px;">
-            <button onclick="document.getElementById('policy-roadmap-chart').style.display=document.getElementById('policy-roadmap-chart').style.display==='none'?'block':'none';" style="background:none;border:none;cursor:pointer;color:var(--teal);font-size:12px;font-weight:700;padding:0;">📊 View Roadmap →</button>
-            <div id="policy-roadmap-chart" style="display:none;margin-top:12px;max-height:280px;overflow-y:auto;font-size:12px;"></div>
-          </div>
-        </div>
-
-        <!-- Control Implementation -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span>◎</span>
-              <span style="font-size:13px;font-weight:700;color:var(--navy);">Control Implementation</span>
-            </div>
-            <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${ctrlImplemented}/${ctrlTotal}</span>
-          </div>
-          <div style="font-size:21px;font-weight:800;color:${implPct===100?'var(--green)':'var(--navy)'};">${implPct}% Implemented</div>
-          ${pBar(implPct,'var(--green)')}
-          <div style="display:flex;flex-wrap:wrap;gap:10px 16px;">
-            ${dot('var(--green)','Implemented',ctrlImplemented)}
-            ${dot('#3b82f6','In Review',ctrlInProgress)}
-            ${dot('var(--amber)','Planned',ctrlPlanned)}
-            ${dot('#d1d5db','Not Started',ctrlNotStarted)}
-          </div>
-        </div>
-
-        <!-- Control Objectives / Scope -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span>🎯</span>
-              <span style="font-size:13px;font-weight:700;color:var(--navy);">Control Objectives</span>
-            </div>
-            <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${withObjective}/${ctrlInScope}</span>
-          </div>
-          <div style="font-size:21px;font-weight:800;color:${objectivePct===100?'var(--green)':'var(--navy)'};">${objectivePct}% Established</div>
-          ${pBar(objectivePct,'#86efac')}
-          <div style="display:flex;flex-wrap:wrap;gap:10px 16px;">
-            ${dot('var(--green)','With Objective',withObjective)}
-            ${dot('var(--amber)','Without Objective',withoutObjective)}
-            ${dot('#d1d5db','Not Applicable',ctrlNA)}
-          </div>
-        </div>
-
-        <!-- Asset SSP Coverage -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span>🖥️</span>
-              <span style="font-size:13px;font-weight:700;color:var(--navy);">Asset ${sspLabel} Coverage</span>
-            </div>
-            <span style="font-size:12px;color:var(--text-muted);font-weight:600;">${sspReadyCount}/${allAssets.length} submitted</span>
-          </div>
-          <div style="font-size:21px;font-weight:800;color:${sspPct===100&&allAssets.length>0?'var(--green)':'var(--navy)'};">${sspPct}% Attested</div>
-          ${pBar(sspPct,'var(--teal)')}
-          <div style="display:flex;flex-wrap:wrap;gap:10px 16px;">
-            ${dot('var(--green)','Approved',sspApproved)}
-            ${dot('var(--blue)','Submitted',sspSubmitted)}
-            ${dot('var(--amber)','In Progress',allAssets.length - sspApproved - sspSubmitted - (allAssets.length - sspApproved - sspSubmitted > 0 ? allAssets.filter(function(a){ var s=(sspSign[a.id]||{}).status; return !s||s==='Not Started'; }).length : 0))}
-            ${dot('var(--slate)','Not Started',allAssets.filter(function(a){ var s=(sspSign[a.id]||{}).status; return !s; }).length)}
-          </div>
-        </div>
-
-      </div><!-- /right column -->
-    </div><!-- /2-col grid -->
+      ${awaitingHTML}
+    </div>` : ''}
 
     ${renderTeamWorkloadPanelHtml(controls, families)}
 
@@ -1547,12 +1415,7 @@ function renderSspApprovalQueueHtml(user) {
     ? getSspReviewQueueItemsForUser(user)
     : (state.controlReviewQueue || []).filter(function(r) { return sspQueueRowMatchesAo(r, user); });
   var sspLabel = state.privacyOverlay ? 'SPSP' : 'SSP';
-  if (!items.length) {
-    if (user && typeof userMayReceiveSspReviews === 'function' && !userMayReceiveSspReviews(user)) return '';
-    return '<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #c4b5fd;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:920px;">'
-      + '<div style="font-size:13px;font-weight:800;color:#5b21b6;margin-bottom:6px;">' + sspLabel + ' review queue</div>'
-      + '<div style="font-size:12px;color:#6b21a8;line-height:1.55;">No packages are waiting on you as the designated reviewer. When an owner submits a ' + sspLabel + ' and selects you as reviewer, it appears here on <strong>Reports</strong>.</div></div>';
-  }
+  if (!items.length) return '';
   var rows = items.map(function(r) {
     var isProc = !!r.isProcessSsp;
     if (!isProc) {
@@ -1567,7 +1430,7 @@ function renderSspApprovalQueueHtml(user) {
     var dt = escapeHTML(r.date || '');
     var rev = escapeHTML((r.reviewerName || '').trim() || '\u2014');
     return '<tr style="border-bottom:1px solid rgba(0,0,0,0.06);">'
-      + '<td style="padding:10px 12px;font-size:12px;font-weight:700;color:#6d28d9;">' + (isProc ? 'Process' : 'Asset') + '</td>'
+      + '<td style="padding:10px 12px;font-size:12px;font-weight:700;color:#475569;">' + (isProc ? 'Process' : 'Asset') + '</td>'
       + '<td style="padding:10px 12px;font-size:13px;font-weight:700;color:var(--navy);">' + name + '</td>'
       + '<td style="padding:10px 12px;font-size:12px;color:#475569;">' + by + '</td>'
       + '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + dt + '</td>'
@@ -1576,19 +1439,20 @@ function renderSspApprovalQueueHtml(user) {
       + '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;" onclick=\'aoOpenQueuedSsp(' + sidJson + ',' + (isProc ? 'true' : 'false') + ')\'>Open &amp; review</button>'
       + '</td></tr>';
   }).join('');
-  return '<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #c4b5fd;border-radius:12px;padding:18px 20px;margin-bottom:20px;max-width:100%;">'
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">'
-    + '<div><div style="font-size:14px;font-weight:800;color:#5b21b6;">' + sspLabel + ' review queue</div>'
-    + '<div style="font-size:12px;color:#6b21a8;margin-top:4px;line-height:1.45;">Packages submitted for your review as designated ' + sspLabel + ' reviewer. Open each package to inspect attestations, add per-control comments, and approve or return.</div></div>'
-    + '<span style="font-size:12px;font-weight:700;background:white;border:1px solid #c4b5fd;border-radius:20px;padding:4px 12px;color:#5b21b6;">' + items.length + ' pending</span></div>'
-    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;border:1px solid #e9d5ff;">'
-    + '<thead><tr style="background:#f5f3ff;">'
-    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Type</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">System / process</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Signed by</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Submitted</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#6b21b6;">Reviewer</th>'
-    + '<th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;color:#6b21b6;">Review</th>'
+  return '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px;max-width:100%;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-size:14px;font-weight:700;color:var(--navy);">' + sspLabel + ' review queue</span>'
+    + '<span style="background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;">' + items.length + '</span></div>'
+    + '<span style="font-size:11px;color:var(--text-muted);">Open a package to inspect attestations and approve or return</span></div>'
+    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;border:1px solid var(--border);">'
+    + '<thead><tr style="background:#f8fafc;">'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#475569;">Type</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#475569;">System / process</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#475569;">Signed by</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#475569;">Submitted</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#475569;">Reviewer</th>'
+    + '<th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;color:#475569;">Review</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
@@ -1747,17 +1611,6 @@ function renderReports() {
   const authTotalInReports = controls.length;
   const coveragePct = authTotalInReports ? Math.round((implemented/authTotalInReports)*100) : 0;
 
-  var postSetupCallout = '';
-  if (!user && state.cisoComplete) {
-    postSetupCallout = '<div style="background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #86efac;border-radius:12px;padding:18px 22px;margin-bottom:22px;max-width:920px;">'
-      + '<div style="font-size:15px;font-weight:800;color:#14532d;margin-bottom:8px;">Program setup is complete</div>'
-      + '<div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:14px;">Choose a <strong>workspace</strong> in the sidebar to build domain policies, document controls, manage assets, or run tests. This screen is your program-wide dashboard and reports.</div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:10px;">'
-      + '<button type="button" class="btn btn-primary" onclick="goToPoliciesHome()">Open domain policies</button>'
-      + '<button type="button" class="btn btn-secondary" onclick="showTab(\'users\')">Users &amp; roles</button>'
-      + '</div></div>';
-  }
-
   var showProgramExecDashboard = !user || userSeesProgramExecutiveDashboard(user);
   var readinessRestore = state._reportsProgramReadinessHidden
     ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsProgramReadinessHidden(false)">Show Program Readiness</button></div>'
@@ -1765,14 +1618,9 @@ function renderReports() {
   var mySummaryRestore = state._reportsMySummaryHidden
     ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsMySummaryHidden(false)">Show My Summary</button></div>'
     : '';
-  var phase1Restore = state._reportsPhase1BannerHidden
-    ? '<div style="margin-bottom:12px;max-width:920px;"><button type="button" class="btn btn-secondary btn-sm" onclick="setReportsPhase1BannerHidden(false)">Show Phase 1 Banner</button></div>'
-    : '';
   body.innerHTML = `
-    ${postSetupCallout}
     ${readinessRestore}
     ${mySummaryRestore}
-    ${phase1Restore}
     ${renderProgramReadinessPanelHtml()}
     ${typeof renderAuthorizationStatusPanelHtml === 'function' ? renderAuthorizationStatusPanelHtml() : ''}
     ${renderReturnedWorkCallout(user)}

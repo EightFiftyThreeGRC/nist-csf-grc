@@ -1163,17 +1163,21 @@ function renderRiskPosturePanelHtml() {
   var list = topOverdue.map(function(i) {
     return '<li style="font-size:12px;margin:4px 0;">' + escapeHTML(i.severity) + ' — ' + escapeHTML(i.title) + ' (due ' + escapeHTML(i.dueDate) + ')</li>';
   }).join('');
-  return '<div style="background:linear-gradient(135deg,#fefce8,#fff7ed);border:1px solid #fde68a;border-radius:14px;padding:18px 20px;margin:0 0 24px;">'
-    + '<div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px;">Risk &amp; issue posture</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:16px;font-size:13px;margin-bottom:10px;">'
-    + '<span><strong>' + openRisks + '</strong> open risks</span>'
-    + '<span><strong>' + openIssues + '</strong> open ' + (hasPm4PoamControl() ? 'POA&M items' : 'issues') + '</span>'
-    + '<span><strong>' + overdue + '</strong> overdue</span>'
-    + (canSessionTriageRisk() ? '<span><strong>' + triage + '</strong> pending triage</span>' : '')
-    + (expiring ? '<span style="color:#b45309;"><strong>' + expiring + '</strong> acceptances expiring ≤30d</span>' : '')
-    + '</div>'
-    + (list ? '<ul style="margin:8px 0 0;padding-left:18px;color:#78350f;">' + list + '</ul>' : '')
-    + '<button type="button" class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="showTab(\'risk\')">Open Risks &amp; Issues →</button>'
+  // Only surface this panel when something actually needs attention — raw open
+  // counts already live on the Command Center. (Redesign 2026-07-04.)
+  var actionable = overdue || expiring || (canSessionTriageRisk() && triage);
+  if (!actionable) return '';
+  var parts = [];
+  if (overdue) parts.push('<span><strong>' + overdue + '</strong> overdue ' + (hasPm4PoamControl() ? 'POA&M item' : 'issue') + (overdue === 1 ? '' : 's') + '</span>');
+  if (canSessionTriageRisk() && triage) parts.push('<span><strong>' + triage + '</strong> pending triage</span>');
+  if (expiring) parts.push('<span style="color:#b45309;"><strong>' + expiring + '</strong> acceptance' + (expiring === 1 ? '' : 's') + ' expiring ≤30d</span>');
+  return '<div style="background:white;border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:10px;padding:14px 18px;margin:0 0 20px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<span style="font-size:13px;font-weight:700;color:var(--navy);">Risks &amp; issues</span>'
+    + '<span style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#475569;">' + parts.join('') + '</span></div>'
+    + '<button type="button" class="btn btn-secondary btn-sm" onclick="showTab(\'risk\')">Open →</button></div>'
+    + (list ? '<ul style="margin:10px 0 0;padding-left:18px;color:#78350f;">' + list + '</ul>' : '')
     + '</div>';
 }
 
