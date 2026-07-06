@@ -1314,6 +1314,10 @@ function aoRemoveSspQueueRow(scopeId, isProcess) {
 function aoApproveQueuedSsp(scopeId, isProcess, opts) {
   opts = opts || {};
   var sid = String(scopeId);
+  if (typeof sspReviewerCanActOnPackage === 'function' && !sspReviewerCanActOnPackage(sid)) {
+    showToast('You are not the designated reviewer for this package (separation of duties).', true);
+    return;
+  }
   var u = state.currentUserId ? (state.users || []).find(function(x) { return x.id === state.currentUserId; }) : null;
   var actor = typeof getSessionActorName === 'function' ? getSessionActorName('AO') : (u ? u.name : 'AO');
   var label = isProcess ? 'Process SSP' : (state.privacyOverlay ? 'SPSP' : 'SSP');
@@ -1357,6 +1361,10 @@ function aoApproveQueuedSsp(scopeId, isProcess, opts) {
 function aoReturnQueuedSsp(scopeId, isProcess, opts) {
   opts = opts || {};
   var sid = String(scopeId);
+  if (typeof sspReviewerCanActOnPackage === 'function' && !sspReviewerCanActOnPackage(sid)) {
+    showToast('You are not the designated reviewer for this package (separation of duties).', true);
+    return;
+  }
   var label = isProcess ? 'Process SSP' : (state.privacyOverlay ? 'SPSP' : 'SSP');
   var collected = typeof collectSspReviewerCommentsFromDraft === 'function'
     ? collectSspReviewerCommentsFromDraft(sid)

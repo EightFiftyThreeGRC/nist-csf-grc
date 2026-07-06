@@ -166,6 +166,18 @@ function getNextActions() {
     });
   }
 
+  if (typeof getSspPackagesAwaitingReviewByOthers === 'function') {
+    getSspPackagesAwaitingReviewByOthers().slice(0, 3).forEach(function(pkg) {
+      actions.push({
+        priority: 2,
+        icon: '⏳',
+        label: 'SSP awaiting review: ' + (pkg.name || 'Package'),
+        desc: 'Submitted — with ' + (pkg.reviewerLabel || 'designated reviewer'),
+        action: "showTab('reports');"
+      });
+    });
+  }
+
   (state.controlReviewQueue || []).slice(0, 5).forEach(function(r) {
     if (!r || !r.controlId || r.type === 'ssp') return;
     var cs = (state.controlStatus || {})[r.controlId] || {};

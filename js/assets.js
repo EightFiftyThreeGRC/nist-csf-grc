@@ -1462,12 +1462,68 @@ function getSspReviewSessionUser() {
     var u = (state.users || []).find(function(x) { return x.id === state.currentUserId; });
     if (u) return u;
   }
+  if (typeof findProgramUserForEntraIdentity === 'function') {
+    var sessionEmail = typeof getSessionEmailForApproval === 'function' ? getSessionEmailForApproval() : '';
+    var sessionName = typeof getSessionActorName === 'function' ? getSessionActorName('') : '';
+    var matched = findProgramUserForEntraIdentity(sessionEmail, sessionName);
+    if (matched) return matched;
+  }
   return null;
+}
+
+function sspPersonNameKey(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function sspPersonEmailKey(email) {
+  return typeof normalizeOwnerEmail === 'function'
+    ? normalizeOwnerEmail(email)
+    : String(email || '').trim().toLowerCase();
+}
+
+function sspPersonIdentityMatches(nameA, emailA, nameB, emailB) {
+  var ea = sspPersonEmailKey(emailA);
+  var eb = sspPersonEmailKey(emailB);
+  if (ea && eb && ea === eb) return true;
+  var na = sspPersonNameKey(nameA);
+  var nb = sspPersonNameKey(nameB);
+  return !!(na && nb && na === nb);
+}
+
+/** True when reviewer and submitter are the same person (separation of duties). */
+function sspReviewerViolatesSeparationOfDuties(submitterName, submitterEmail, reviewerUserId, reviewerEmail, reviewerName) {
+  if (sspPersonIdentityMatches(submitterName, submitterEmail, reviewerName, reviewerEmail)) return true;
+  if (reviewerUserId && submitterName) {
+    var rev = (state.users || []).find(function(x) { return String(x.id) === String(reviewerUserId); });
+    if (rev && sspPersonIdentityMatches(submitterName, submitterEmail, rev.name, rev.email)) return true;
+  }
+  return false;
+}
+
+/** True when the signed-in session is the person who submitted/signed the SSP package. */
+function sessionMatchesSspSubmitter(submittedBy, scopeId) {
+  var byName = sspPersonNameKey(submittedBy);
+  if (!byName && scopeId) {
+    byName = sspPersonNameKey((getSspSignoffFromState(scopeId).signedBy || ''));
+  }
+  if (!byName) return false;
+
+  var sessionName = sspPersonNameKey(typeof getSessionActorName === 'function' ? getSessionActorName('') : '');
+  if (sessionName && byName === sessionName) return true;
+
+  var sessionUser = getSspReviewSessionUser();
+  if (sessionUser && sspPersonNameKey(sessionUser.name) === byName) return true;
+
+  if (state.currentUserId && state.users) {
+    var u = state.users.find(function(x) { return x.id === state.currentUserId; });
+    if (u && sspPersonNameKey(u.name) === byName) return true;
+  }
+  return false;
 }
 
 function sspSignoffMatchesSessionReviewer(sign) {
   if (!sign) return false;
-  if (!state.currentUserId) return true;
+  if (sessionMatchesSspSubmitter(sign.signedBy, null)) return false;
   var fakeRow = {
     type: 'ssp',
     status: 'Pending',
@@ -1655,9 +1711,19 @@ function renderSspReadOnlyReviewInWizard() {
   var step1Block = buildSspReadOnlyStep1ProfileHtml(item, isProc);
   var interHtml = buildSspInterconnectionsReadOnlyHtml(item.id);
   var canReview = state._sspReviewerReadOnly && sspReviewerCanActOnPackage(item.id);
+  var isSubmitterView = state._sspReviewerReadOnly && sessionMatchesSspSubmitter(sign.signedBy, item.id);
 
   var attRows = buildSspAttestationReviewRowsHtml(controls, attests, sign, item.id, canReview, isProc);
   var decisionPanel = buildSspReviewerDecisionPanelHtml(item.id, isProc, canReview);
+
+  var submitterCallout = '';
+  if (isSubmitterView && !canReview) {
+    submitterCallout = '<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:12px;color:#1e40af;line-height:1.5;">'
+      + '<strong>Awaiting designated reviewer.</strong> You submitted this package'
+      + (sign.signedDate ? ' on ' + _esc(sign.signedDate) : '')
+      + '. <strong>' + _esc(formatSspReviewerDisplay(sign)) + '</strong> must approve or return it — you cannot review your own submission (separation of duties).'
+      + '</div>';
+  }
 
   var signBlock = '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px;">'
     + '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;">Submission &amp; reviewer</div>'
@@ -1688,6 +1754,7 @@ function renderSspReadOnlyReviewInWizard() {
     + '</div>'
     + step1Block
     + signBlock
+    + submitterCallout
     + returnBlock
     + '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px;">Control attestations</div>'
     + '<div class="table-scroll" style="margin-bottom:22px;"><table class="control-table control-table--readonly" style="width:100%;border-collapse:collapse;"><thead><tr>'
@@ -2667,14 +2734,32 @@ function userMayReceiveSspReviews(user) {
 }
 
 function getSspReviewQueueItemsForUser(user) {
-  if (!user) {
-    return (state.controlReviewQueue || []).filter(function(r) {
-      if (!r || r.type !== 'ssp') return false;
-      var st = String(r.status || 'Pending');
-      return st === 'Pending' || st === '';
+  var sessionUser = user || getSspReviewSessionUser();
+  return (state.controlReviewQueue || []).filter(function(r) {
+    if (!r || r.type !== 'ssp') return false;
+    var st = String(r.status || 'Pending');
+    if (st !== 'Pending' && st !== '') return false;
+    if (sessionMatchesSspSubmitter(r.submittedBy, r.assetId)) return false;
+    return sspQueueRowMatchesReviewer(r, sessionUser);
+  });
+}
+
+/** Submitted packages the session user signed that await a different reviewer. */
+function getSspPackagesAwaitingReviewByOthers() {
+  var out = [];
+  ((state.assets || []).concat(state.processes || [])).forEach(function(s) {
+    if (!s || !s.id) return;
+    var sign = getSspSignoffFromState(s.id);
+    if (normalizeSspSignoffStatus(sign.status) !== 'Submitted') return;
+    if (!sessionMatchesSspSubmitter(sign.signedBy, s.id)) return;
+    out.push({
+      scopeId: String(s.id),
+      name: s.name || String(s.id),
+      reviewerLabel: formatSspReviewerDisplay(sign),
+      isProcess: !!(state.processes || []).some(function(p) { return String(p.id) === String(s.id); })
     });
-  }
-  return (state.controlReviewQueue || []).filter(function(r) { return sspQueueRowMatchesReviewer(r, user); });
+  });
+  return out;
 }
 
 /** After reviewer change, keep the latest pending SSP queue row in sync. */
@@ -2697,16 +2782,22 @@ function syncSspReviewerToReviewQueue(scopeId, isProcessSsp) {
 }
 
 /** Default SSP reviewer: first ISSM, else first AO, approver, or CISO (small-org assumption). The formal authorization decision lives in the Authorization tab. */
-function getDefaultSspReviewerUser() {
+function getDefaultSspReviewerUser(excludeSubmitterName, excludeSubmitterEmail) {
   var list = state.users || [];
+  function isExcluded(u) {
+    if (!u) return true;
+    return sspReviewerViolatesSeparationOfDuties(
+      excludeSubmitterName, excludeSubmitterEmail, u.id, u.email, u.name
+    );
+  }
   var order = ['issm', 'ao', 'approver', 'ciso'];
   for (var r = 0; r < order.length; r++) {
     for (var i = 0; i < list.length; i++) {
-      if (list[i] && list[i].role === order[r]) return list[i];
+      if (list[i] && list[i].role === order[r] && !isExcluded(list[i])) return list[i];
     }
   }
   for (var j = 0; j < list.length; j++) {
-    if (list[j] && list[j].id) return list[j];
+    if (list[j] && list[j].id && !isExcluded(list[j])) return list[j];
   }
   return null;
 }
@@ -2732,7 +2823,13 @@ function ensureSspDefaultReviewer(scopeId) {
   var s = state.sspSignoffs[scopeId];
   if (s && normalizeSspSignoffStatus(s.status) === 'Approved') return;
   if (s && s.reviewerUserId) return;
-  var def = getDefaultSspReviewerUser();
+  var signerName = typeof getSignerName === 'function' ? getSignerName() : '';
+  var signerEmail = '';
+  if (state.currentUserId && state.users) {
+    var su = state.users.find(function(x) { return x.id === state.currentUserId; });
+    if (su) signerEmail = su.email || '';
+  }
+  var def = getDefaultSspReviewerUser(signerName, signerEmail);
   if (!def) return;
   if (!state.sspSignoffs[scopeId]) state.sspSignoffs[scopeId] = {};
   state.sspSignoffs[scopeId].reviewerUserId = def.id;
@@ -2746,6 +2843,16 @@ function setSspReviewerFromSelect(scopeId, userId) {
   scopeId = String(scopeId);
   var u = (state.users || []).find(function(x) { return String(x.id) === String(userId); });
   if (!u) return;
+  var signerName = typeof getSignerName === 'function' ? getSignerName() : '';
+  var signerEmail = '';
+  if (state.currentUserId && state.users) {
+    var su = state.users.find(function(x) { return x.id === state.currentUserId; });
+    if (su) signerEmail = su.email || '';
+  }
+  if (sspReviewerViolatesSeparationOfDuties(signerName, signerEmail, u.id, u.email, u.name)) {
+    showToast('The SSP reviewer must be a different person than the submitter (separation of duties).', true);
+    return;
+  }
   if (!state.sspSignoffs) state.sspSignoffs = {};
   if (!state.sspSignoffs[scopeId]) state.sspSignoffs[scopeId] = {};
   var s = state.sspSignoffs[scopeId];
@@ -2886,7 +2993,15 @@ function saveSspReviewerNewUser() {
 
 function buildSspReviewerSelectorHtml(scopeId, signoff, disabled) {
   var scopeJs = JSON.stringify(String(scopeId));
-  var candidates = getSspReviewerCandidateUsers();
+  var signerName = typeof getSignerName === 'function' ? getSignerName() : '';
+  var signerEmail = '';
+  if (state.currentUserId && state.users) {
+    var su = state.users.find(function(x) { return x.id === state.currentUserId; });
+    if (su) signerEmail = su.email || '';
+  }
+  var candidates = getSspReviewerCandidateUsers().filter(function(u) {
+    return !sspReviewerViolatesSeparationOfDuties(signerName, signerEmail, u.id, u.email, u.name);
+  });
   var selId = signoff.reviewerUserId || '';
   if (!candidates.length) {
     return '<div style="margin-bottom:16px;">'
@@ -3154,6 +3269,10 @@ function submitSSP() {
   var prevSign = state.sspSignoffs[asset.id] || {};
   if (!prevSign.reviewerUserId) {
     showToast('Select a reviewer (ISSM / AO / CISO / approver) before submitting.', true);
+    return;
+  }
+  if (sspReviewerViolatesSeparationOfDuties(signer, '', prevSign.reviewerUserId, prevSign.reviewerEmail, prevSign.reviewerName)) {
+    showToast('The SSP reviewer must be a different person than the submitter (separation of duties).', true);
     return;
   }
   var revName = (prevSign.reviewerName || '').trim() || formatSspReviewerDisplay(prevSign);
@@ -3559,6 +3678,10 @@ function submitProcessSSP() {
     showToast('Select a reviewer (ISSM / AO / CISO / approver) before submitting.', true);
     return;
   }
+  if (sspReviewerViolatesSeparationOfDuties(signer, '', prevProcSign.reviewerUserId, prevProcSign.reviewerEmail, prevProcSign.reviewerName)) {
+    showToast('The SSP reviewer must be a different person than the submitter (separation of duties).', true);
+    return;
+  }
   var revProcName = (prevProcSign.reviewerName || '').trim() || formatSspReviewerDisplay(prevProcSign);
   if (!confirm('Submit the Process SSP for "' + proc.name + '" signed by ' + signer + '?\n\nThis will send it to ' + revProcName + ' for review.')) return;
   state.sspSignoffs[proc.id] = Object.assign({}, prevProcSign, {
@@ -3610,6 +3733,9 @@ window.syncAssetSspStepNavLayout = syncAssetSspStepNavLayout;
 window.syncAssetSspFooterNav = syncAssetSspFooterNav;
 window.sspQueueRowMatchesReviewer = sspQueueRowMatchesReviewer;
 window.getSspReviewQueueItemsForUser = getSspReviewQueueItemsForUser;
+window.getSspPackagesAwaitingReviewByOthers = getSspPackagesAwaitingReviewByOthers;
+window.sspReviewerViolatesSeparationOfDuties = sspReviewerViolatesSeparationOfDuties;
+window.sessionMatchesSspSubmitter = sessionMatchesSspSubmitter;
 window.userMayReceiveSspReviews = userMayReceiveSspReviews;
 window.openSspReadOnlyFromQueue = openSspReadOnlyFromQueue;
 window.closeSspReadOnlyReview = closeSspReadOnlyReview;
