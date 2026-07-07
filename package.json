@@ -6,7 +6,8 @@
     "check:js": "node scripts/check-all.js",
     "test:e2e": "playwright test",
     "serve": "npx --yes serve . -p 4173",
-    "build:demo-video": "node scripts/build-demo-video.mjs"
+    "build:demo-video": "node scripts/build-demo-video.mjs",
+    "build:control-scope-defaults": "node scripts/build-control-scope-defaults.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

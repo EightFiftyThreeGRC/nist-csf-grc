@@ -1,0 +1,58 @@
+{
+  "_comment": "Family-level heuristics for npm run build:control-scope-defaults. Edit per-control overrides in controlOverrides.",
+  "assetTypeGroups": {
+    "appsCore": ["app_internal_int", "app_cots_int", "app_saas"],
+    "appsAll": ["app_internal_ext", "app_internal_int", "app_cots_ext", "app_cots_int", "app_saas"],
+    "infraCore": ["infra_onprem", "infra_network", "infra_cloud_iaas", "infra_storage"],
+    "infraAll": ["infra_onprem", "infra_network", "infra_cloud_iaas", "infra_cloud_paas", "infra_storage"],
+    "endpointAll": ["endpoint_windows", "endpoint_mac_linux", "endpoint_mobile", "endpoint_vdi"],
+    "iamAll": ["iam_idp", "iam_service_acct"],
+    "devopsAll": ["devops_cicd", "devops_repo", "devops_container"]
+  },
+  "processTypes": {
+    "governance": "proc_is_governance",
+    "risk": "proc_risk_mgmt",
+    "vuln": "proc_vuln_mgmt",
+    "iam": "proc_iam",
+    "config": "proc_config_change",
+    "supply": "proc_supply_chain",
+    "incident": "proc_incident_resp",
+    "bcp": "proc_bcp",
+    "awareness": "proc_awareness"
+  },
+  "familyRules": {
+    "AC": { "assetGroups": ["appsCore", "endpointAll", "iamAll"], "processes": ["iam"] },
+    "AT": { "assetGroups": ["endpointAll"], "processes": ["awareness"] },
+    "AU": { "assetGroups": ["appsCore", "infraCore"], "processes": ["config"] },
+    "CA": { "assetGroups": ["appsCore", "infraCore"], "processes": ["governance", "risk"] },
+    "CM": { "assetGroups": ["infraAll", "devopsAll"], "processes": ["config"] },
+    "CP": { "assetGroups": ["infraCore", "infraAll"], "processes": ["bcp"] },
+    "IA": { "assetGroups": ["appsCore", "iamAll"], "processes": ["iam"] },
+    "IR": { "assetGroups": ["appsCore", "infraCore"], "processes": ["incident"] },
+    "MA": { "assetGroups": ["infraCore", "endpointAll"], "processes": ["config"] },
+    "MP": { "assetGroups": ["infraCore", "endpointAll"], "processes": ["config"] },
+    "PE": { "assetGroups": ["infraCore", "endpointAll"], "processes": ["config"] },
+    "PL": { "assetGroups": [], "processes": ["governance", "risk"] },
+    "PM": { "assetGroups": [], "processes": ["governance", "risk"] },
+    "PS": { "assetGroups": ["endpointAll"], "processes": ["awareness"] },
+    "PT": { "assetGroups": ["appsCore"], "processes": ["governance"] },
+    "RA": { "assetGroups": ["appsCore", "infraCore"], "processes": ["risk", "vuln"] },
+    "SA": { "assetGroups": ["appsAll", "devopsAll"], "processes": ["supply", "config"] },
+    "SC": { "assetGroups": ["infraAll", "appsCore"], "processes": ["config"] },
+    "SI": { "assetGroups": ["appsCore", "infraCore", "devopsAll"], "processes": ["vuln", "config"] },
+    "SR": { "assetGroups": ["appsAll", "devopsAll"], "processes": ["supply"] }
+  },
+  "policyProceduresRule": {
+    "processes": ["governance"]
+  },
+  "controlOverrides": {
+    "AC-2": {
+      "addAssetGroups": ["appsAll"],
+      "addProcesses": ["iam"]
+    },
+    "SC-7": {
+      "addAssetGroups": ["infraAll"],
+      "addProcesses": ["config"]
+    }
+  }
+}

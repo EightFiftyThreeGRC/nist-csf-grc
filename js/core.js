@@ -1245,7 +1245,8 @@ const state = {
   _sidebarAssetsExpanded: false,     // sidebar inventory expanders (hub.js/app.js)
   _sidebarControlsExpanded: false,
   _sidebarPoliciesExpanded: false,
-  _sidebarReportsExpanded: false,
+  _sidebarReportsExpanded: true,
+  _reportsAuditLogHidden: false, // true = collapse Activity & change log panel on Reports
   _suggestedOwner: {},               // per-family suggested owner inputs (program.js)
 };
 const STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
@@ -1599,6 +1600,9 @@ function applyLoadedState(saved) {
   migrateLegacyRoleBucketOwnerNames();
   migrateAtoStateShape();
   seedXmplAtoDemoDataIfMissing();
+  if (state.cisoComplete && state.baseline && typeof seedAllControlScopeDefaults === 'function') {
+    seedAllControlScopeDefaults();
+  }
   return true;
 }
 

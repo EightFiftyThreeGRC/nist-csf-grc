@@ -555,6 +555,7 @@ function cisoFinish() {
   })();
 
   state.cisoComplete = true;
+  if (typeof seedAllControlScopeDefaults === 'function') seedAllControlScopeDefaults();
   addAuditEntry('program', null, 'Program setup completed by CISO');
   renderSidebarBadges();
   updateCISOFinishBtn();

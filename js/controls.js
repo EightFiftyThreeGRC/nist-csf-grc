@@ -1510,7 +1510,71 @@ function normalizeControlDesignState(ctrlId) {
     delete e.caption;
     return e;
   });
-  ensureIspOrganizationalDesignDefaults(ctrlId);
+  ensureControlScopeDefaults(ctrlId);
+}
+
+function getControlScopeDefaultTypeKeys(ctrlId) {
+  if (typeof CONTROL_SCOPE_DEFAULTS === 'undefined' || !CONTROL_SCOPE_DEFAULTS.byControl) return [];
+  var row = CONTROL_SCOPE_DEFAULTS.byControl[ctrlId];
+  if (!row || !row.types || !row.types.length) return [];
+  return row.types.slice();
+}
+
+function controlIsInActiveProgramBaseline(ctrlId) {
+  if (!state.baseline) return false;
+  var ctrl = (typeof CONTROLS !== 'undefined' ? CONTROLS : []).find(function(c) { return c.id === ctrlId; });
+  if (!ctrl || !ctrl.bl) return false;
+  if (ctrl.bl.indexOf(state.baseline) !== -1) return true;
+  if (state.privacyOverlay && ctrl.bl.indexOf('P') !== -1) return true;
+  return false;
+}
+
+function ensureControlScopeDefaults(ctrlId) {
+  if (!controlIsInActiveProgramBaseline(ctrlId)) return;
+  if (!state.controlStatus) state.controlStatus = {};
+  if (!state.controlStatus[ctrlId]) state.controlStatus[ctrlId] = {};
+  var cs = state.controlStatus[ctrlId];
+  if (controlScopeWasTouched(cs)) return;
+
+  var typeKeys = getControlScopeDefaultTypeKeys(ctrlId);
+  if (!typeKeys.length) return;
+
+  if (!cs.assetCoverage) cs.assetCoverage = {};
+  var changed = false;
+  typeKeys.forEach(function(k) {
+    if (!cs.assetCoverage[k]) {
+      cs.assetCoverage[k] = true;
+      changed = true;
+    }
+  });
+
+  if (typeKeys.indexOf(ISP_GOVERNANCE_TYPE_KEY) !== -1) {
+    var procId = findIsGovernanceProcessId();
+    if (procId) {
+      if (!cs.linkedProcesses) cs.linkedProcesses = [];
+      if (cs.linkedProcesses.indexOf(procId) === -1) {
+        cs.linkedProcesses.push(procId);
+        changed = true;
+      }
+    }
+  }
+
+  if ((!cs.status || cs.status === 'Not Started') && changed) {
+    cs.status = 'Planned';
+  }
+  if (changed && typeof markDirty === 'function') markDirty();
+}
+
+/** Seed defaults for all in-baseline controls that have not been scoped yet (e.g. after setup). */
+function seedAllControlScopeDefaults() {
+  if (!state.baseline || typeof getActiveControls !== 'function') return 0;
+  var n = 0;
+  getActiveControls().forEach(function(c) {
+    var before = controlScopeWasTouched(state.controlStatus[c.id] || {});
+    ensureControlScopeDefaults(c.id);
+    if (!before && controlScopeWasTouched(state.controlStatus[c.id] || {})) n++;
+  });
+  return n;
 }
 
 var ISP_GOVERNANCE_TYPE_KEY = 'proc_is_governance';
@@ -1534,20 +1598,7 @@ function controlScopeWasTouched(cs) {
 }
 
 function ensureIspOrganizationalDesignDefaults(ctrlId) {
-  if (!isIspOrganizationalControl(ctrlId)) return;
-  var cs = state.controlStatus[ctrlId];
-  if (!cs) return;
-  if (controlScopeWasTouched(cs)) return;
-  if (!cs.assetCoverage) cs.assetCoverage = {};
-  if (cs.assetCoverage[ISP_GOVERNANCE_TYPE_KEY]) return;
-  cs.assetCoverage[ISP_GOVERNANCE_TYPE_KEY] = true;
-  var procId = findIsGovernanceProcessId();
-  if (procId) {
-    if (!cs.linkedProcesses) cs.linkedProcesses = [];
-    if (cs.linkedProcesses.indexOf(procId) === -1) cs.linkedProcesses.push(procId);
-  }
-  if (!cs.status || cs.status === 'Not Started') cs.status = 'Planned';
-  markDirty();
+  ensureControlScopeDefaults(ctrlId);
 }
 
 function findIsGovernanceProcessId() {
@@ -2606,6 +2657,7 @@ function renderControlDetailForm(ctrl) {
       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);margin-bottom:4px;">Asset &amp; Process Scope</div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
         Identify which asset types and processes this control applies to. Your design must address how it works for <strong>each type you check</strong>. Assessors will validate coverage by asset type.
+        <span style="display:block;margin-top:6px;color:#475569;">Suggested defaults are pre-selected for your baseline — adjust, add, or clear any checkbox.</span>
       </div>
 
       ${((state.assets||[]).length > 0 || (state.processes||[]).length > 0) ? `
@@ -4770,3 +4822,7 @@ function setControlField(id, field, value) {
   if (!state.controlStatus[id]) state.controlStatus[id] = {};
   state.controlStatus[id][field] = value;
 }
+
+window.getControlScopeDefaultTypeKeys = getControlScopeDefaultTypeKeys;
+window.ensureControlScopeDefaults = ensureControlScopeDefaults;
+window.seedAllControlScopeDefaults = seedAllControlScopeDefaults;
