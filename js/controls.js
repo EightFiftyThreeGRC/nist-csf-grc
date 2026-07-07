@@ -3625,6 +3625,9 @@ function removeCustomAssetType(typeName) {
   markDirty();
   showToast('Removed asset type "' + clean + '"');
   renderControlStep2();
+  if (state._reportsLibraryView === 'assets' && typeof renderReportsLibraryShell === 'function') {
+    setTimeout(function() { renderReportsLibraryShell(); }, 0);
+  }
 }
 
 // Controls with COSAiS-aligned default AI asset types (see scripts/cosais-overlay-controls.json).

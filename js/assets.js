@@ -448,6 +448,9 @@ function applyAssetTypeChangeDirect(action, typeName, reason, groupName) {
   markDirty();
   showToast('Asset type ' + (normalizedAction === 'add' ? 'added' : 'removed') + '.');
   renderAssetTypeLibrary();
+  if (state._reportsLibraryView === 'assets' && typeof renderReportsLibraryShell === 'function') {
+    setTimeout(function() { renderReportsLibraryShell(); }, 0);
+  }
 }
 
 function removeAssetTypeHeader(headerName) {
