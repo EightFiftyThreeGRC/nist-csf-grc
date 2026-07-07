@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const CORE_PATH = path.join(ROOT, 'js', 'core.js');
 const RULES_PATH = path.join(ROOT, 'scripts', 'control-scope-defaults.rules.json');
+const COSAIS_PATH = path.join(ROOT, 'scripts', 'cosais-overlay-controls.json');
 const OUT_PATH = path.join(ROOT, 'js', 'control-scope-defaults.js');
 
 const BASELINE_COUNTS = { L: 149, M: 287, H: 370 };
@@ -60,7 +61,104 @@ function parentFamily(id) {
   return String(id || '').replace(/-\d.*/, '').replace(/\(.*/, '');
 }
 
-function buildDefaultsForControl(rules, ctrl) {
+/** Normalize COSAiS-style IDs (AC-06, SA-11(02)) to catalog ids (AC-6, SA-11(2)). */
+function normalizeCosaisControlId(raw, catalogIdSet) {
+  var id = String(raw || '').trim();
+  if (!id) return null;
+  if (catalogIdSet.has(id)) return id;
+  var upper = id.toUpperCase();
+  var m = upper.match(/^([A-Z]{2})-0*(\d+(?:\(\d+\))?)$/);
+  if (m) {
+    var enh = '';
+    var baseNum = m[2];
+    var paren = baseNum.match(/^(\d+)\((\d+)\)$/);
+    if (paren) {
+      baseNum = String(parseInt(paren[1], 10));
+      enh = '(' + parseInt(paren[2], 10) + ')';
+    }
+    var candidate = m[1] + '-' + baseNum + enh;
+    if (catalogIdSet.has(candidate)) return candidate;
+    for (var cid of catalogIdSet) {
+      if (cid.toUpperCase() === candidate) return cid;
+    }
+  }
+  for (var cid2 of catalogIdSet) {
+    if (cid2.toUpperCase() === upper) return cid2;
+  }
+  return null;
+}
+
+function resolveCosaisAssetTypes(cosais, row) {
+  if (!row) return [];
+  if (Array.isArray(row.assetTypes) && row.assetTypes.length) return row.assetTypes.slice();
+  if (row.preset && cosais.presets && Array.isArray(cosais.presets[row.preset])) {
+    return cosais.presets[row.preset].slice();
+  }
+  if (Array.isArray(row.useCases) && cosais.meta && cosais.meta.useCaseAssetTypes) {
+    var out = [];
+    row.useCases.forEach(function (uc) {
+      var types = cosais.meta.useCaseAssetTypes[uc];
+      if (types) out.push(...types);
+    });
+    return uniq(out);
+  }
+  return [];
+}
+
+function loadCosaisOverlay(catalogControls) {
+  if (!fs.existsSync(COSAIS_PATH)) return { byControl: {}, meta: {}, presets: {} };
+  const raw = JSON.parse(fs.readFileSync(COSAIS_PATH, 'utf8'));
+  const catalogIdSet = new Set(catalogControls.map(function (c) { return c.id; }));
+  const byControl = {};
+  var skipped = 0;
+  Object.keys(raw.byControl || {}).forEach(function (rawId) {
+    const canonical = normalizeCosaisControlId(rawId, catalogIdSet);
+    if (!canonical) {
+      console.warn('WARN COSAiS control not in catalog:', rawId);
+      skipped++;
+      return;
+    }
+    const row = raw.byControl[rawId];
+    byControl[canonical] = {
+      assetTypes: resolveCosaisAssetTypes(raw, row),
+      useCases: row.useCases || [],
+      source: row.source || '',
+    };
+  });
+  return {
+    meta: raw.meta || {},
+    presets: raw.presets || {},
+    byControl: mergeCosaisEnhancementsIntoBases(byControl),
+    skipped: skipped,
+  };
+}
+
+/** If an enhancement is in the overlay, merge its AI types onto the base control (e.g. SA-11(2) → SA-11). */
+function mergeCosaisEnhancementsIntoBases(byControl) {
+  const merged = Object.assign({}, byControl);
+  Object.keys(byControl).forEach(function (id) {
+    const m = id.match(/^(.+)\(\d+\)$/);
+    if (!m) return;
+    const baseId = m[1];
+    const enh = byControl[id];
+    if (!enh || !enh.assetTypes || !enh.assetTypes.length) return;
+    if (!merged[baseId]) {
+      merged[baseId] = { assetTypes: [], useCases: enh.useCases || [], source: 'merged from ' + id };
+    }
+    merged[baseId].assetTypes = uniq(merged[baseId].assetTypes.concat(enh.assetTypes));
+    merged[baseId].useCases = uniq((merged[baseId].useCases || []).concat(enh.useCases || []));
+  });
+  return merged;
+}
+
+function applyCosaisOverlay(cosais, ctrl, typeKeys) {
+  if (!cosais || !cosais.byControl) return typeKeys;
+  const row = cosais.byControl[ctrl.id];
+  if (!row || !row.assetTypes || !row.assetTypes.length) return typeKeys;
+  return uniq(typeKeys.concat(row.assetTypes));
+}
+
+function buildDefaultsForControl(rules, cosais, ctrl) {
   const overrides = (rules.controlOverrides || {})[ctrl.id] || {};
   let assetKeys = [];
   let processKeys = [];
@@ -92,7 +190,9 @@ function buildDefaultsForControl(rules, ctrl) {
     processKeys = processKeys.filter(function (k) { return !remove[k]; });
   }
 
-  return uniq(assetKeys.concat(processKeys));
+  var merged = uniq(assetKeys.concat(processKeys));
+  merged = applyCosaisOverlay(cosais, ctrl, merged);
+  return merged;
 }
 
 function countBaselined(controls) {
@@ -108,21 +208,32 @@ function countBaselined(controls) {
 function main() {
   const rules = JSON.parse(fs.readFileSync(RULES_PATH, 'utf8'));
   const controls = loadControlsCatalog();
+  const cosais = loadCosaisOverlay(controls);
   const baselined = countBaselined(controls.filter(function (c) {
     return (c.bl || []).some(function (b) { return b === 'L' || b === 'M' || b === 'H'; });
   }));
 
   const byControl = {};
+  const cosaisControls = [];
   let missing = 0;
+  let withAiDefaults = 0;
   controls.forEach(function (c) {
     const inLmh = (c.bl || []).some(function (b) { return b === 'L' || b === 'M' || b === 'H'; });
     if (!inLmh) return;
-    const types = buildDefaultsForControl(rules, c);
+    const types = buildDefaultsForControl(rules, cosais, c);
     if (!types.length) {
       missing++;
       console.warn('WARN no defaults for', c.id, '(' + c.f + ')');
     }
-    byControl[c.id] = { types: types, family: c.f, baselines: (c.bl || []).filter(function (b) { return b === 'L' || b === 'M' || b === 'H'; }) };
+    var aiTypes = types.filter(function (k) { return String(k).indexOf('ai_') === 0; });
+    if (aiTypes.length) withAiDefaults++;
+    if (cosais.byControl[c.id]) cosaisControls.push(c.id);
+    byControl[c.id] = {
+      types: types,
+      family: c.f,
+      baselines: (c.bl || []).filter(function (b) { return b === 'L' || b === 'M' || b === 'H'; }),
+      cosais: cosais.byControl[c.id] ? { assetTypes: aiTypes, useCases: cosais.byControl[c.id].useCases || [] } : null,
+    };
   });
 
   Object.keys(BASELINE_COUNTS).forEach(function (b) {
@@ -135,13 +246,18 @@ function main() {
 
   const payload = {
     meta: {
-      version: 1,
+      version: 2,
       generatedAt: new Date().toISOString().slice(0, 10),
       sourceRules: 'scripts/control-scope-defaults.rules.json',
+      cosaisOverlay: 'scripts/cosais-overlay-controls.json',
       controlCount: Object.keys(byControl).length,
+      cosaisControlCount: cosaisControls.length,
+      controlsWithAiDefaults: withAiDefaults,
       baselinedCounts: baselined,
       emptyDefaults: missing,
+      cosaisSkipped: cosais.skipped || 0,
     },
+    cosaisControls: cosaisControls.sort(),
     byControl: byControl,
   };
 
@@ -155,8 +271,11 @@ function main() {
   fs.writeFileSync(OUT_PATH, js, 'utf8');
   console.log('Wrote ' + OUT_PATH);
   console.log('Controls with defaults:', Object.keys(byControl).length);
+  console.log('COSAiS overlay controls mapped:', cosaisControls.length);
+  console.log('Controls with AI type defaults:', withAiDefaults);
   console.log('Baselined counts L/M/H:', baselined.L + '/' + baselined.M + '/' + baselined.H);
   if (missing) console.log('Controls with empty defaults:', missing);
+  if (cosais.skipped) console.log('COSAiS controls skipped (not in catalog):', cosais.skipped);
 }
 
 main();

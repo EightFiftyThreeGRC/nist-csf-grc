@@ -48,8 +48,10 @@ const ASSET_TYPES = [
     { key: 'proc_awareness',     label: 'Security Awareness & Training' },
   ]},
   // COSAiS-aligned themes (NIST SP 800-53 Control Overlays for Securing AI Systems — use cases, not new control IDs).
+  // Use cases: UC1 Gen AI/LLM · UC2 Predictive/fine-tune · UC3 Single agent · UC4 Multi-agent · UC5 AI developers (SP 800-218A).
   { category: 'Artificial Intelligence / ML Systems', types: [
-    { key: 'ai_gen_assistant',   label: 'Generative AI — Assistant / LLM Deployment' },
+    { key: 'ai_gen_assistant',   label: 'Generative AI — Assistant / LLM (prompt & completion)' },
+    { key: 'ai_gen_rag',         label: 'Generative AI — LLM with RAG / Enterprise Retrieval' },
     { key: 'ai_predictive_ft',   label: 'Predictive ML — Including Fine-Tuned Models' },
     { key: 'ai_agent_single',    label: 'AI Agent — Single-Agent Orchestration' },
     { key: 'ai_agent_multi',     label: 'AI Agent — Multi-Agent' },

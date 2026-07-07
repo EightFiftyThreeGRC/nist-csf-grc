@@ -2,17 +2,67 @@
 // Regenerate after editing scripts/control-scope-defaults.rules.json
 var CONTROL_SCOPE_DEFAULTS = {
   "meta": {
-    "version": 1,
+    "version": 2,
     "generatedAt": "2026-07-07",
     "sourceRules": "scripts/control-scope-defaults.rules.json",
+    "cosaisOverlay": "scripts/cosais-overlay-controls.json",
     "controlCount": 407,
+    "cosaisControlCount": 44,
+    "controlsWithAiDefaults": 44,
     "baselinedCounts": {
       "L": 186,
       "M": 324,
       "H": 407
     },
-    "emptyDefaults": 0
+    "emptyDefaults": 0,
+    "cosaisSkipped": 0
   },
+  "cosaisControls": [
+    "AC-2",
+    "AC-22",
+    "AC-3",
+    "AC-6",
+    "AU-2",
+    "AU-6",
+    "CA-3",
+    "CA-7",
+    "CA-8",
+    "CM-2",
+    "CM-3",
+    "CM-4",
+    "CM-4(1)",
+    "CM-5",
+    "CM-6",
+    "IA-2",
+    "IA-5",
+    "IA-8",
+    "PE-14",
+    "PE-9",
+    "PL-8",
+    "RA-3",
+    "RA-5",
+    "SA-10",
+    "SA-11",
+    "SA-15",
+    "SA-17",
+    "SA-3",
+    "SA-8",
+    "SC-23",
+    "SC-28",
+    "SC-39",
+    "SC-5",
+    "SC-7",
+    "SI-10",
+    "SI-12",
+    "SI-3",
+    "SI-4",
+    "SI-4(2)",
+    "SI-7",
+    "SI-7(5)",
+    "SR-11",
+    "SR-3",
+    "SR-5"
+  ],
   "byControl": {
     "AC-1": {
       "types": [
@@ -23,7 +73,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2": {
       "types": [
@@ -38,14 +89,29 @@ var CONTROL_SCOPE_DEFAULTS = {
         "iam_service_acct",
         "app_internal_ext",
         "app_cots_ext",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "AC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": []
+      }
     },
     "AC-2(1)": {
       "types": [
@@ -64,7 +130,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(2)": {
       "types": [
@@ -83,7 +150,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(3)": {
       "types": [
@@ -102,7 +170,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(4)": {
       "types": [
@@ -121,7 +190,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(5)": {
       "types": [
@@ -140,7 +210,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(11)": {
       "types": [
@@ -158,7 +229,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(12)": {
       "types": [
@@ -176,7 +248,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-2(13)": {
       "types": [
@@ -195,7 +268,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-3": {
       "types": [
@@ -208,14 +282,34 @@ var CONTROL_SCOPE_DEFAULTS = {
         "endpoint_vdi",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "AC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "genAI_LLM",
+          "predictive",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "AC-4": {
       "types": [
@@ -234,7 +328,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-4(4)": {
       "types": [
@@ -252,7 +347,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-5": {
       "types": [
@@ -271,7 +367,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6": {
       "types": [
@@ -284,13 +381,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "endpoint_vdi",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "AC",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "AC-6(1)": {
       "types": [
@@ -309,7 +426,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(2)": {
       "types": [
@@ -328,7 +446,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(3)": {
       "types": [
@@ -346,7 +465,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(5)": {
       "types": [
@@ -365,7 +485,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(7)": {
       "types": [
@@ -384,7 +505,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(9)": {
       "types": [
@@ -403,7 +525,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-6(10)": {
       "types": [
@@ -422,7 +545,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-7": {
       "types": [
@@ -442,7 +566,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-8": {
       "types": [
@@ -462,7 +587,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-10": {
       "types": [
@@ -480,7 +606,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-11": {
       "types": [
@@ -499,7 +626,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-11(1)": {
       "types": [
@@ -518,7 +646,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-12": {
       "types": [
@@ -537,7 +666,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-14": {
       "types": [
@@ -557,7 +687,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-17": {
       "types": [
@@ -577,7 +708,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-17(1)": {
       "types": [
@@ -596,7 +728,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-17(2)": {
       "types": [
@@ -615,7 +748,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-17(3)": {
       "types": [
@@ -634,7 +768,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-17(4)": {
       "types": [
@@ -653,7 +788,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-18": {
       "types": [
@@ -673,7 +809,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-18(1)": {
       "types": [
@@ -692,7 +829,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-18(3)": {
       "types": [
@@ -711,7 +849,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-18(4)": {
       "types": [
@@ -729,7 +868,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-18(5)": {
       "types": [
@@ -747,7 +887,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-19": {
       "types": [
@@ -767,7 +908,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-19(5)": {
       "types": [
@@ -786,7 +928,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-20": {
       "types": [
@@ -806,7 +949,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-20(1)": {
       "types": [
@@ -825,7 +969,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-20(2)": {
       "types": [
@@ -844,7 +989,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-21": {
       "types": [
@@ -863,7 +1009,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AC-22": {
       "types": [
@@ -876,14 +1023,27 @@ var CONTROL_SCOPE_DEFAULTS = {
         "endpoint_vdi",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft"
       ],
       "family": "AC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft"
+        ],
+        "useCases": [
+          "genAI_LLM"
+        ]
+      }
     },
     "AT-1": {
       "types": [
@@ -894,7 +1054,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AT-2": {
       "types": [
@@ -909,7 +1070,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AT-2(2)": {
       "types": [
@@ -924,7 +1086,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AT-2(3)": {
       "types": [
@@ -938,7 +1101,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AT-3": {
       "types": [
@@ -953,7 +1117,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AT-4": {
       "types": [
@@ -968,7 +1133,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-1": {
       "types": [
@@ -979,7 +1145,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-2": {
       "types": [
@@ -990,14 +1157,34 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_network",
         "infra_cloud_iaas",
         "infra_storage",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "AU",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "AU-3": {
       "types": [
@@ -1015,7 +1202,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-3(1)": {
       "types": [
@@ -1032,7 +1220,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-4": {
       "types": [
@@ -1050,7 +1239,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-5": {
       "types": [
@@ -1068,7 +1258,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-5(1)": {
       "types": [
@@ -1084,7 +1275,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-5(2)": {
       "types": [
@@ -1100,7 +1292,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-6": {
       "types": [
@@ -1111,14 +1304,34 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_network",
         "infra_cloud_iaas",
         "infra_storage",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "AU",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "AU-6(1)": {
       "types": [
@@ -1135,7 +1348,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-6(3)": {
       "types": [
@@ -1152,7 +1366,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-6(5)": {
       "types": [
@@ -1168,7 +1383,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-6(6)": {
       "types": [
@@ -1184,7 +1400,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-7": {
       "types": [
@@ -1201,7 +1418,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-7(1)": {
       "types": [
@@ -1218,7 +1436,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-8": {
       "types": [
@@ -1236,7 +1455,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-9": {
       "types": [
@@ -1254,7 +1474,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-9(2)": {
       "types": [
@@ -1270,7 +1491,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-9(3)": {
       "types": [
@@ -1286,7 +1508,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-9(4)": {
       "types": [
@@ -1303,7 +1526,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-10": {
       "types": [
@@ -1319,7 +1543,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-11": {
       "types": [
@@ -1337,7 +1562,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-12": {
       "types": [
@@ -1355,7 +1581,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-12(1)": {
       "types": [
@@ -1371,7 +1598,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "AU-12(3)": {
       "types": [
@@ -1387,7 +1615,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "AU",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-1": {
       "types": [
@@ -1398,7 +1627,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-2": {
       "types": [
@@ -1417,7 +1647,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-2(1)": {
       "types": [
@@ -1435,7 +1666,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-2(2)": {
       "types": [
@@ -1452,7 +1684,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-3": {
       "types": [
@@ -1464,14 +1697,32 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_cloud_iaas",
         "infra_storage",
         "proc_is_governance",
-        "proc_risk_mgmt"
+        "proc_risk_mgmt",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "CA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "CA-3(6)": {
       "types": [
@@ -1488,7 +1739,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-5": {
       "types": [
@@ -1507,7 +1759,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-6": {
       "types": [
@@ -1526,7 +1779,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-7": {
       "types": [
@@ -1538,14 +1792,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_cloud_iaas",
         "infra_storage",
         "proc_is_governance",
-        "proc_risk_mgmt"
+        "proc_risk_mgmt",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "CA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle"
+        ]
+      }
     },
     "CA-7(1)": {
       "types": [
@@ -1563,7 +1836,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-7(4)": {
       "types": [
@@ -1582,7 +1856,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-8": {
       "types": [
@@ -1594,12 +1869,24 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_cloud_iaas",
         "infra_storage",
         "proc_is_governance",
-        "proc_risk_mgmt"
+        "proc_risk_mgmt",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CA-8(1)": {
       "types": [
@@ -1616,7 +1903,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CA-9": {
       "types": [
@@ -1635,7 +1923,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-1": {
       "types": [
@@ -1646,7 +1935,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-2": {
       "types": [
@@ -1658,14 +1948,26 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-2(2)": {
       "types": [
@@ -1683,7 +1985,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-2(3)": {
       "types": [
@@ -1701,7 +2004,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-2(7)": {
       "types": [
@@ -1719,7 +2023,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-3": {
       "types": [
@@ -1731,13 +2036,25 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-3(1)": {
       "types": [
@@ -1754,7 +2071,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-3(2)": {
       "types": [
@@ -1772,7 +2090,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-3(4)": {
       "types": [
@@ -1790,7 +2109,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-3(6)": {
       "types": [
@@ -1807,7 +2127,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-4": {
       "types": [
@@ -1819,14 +2140,26 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-4(1)": {
       "types": [
@@ -1838,12 +2171,24 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-4(2)": {
       "types": [
@@ -1861,7 +2206,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-5": {
       "types": [
@@ -1873,14 +2219,26 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-5(1)": {
       "types": [
@@ -1897,7 +2255,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-6": {
       "types": [
@@ -1909,14 +2268,26 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "CM",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "CM-6(1)": {
       "types": [
@@ -1933,7 +2304,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-6(2)": {
       "types": [
@@ -1950,7 +2322,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-7": {
       "types": [
@@ -1969,7 +2342,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-7(1)": {
       "types": [
@@ -1987,7 +2361,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-7(2)": {
       "types": [
@@ -2005,7 +2380,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-7(5)": {
       "types": [
@@ -2023,7 +2399,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-8": {
       "types": [
@@ -2042,7 +2419,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-8(1)": {
       "types": [
@@ -2060,7 +2438,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-8(2)": {
       "types": [
@@ -2077,7 +2456,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-8(3)": {
       "types": [
@@ -2095,7 +2475,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-8(4)": {
       "types": [
@@ -2112,7 +2493,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CM",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-9": {
       "types": [
@@ -2130,7 +2512,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-10": {
       "types": [
@@ -2149,7 +2532,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-11": {
       "types": [
@@ -2168,7 +2552,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-12": {
       "types": [
@@ -2186,7 +2571,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CM-12(1)": {
       "types": [
@@ -2204,7 +2590,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-1": {
       "types": [
@@ -2215,7 +2602,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2": {
       "types": [
@@ -2231,7 +2619,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2(1)": {
       "types": [
@@ -2246,7 +2635,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2(2)": {
       "types": [
@@ -2260,7 +2650,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2(3)": {
       "types": [
@@ -2275,7 +2666,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2(5)": {
       "types": [
@@ -2289,7 +2681,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-2(8)": {
       "types": [
@@ -2304,7 +2697,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-3": {
       "types": [
@@ -2320,7 +2714,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-3(1)": {
       "types": [
@@ -2334,7 +2729,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-4": {
       "types": [
@@ -2350,7 +2746,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-4(1)": {
       "types": [
@@ -2365,7 +2762,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-4(2)": {
       "types": [
@@ -2379,7 +2777,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-6": {
       "types": [
@@ -2394,7 +2793,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-6(1)": {
       "types": [
@@ -2409,7 +2809,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-6(2)": {
       "types": [
@@ -2423,7 +2824,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-6(3)": {
       "types": [
@@ -2438,7 +2840,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-7": {
       "types": [
@@ -2453,7 +2856,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-7(1)": {
       "types": [
@@ -2468,7 +2872,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-7(2)": {
       "types": [
@@ -2483,7 +2888,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-7(3)": {
       "types": [
@@ -2498,7 +2904,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-7(4)": {
       "types": [
@@ -2512,7 +2919,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-8": {
       "types": [
@@ -2527,7 +2935,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-8(1)": {
       "types": [
@@ -2542,7 +2951,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-8(2)": {
       "types": [
@@ -2557,7 +2967,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-8(3)": {
       "types": [
@@ -2571,7 +2982,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-8(4)": {
       "types": [
@@ -2585,7 +2997,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9": {
       "types": [
@@ -2601,7 +3014,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9(1)": {
       "types": [
@@ -2616,7 +3030,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9(2)": {
       "types": [
@@ -2630,7 +3045,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9(3)": {
       "types": [
@@ -2644,7 +3060,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9(5)": {
       "types": [
@@ -2658,7 +3075,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-9(8)": {
       "types": [
@@ -2673,7 +3091,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-10": {
       "types": [
@@ -2689,7 +3108,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-10(2)": {
       "types": [
@@ -2704,7 +3124,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "CP-10(4)": {
       "types": [
@@ -2718,7 +3139,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "CP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-1": {
       "types": [
@@ -2729,7 +3151,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-2": {
       "types": [
@@ -2738,14 +3161,34 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_saas",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "IA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "genAI_LLM",
+          "predictive",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "IA-2(1)": {
       "types": [
@@ -2761,7 +3204,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-2(2)": {
       "types": [
@@ -2777,7 +3221,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-2(5)": {
       "types": [
@@ -2791,7 +3236,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-2(8)": {
       "types": [
@@ -2807,7 +3253,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-2(12)": {
       "types": [
@@ -2823,7 +3270,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-3": {
       "types": [
@@ -2838,7 +3286,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-4": {
       "types": [
@@ -2854,7 +3303,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-4(4)": {
       "types": [
@@ -2869,7 +3319,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-5": {
       "types": [
@@ -2878,14 +3329,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_saas",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "IA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "genAI_LLM",
+          "predictive",
+          "agentSingle"
+        ]
+      }
     },
     "IA-5(1)": {
       "types": [
@@ -2901,7 +3371,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-5(2)": {
       "types": [
@@ -2916,7 +3387,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-5(6)": {
       "types": [
@@ -2931,7 +3403,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-6": {
       "types": [
@@ -2947,7 +3420,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-7": {
       "types": [
@@ -2963,7 +3437,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-8": {
       "types": [
@@ -2972,14 +3447,32 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_saas",
         "iam_idp",
         "iam_service_acct",
-        "proc_iam"
+        "proc_iam",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "IA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "IA-8(1)": {
       "types": [
@@ -2995,7 +3488,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-8(2)": {
       "types": [
@@ -3011,7 +3505,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-8(4)": {
       "types": [
@@ -3027,7 +3522,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-11": {
       "types": [
@@ -3043,7 +3539,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-12": {
       "types": [
@@ -3058,7 +3555,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-12(2)": {
       "types": [
@@ -3073,7 +3571,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-12(3)": {
       "types": [
@@ -3088,7 +3587,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-12(4)": {
       "types": [
@@ -3102,7 +3602,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IA-12(5)": {
       "types": [
@@ -3117,7 +3618,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-1": {
       "types": [
@@ -3128,7 +3630,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-2": {
       "types": [
@@ -3146,7 +3649,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-2(1)": {
       "types": [
@@ -3162,7 +3666,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-2(2)": {
       "types": [
@@ -3178,7 +3683,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-3": {
       "types": [
@@ -3195,7 +3701,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-3(2)": {
       "types": [
@@ -3212,7 +3719,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-4": {
       "types": [
@@ -3230,7 +3738,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-4(1)": {
       "types": [
@@ -3247,7 +3756,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-4(4)": {
       "types": [
@@ -3263,7 +3773,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-4(11)": {
       "types": [
@@ -3279,7 +3790,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-5": {
       "types": [
@@ -3297,7 +3809,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-5(1)": {
       "types": [
@@ -3313,7 +3826,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "IR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-6": {
       "types": [
@@ -3331,7 +3845,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-6(1)": {
       "types": [
@@ -3348,7 +3863,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-6(3)": {
       "types": [
@@ -3365,7 +3881,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-7": {
       "types": [
@@ -3383,7 +3900,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-7(1)": {
       "types": [
@@ -3400,7 +3918,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "IR-8": {
       "types": [
@@ -3418,7 +3937,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-1": {
       "types": [
@@ -3429,7 +3949,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-2": {
       "types": [
@@ -3448,7 +3969,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-2(2)": {
       "types": [
@@ -3465,7 +3987,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-3": {
       "types": [
@@ -3483,7 +4006,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-3(1)": {
       "types": [
@@ -3501,7 +4025,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-3(2)": {
       "types": [
@@ -3519,7 +4044,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-3(3)": {
       "types": [
@@ -3537,7 +4063,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-4": {
       "types": [
@@ -3556,7 +4083,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-4(3)": {
       "types": [
@@ -3573,7 +4101,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-5": {
       "types": [
@@ -3592,7 +4121,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-5(1)": {
       "types": [
@@ -3609,7 +4139,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MA-6": {
       "types": [
@@ -3627,7 +4158,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-1": {
       "types": [
@@ -3638,7 +4170,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-2": {
       "types": [
@@ -3657,7 +4190,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-3": {
       "types": [
@@ -3675,7 +4209,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-4": {
       "types": [
@@ -3693,7 +4228,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-5": {
       "types": [
@@ -3711,7 +4247,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-6": {
       "types": [
@@ -3730,7 +4267,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-6(1)": {
       "types": [
@@ -3747,7 +4285,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-6(2)": {
       "types": [
@@ -3764,7 +4303,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-6(3)": {
       "types": [
@@ -3781,7 +4321,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "MP",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "MP-7": {
       "types": [
@@ -3800,7 +4341,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-1": {
       "types": [
@@ -3811,7 +4353,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-2": {
       "types": [
@@ -3830,7 +4373,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-3": {
       "types": [
@@ -3849,7 +4393,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-3(1)": {
       "types": [
@@ -3866,7 +4411,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-4": {
       "types": [
@@ -3884,7 +4430,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-5": {
       "types": [
@@ -3902,7 +4449,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-6": {
       "types": [
@@ -3921,7 +4469,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-6(1)": {
       "types": [
@@ -3939,7 +4488,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-6(4)": {
       "types": [
@@ -3956,7 +4506,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-8": {
       "types": [
@@ -3975,7 +4526,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-8(1)": {
       "types": [
@@ -3992,7 +4544,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-9": {
       "types": [
@@ -4004,13 +4557,24 @@ var CONTROL_SCOPE_DEFAULTS = {
         "endpoint_mac_linux",
         "endpoint_mobile",
         "endpoint_vdi",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "PE",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive"
+        ]
+      }
     },
     "PE-10": {
       "types": [
@@ -4028,7 +4592,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-11": {
       "types": [
@@ -4046,7 +4611,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-11(1)": {
       "types": [
@@ -4063,7 +4629,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-12": {
       "types": [
@@ -4082,7 +4649,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-13": {
       "types": [
@@ -4101,7 +4669,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-13(1)": {
       "types": [
@@ -4119,7 +4688,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-13(2)": {
       "types": [
@@ -4136,7 +4706,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-14": {
       "types": [
@@ -4148,14 +4719,25 @@ var CONTROL_SCOPE_DEFAULTS = {
         "endpoint_mac_linux",
         "endpoint_mobile",
         "endpoint_vdi",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "PE",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive"
+        ]
+      }
     },
     "PE-15": {
       "types": [
@@ -4174,7 +4756,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-15(1)": {
       "types": [
@@ -4191,7 +4774,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-16": {
       "types": [
@@ -4210,7 +4794,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-17": {
       "types": [
@@ -4228,7 +4813,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PE-18": {
       "types": [
@@ -4245,7 +4831,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PE",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-1": {
       "types": [
@@ -4256,7 +4843,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-2": {
       "types": [
@@ -4268,7 +4856,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-4": {
       "types": [
@@ -4280,7 +4869,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-4(1)": {
       "types": [
@@ -4292,18 +4882,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-8": {
       "types": [
         "proc_is_governance",
-        "proc_risk_mgmt"
+        "proc_risk_mgmt",
+        "ai_dev_toolchain",
+        "ai_gen_assistant",
+        "ai_predictive_ft"
       ],
       "family": "PL",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_gen_assistant",
+          "ai_predictive_ft"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "genAI_LLM"
+        ]
+      }
     },
     "PL-10": {
       "types": [
@@ -4315,7 +4920,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PL-11": {
       "types": [
@@ -4327,7 +4933,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-1": {
       "types": [
@@ -4338,7 +4945,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-2": {
       "types": [
@@ -4350,7 +4958,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-3": {
       "types": [
@@ -4362,7 +4971,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-4": {
       "types": [
@@ -4374,7 +4984,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-5": {
       "types": [
@@ -4386,7 +4997,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-5(1)": {
       "types": [
@@ -4398,7 +5010,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-6": {
       "types": [
@@ -4410,7 +5023,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-7": {
       "types": [
@@ -4422,7 +5036,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-7(1)": {
       "types": [
@@ -4434,7 +5049,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-8": {
       "types": [
@@ -4446,7 +5062,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-9": {
       "types": [
@@ -4458,7 +5075,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-10": {
       "types": [
@@ -4470,7 +5088,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-11": {
       "types": [
@@ -4482,7 +5101,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-12": {
       "types": [
@@ -4494,7 +5114,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-13": {
       "types": [
@@ -4506,7 +5127,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-14": {
       "types": [
@@ -4518,7 +5140,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-15": {
       "types": [
@@ -4530,7 +5153,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-16": {
       "types": [
@@ -4542,7 +5166,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-16(1)": {
       "types": [
@@ -4554,7 +5179,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-17": {
       "types": [
@@ -4566,7 +5192,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-18": {
       "types": [
@@ -4578,7 +5205,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-19": {
       "types": [
@@ -4590,7 +5218,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-20": {
       "types": [
@@ -4602,7 +5231,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-20(1)": {
       "types": [
@@ -4614,7 +5244,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-21": {
       "types": [
@@ -4626,7 +5257,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-22": {
       "types": [
@@ -4638,7 +5270,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-23": {
       "types": [
@@ -4650,7 +5283,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-24": {
       "types": [
@@ -4662,7 +5296,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-25": {
       "types": [
@@ -4674,7 +5309,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-26": {
       "types": [
@@ -4686,7 +5322,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-27": {
       "types": [
@@ -4698,7 +5335,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-28": {
       "types": [
@@ -4710,7 +5348,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-29": {
       "types": [
@@ -4722,7 +5361,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-30": {
       "types": [
@@ -4734,7 +5374,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-30(1)": {
       "types": [
@@ -4746,7 +5387,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-31": {
       "types": [
@@ -4758,7 +5400,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PM-32": {
       "types": [
@@ -4770,7 +5413,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-1": {
       "types": [
@@ -4781,7 +5425,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-2": {
       "types": [
@@ -4796,7 +5441,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-3": {
       "types": [
@@ -4811,7 +5457,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-4": {
       "types": [
@@ -4826,7 +5473,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-4(2)": {
       "types": [
@@ -4839,7 +5487,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "PS",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-5": {
       "types": [
@@ -4854,7 +5503,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-6": {
       "types": [
@@ -4869,7 +5519,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-7": {
       "types": [
@@ -4884,7 +5535,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-8": {
       "types": [
@@ -4899,7 +5551,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "PS-9": {
       "types": [
@@ -4914,7 +5567,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-1": {
       "types": [
@@ -4925,7 +5579,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-2": {
       "types": [
@@ -4944,7 +5599,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-3": {
       "types": [
@@ -4956,14 +5612,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_cloud_iaas",
         "infra_storage",
         "proc_risk_mgmt",
-        "proc_vuln_mgmt"
+        "proc_vuln_mgmt",
+        "ai_predictive_ft",
+        "ai_gen_assistant",
+        "ai_gen_rag"
       ],
       "family": "RA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_gen_assistant",
+          "ai_gen_rag"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "RA-3(1)": {
       "types": [
@@ -4982,7 +5652,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-5": {
       "types": [
@@ -4994,14 +5665,26 @@ var CONTROL_SCOPE_DEFAULTS = {
         "infra_cloud_iaas",
         "infra_storage",
         "proc_risk_mgmt",
-        "proc_vuln_mgmt"
+        "proc_vuln_mgmt",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "RA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "RA-5(2)": {
       "types": [
@@ -5020,7 +5703,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-5(4)": {
       "types": [
@@ -5037,7 +5721,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "RA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-5(5)": {
       "types": [
@@ -5055,7 +5740,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-5(11)": {
       "types": [
@@ -5074,7 +5760,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-7": {
       "types": [
@@ -5093,7 +5780,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "RA-9": {
       "types": [
@@ -5111,7 +5799,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-1": {
       "types": [
@@ -5122,7 +5811,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-2": {
       "types": [
@@ -5142,7 +5832,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-3": {
       "types": [
@@ -5155,14 +5846,27 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper"
+        ]
+      }
     },
     "SA-4": {
       "types": [
@@ -5182,7 +5886,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-4(1)": {
       "types": [
@@ -5201,7 +5906,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-4(2)": {
       "types": [
@@ -5220,7 +5926,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-4(5)": {
       "types": [
@@ -5238,7 +5945,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-4(9)": {
       "types": [
@@ -5257,7 +5965,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-4(10)": {
       "types": [
@@ -5277,7 +5986,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-5": {
       "types": [
@@ -5297,7 +6007,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-8": {
       "types": [
@@ -5310,14 +6021,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SA",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SA-9": {
       "types": [
@@ -5337,7 +6062,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-9(2)": {
       "types": [
@@ -5356,7 +6082,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-10": {
       "types": [
@@ -5369,13 +6096,27 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SA",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SA-11": {
       "types": [
@@ -5388,13 +6129,25 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "SA",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SA-15": {
       "types": [
@@ -5407,13 +6160,25 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_dev_toolchain"
       ],
       "family": "SA",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_dev_toolchain"
+        ],
+        "useCases": [
+          "predictive",
+          "aiDeveloper"
+        ]
+      }
     },
     "SA-15(3)": {
       "types": [
@@ -5432,7 +6197,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-16": {
       "types": [
@@ -5450,7 +6216,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-17": {
       "types": [
@@ -5463,12 +6230,25 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_supply_chain",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper"
+        ]
+      }
     },
     "SA-21": {
       "types": [
@@ -5486,7 +6266,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SA",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SA-22": {
       "types": [
@@ -5506,7 +6287,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-1": {
       "types": [
@@ -5517,7 +6299,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-2": {
       "types": [
@@ -5535,7 +6318,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-3": {
       "types": [
@@ -5552,7 +6336,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-4": {
       "types": [
@@ -5570,7 +6355,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-5": {
       "types": [
@@ -5582,14 +6368,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_internal_int",
         "app_cots_int",
         "app_saas",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_gen_assistant",
+        "ai_gen_rag"
       ],
       "family": "SC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_gen_assistant",
+          "ai_gen_rag"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "SC-7": {
       "types": [
@@ -5601,14 +6401,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_internal_int",
         "app_cots_int",
         "app_saas",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_gen_assistant",
+        "ai_gen_rag"
       ],
       "family": "SC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_gen_assistant",
+          "ai_gen_rag"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "SC-7(3)": {
       "types": [
@@ -5626,7 +6440,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(4)": {
       "types": [
@@ -5644,7 +6459,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(5)": {
       "types": [
@@ -5662,7 +6478,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(7)": {
       "types": [
@@ -5680,7 +6497,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(8)": {
       "types": [
@@ -5698,7 +6516,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(18)": {
       "types": [
@@ -5715,7 +6534,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-7(21)": {
       "types": [
@@ -5732,7 +6552,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-8": {
       "types": [
@@ -5750,7 +6571,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-8(1)": {
       "types": [
@@ -5768,7 +6590,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-10": {
       "types": [
@@ -5786,7 +6609,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-12": {
       "types": [
@@ -5805,7 +6629,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-12(1)": {
       "types": [
@@ -5822,7 +6647,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-13": {
       "types": [
@@ -5841,7 +6667,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-15": {
       "types": [
@@ -5860,7 +6687,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-17": {
       "types": [
@@ -5878,7 +6706,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-18": {
       "types": [
@@ -5896,7 +6725,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-20": {
       "types": [
@@ -5915,7 +6745,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-21": {
       "types": [
@@ -5934,7 +6765,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-22": {
       "types": [
@@ -5953,7 +6785,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-23": {
       "types": [
@@ -5965,13 +6798,31 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_internal_int",
         "app_cots_int",
         "app_saas",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SC",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "genAI_LLM",
+          "agentSingle"
+        ]
+      }
     },
     "SC-24": {
       "types": [
@@ -5988,7 +6839,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SC",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-28": {
       "types": [
@@ -6000,13 +6852,32 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_internal_int",
         "app_cots_int",
         "app_saas",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SC",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "aiDeveloper"
+        ]
+      }
     },
     "SC-28(1)": {
       "types": [
@@ -6024,7 +6895,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SC-39": {
       "types": [
@@ -6036,14 +6908,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "app_internal_int",
         "app_cots_int",
         "app_saas",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SC",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle"
+        ]
+      }
     },
     "SI-1": {
       "types": [
@@ -6054,7 +6945,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-2": {
       "types": [
@@ -6076,7 +6968,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-2(2)": {
       "types": [
@@ -6097,7 +6990,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-3": {
       "types": [
@@ -6112,14 +7006,29 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_predictive_ft",
+        "ai_gen_assistant",
+        "ai_agent_single"
       ],
       "family": "SI",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_predictive_ft",
+          "ai_gen_assistant",
+          "ai_agent_single"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle"
+        ]
+      }
     },
     "SI-4": {
       "types": [
@@ -6134,14 +7043,34 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SI",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "SI-4(2)": {
       "types": [
@@ -6156,13 +7085,32 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SI",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle"
+        ]
+      }
     },
     "SI-4(4)": {
       "types": [
@@ -6183,7 +7131,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(5)": {
       "types": [
@@ -6204,7 +7153,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(10)": {
       "types": [
@@ -6224,7 +7174,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(12)": {
       "types": [
@@ -6244,7 +7195,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(14)": {
       "types": [
@@ -6264,7 +7216,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(20)": {
       "types": [
@@ -6284,7 +7237,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-4(22)": {
       "types": [
@@ -6304,7 +7258,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-5": {
       "types": [
@@ -6326,7 +7281,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-5(1)": {
       "types": [
@@ -6346,7 +7302,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-6": {
       "types": [
@@ -6366,7 +7323,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-7": {
       "types": [
@@ -6381,13 +7339,32 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SI",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "aiDeveloper"
+        ]
+      }
     },
     "SI-7(1)": {
       "types": [
@@ -6408,7 +7385,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-7(2)": {
       "types": [
@@ -6428,7 +7406,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-7(5)": {
       "types": [
@@ -6443,12 +7422,30 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "SI-7(7)": {
       "types": [
@@ -6469,7 +7466,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-7(15)": {
       "types": [
@@ -6489,7 +7487,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SI",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-8": {
       "types": [
@@ -6510,7 +7509,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-8(2)": {
       "types": [
@@ -6531,7 +7531,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-10": {
       "types": [
@@ -6546,13 +7547,33 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft",
+        "ai_agent_single",
+        "ai_agent_multi"
       ],
       "family": "SI",
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft",
+          "ai_agent_single",
+          "ai_agent_multi"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM",
+          "agentSingle",
+          "agentMulti"
+        ]
+      }
     },
     "SI-11": {
       "types": [
@@ -6573,7 +7594,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SI-12": {
       "types": [
@@ -6588,14 +7610,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_repo",
         "devops_container",
         "proc_vuln_mgmt",
-        "proc_config_change"
+        "proc_config_change",
+        "ai_gen_assistant",
+        "ai_gen_rag",
+        "ai_predictive_ft"
       ],
       "family": "SI",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_gen_assistant",
+          "ai_gen_rag",
+          "ai_predictive_ft"
+        ],
+        "useCases": [
+          "predictive",
+          "genAI_LLM"
+        ]
+      }
     },
     "SI-16": {
       "types": [
@@ -6616,7 +7652,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-1": {
       "types": [
@@ -6627,7 +7664,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-2": {
       "types": [
@@ -6646,7 +7684,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-2(1)": {
       "types": [
@@ -6665,7 +7704,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-3": {
       "types": [
@@ -6677,14 +7717,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_supply_chain"
+        "proc_supply_chain",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SR",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SR-5": {
       "types": [
@@ -6696,14 +7750,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_supply_chain"
+        "proc_supply_chain",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SR",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SR-6": {
       "types": [
@@ -6721,7 +7789,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "baselines": [
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-8": {
       "types": [
@@ -6740,7 +7809,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-9": {
       "types": [
@@ -6757,7 +7827,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-9(1)": {
       "types": [
@@ -6774,7 +7845,8 @@ var CONTROL_SCOPE_DEFAULTS = {
       "family": "SR",
       "baselines": [
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-10": {
       "types": [
@@ -6793,7 +7865,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-11": {
       "types": [
@@ -6805,14 +7878,28 @@ var CONTROL_SCOPE_DEFAULTS = {
         "devops_cicd",
         "devops_repo",
         "devops_container",
-        "proc_supply_chain"
+        "proc_supply_chain",
+        "ai_dev_toolchain",
+        "ai_predictive_ft",
+        "ai_gen_assistant"
       ],
       "family": "SR",
       "baselines": [
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": {
+        "assetTypes": [
+          "ai_dev_toolchain",
+          "ai_predictive_ft",
+          "ai_gen_assistant"
+        ],
+        "useCases": [
+          "aiDeveloper",
+          "predictive"
+        ]
+      }
     },
     "SR-11(1)": {
       "types": [
@@ -6831,7 +7918,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-11(2)": {
       "types": [
@@ -6850,7 +7938,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     },
     "SR-12": {
       "types": [
@@ -6869,7 +7958,8 @@ var CONTROL_SCOPE_DEFAULTS = {
         "L",
         "M",
         "H"
-      ]
+      ],
+      "cosais": null
     }
   }
 };

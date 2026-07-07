@@ -3627,8 +3627,13 @@ function removeCustomAssetType(typeName) {
   renderControlStep2();
 }
 
-// When AI built-in asset types are checked on a control, suggest other in-scope controls teams often review (heuristic — not NIST COSAiS).
-var HEURISTIC_AI_GOVERNANCE_CONTROL_IDS = ['SA-3', 'SA-8', 'SA-10', 'SA-11', 'SA-15', 'SI-7', 'SI-10', 'AC-3', 'AC-6', 'AU-2', 'AU-6', 'CM-2', 'CM-6', 'RA-3', 'RA-5', 'SC-28', 'PL-8', 'SR-3', 'SR-5'];
+// Controls with COSAiS-aligned default AI asset types (see scripts/cosais-overlay-controls.json).
+function getCosaisOverlayControlIds() {
+  if (typeof CONTROL_SCOPE_DEFAULTS !== 'undefined' && Array.isArray(CONTROL_SCOPE_DEFAULTS.cosaisControls)) {
+    return CONTROL_SCOPE_DEFAULTS.cosaisControls.slice();
+  }
+  return ['SA-3', 'SA-8', 'SA-10', 'SA-11', 'SA-15', 'SI-7', 'SI-10', 'AC-3', 'AC-6', 'AU-2', 'AU-6', 'CM-2', 'CM-6', 'RA-3', 'RA-5', 'SC-28', 'PL-8', 'SR-3', 'SR-5'];
+}
 
 function buildAssetCoverageHTML(ctrlId) {
   ensureAssetTypeMetadata();
@@ -3649,15 +3654,15 @@ function buildAssetCoverageHTML(ctrlId) {
       getActiveControls().forEach(function(c) { inScopeSet[c.id] = true; });
     }
     var suggested = [];
-    HEURISTIC_AI_GOVERNANCE_CONTROL_IDS.forEach(function(id) {
+    getCosaisOverlayControlIds().forEach(function(id) {
       var canon = typeof resolveCatalogControlId === 'function' ? resolveCatalogControlId(id) : id;
       if (canon && canon !== ctrlId && inScopeSet[canon] && suggested.indexOf(canon) === -1) suggested.push(canon);
     });
     cosaisCalloutHTML = '<div style="grid-column:1/-1;font-size:11px;line-height:1.55;color:#4c1d95;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 12px;margin-bottom:6px;">'
       + '<div style="font-weight:800;margin-bottom:4px;color:#6b21a8;">AI asset types in scope for this control</div>'
-      + 'NIST\'s <a href="https://csrc.nist.gov/projects/cosais" target="_blank" rel="noopener noreferrer" style="color:#6d28d9;font-weight:700;">COSAiS</a> (Control Overlays for Securing AI Systems) develops overlays for applying SP 800-53 to AI use cases — consult that project for emerging official guidance alongside your baseline.'
+      + 'Defaults follow NIST <a href="https://csrc.nist.gov/projects/cosais" target="_blank" rel="noopener noreferrer" style="color:#6d28d9;font-weight:700;">COSAiS</a> (Control Overlays for Securing AI Systems) draft overlays — Generative AI/LLM, RAG, predictive ML, agents, and AI developer toolchain use cases. Adjust checkboxes to match your environment.'
       + (suggested.length ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(107,33,168,0.25);">'
-        + '<span style="font-weight:700;color:#6b21a8;">Heuristic only (not from NIST):</span> teams often scrutinize these other in-scope controls when AI types apply: '
+        + '<span style="font-weight:700;color:#6b21a8;">Related COSAiS controls in your baseline:</span> '
         + suggested.map(function(id) {
           return '<span style="font-family:monospace;font-weight:700;background:rgba(255,255,255,0.9);padding:1px 6px;border-radius:4px;margin-right:4px;">' + escapeHTML(id) + '</span>';
         }).join('')
