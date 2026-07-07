@@ -97,9 +97,10 @@ function renderReportsLibraryShell() {
   }
 
   if (state._reportsLibraryView === 'policies') {
-    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📁 Policies</div><h1>Policies</h1><p>Every domain policy — owner, custodian, status, version, and control count. Open an approved policy to read the document.</p></div>'
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📋 Policy Owner</div><h1>Domain Policy Builder</h1><p>Select a policy domain below to begin building your domain-specific security policy.</p></div>'
       + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
-    renderPoliciesInventory(body);
+    if (typeof renderPolicyList === 'function') renderPolicyList(body);
+    else body.innerHTML = '<div class="empty-state"><div class="es-icon">📋</div><div class="es-title">Policies unavailable</div><p>Policy workspace could not load.</p></div>';
     return;
   }
 
@@ -202,59 +203,6 @@ function filterCtrlInvTable() {
     var okS = !st || tr.getAttribute('data-status') === st;
     tr.style.display = (okQ && okF && okS) ? '' : 'none';
   });
-}
-
-function renderPoliciesInventory(body) {
-  if (!body) return;
-  var sc = _invScopedControls();
-  var families = sc.families;
-  var merges = state.policyMerges || {};
-  var rows = families.filter(function(f){ return !merges[f]; });
-  function pName(o){ return (o && o.name) ? escapeHTML(o.name) : '<span style="color:#94a3b8;">Unassigned</span>'; }
-  function policyRow(fam){
-    var title = (typeof getPolicyMergedTitle==='function') ? getPolicyMergedTitle(fam) : (fam+' Policy');
-    var allFams = (typeof getPolicyAllFamilies==='function') ? getPolicyAllFamilies(fam) : [fam];
-    var owner = (state.domainOwners||{})[fam] || {};
-    var cust = (state.policyCustodians||{})[fam] || {};
-    var ps = (state.policyStatus[fam]||{}).status || 'Not Started';
-    var vers = (state.policyVersions||{})[fam];
-    var vlabel = (vers && vers.length) ? escapeHTML(String(vers[vers.length-1].version || '—')) : '—';
-    var ctrlCount = allFams.reduce(function(a,f){ return a + (((state.policySelectedControls||{})[f])||[]).length; }, 0);
-    if (!ctrlCount) ctrlCount = allFams.reduce(function(a,f){ return a + (CONTROLS||[]).filter(function(c){return c.f===f;}).length; }, 0);
-    var famBadges = allFams.map(function(f){ return '<span class="family-badge" style="font-size:10px;padding:1px 5px;">'+f+'</span>'; }).join(' ');
-    var clickable = ps === 'Approved';
-    var onclick = clickable ? ' onclick="openPublishedPolicyFromReports(\''+fam+'\')" title="Open policy document"' : '';
-    return '<tr style="border-bottom:1px solid var(--border);'+(clickable?'cursor:pointer;':'')+'"'+onclick+'>'
-      + '<td style="padding:11px 10px;">'+famBadges+'</td>'
-      + '<td style="padding:11px 10px;font-weight:600;color:'+(clickable?'var(--teal)':'inherit')+';">'+escapeHTML(title)+(clickable?' <span style="font-size:11px;">↗</span>':'')+'</td>'
-      + '<td style="padding:11px 10px;">'+pName(owner)+'</td>'
-      + '<td style="padding:11px 10px;">'+pName(cust)+'</td>'
-      + '<td style="padding:11px 10px;">'+chipHTML(ps)+'</td>'
-      + '<td style="padding:11px 10px;text-align:center;">'+vlabel+'</td>'
-      + '<td style="padding:11px 10px;text-align:center;font-weight:600;">'+ctrlCount+'</td>'
-      + '</tr>';
-  }
-  var ispStatus = (typeof getISPStatus==='function') ? getISPStatus() : (((state.policyStatus||{}).ISP||{}).status || 'Not Started');
-  var ispClickable = ispStatus === 'Approved';
-  var ispOnclick = ispClickable ? ' onclick="openPublishedPolicyFromReports(\'ISP\')" title="Open policy document"' : '';
-  var ispRow = '<tr style="border-bottom:1px solid var(--border);background:#f8fafc;'+(ispClickable?'cursor:pointer;':'')+'"'+ispOnclick+'>'
-    + '<td style="padding:11px 10px;"><span class="family-badge" style="font-size:10px;padding:1px 5px;background:#e0f2fe;color:#0369a1;">ISP</span></td>'
-    + '<td style="padding:11px 10px;font-weight:600;color:'+(ispClickable?'var(--teal)':'inherit')+';">Information Security Policy'+(ispClickable?' <span style="font-size:11px;">↗</span>':'')+'</td>'
-    + '<td style="padding:11px 10px;">'+((state.programOwner)?escapeHTML(state.programOwner):'<span style="color:#94a3b8;">Unassigned</span>')+'</td>'
-    + '<td style="padding:11px 10px;color:#94a3b8;">—</td>'
-    + '<td style="padding:11px 10px;">'+chipHTML(ispStatus)+'</td>'
-    + '<td style="padding:11px 10px;text-align:center;color:#94a3b8;">—</td>'
-    + '<td style="padding:11px 10px;text-align:center;color:#94a3b8;">—</td>'
-    + '</tr>';
-  var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
-    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">' + (rows.length+1) + ' policies · open an approved policy to read the document</div>'
-    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:2px solid var(--border);text-align:left;">'
-    + '<th style="padding:10px;font-weight:600;">Domain</th><th style="padding:10px;font-weight:600;">Policy</th><th style="padding:10px;font-weight:600;">Owner</th><th style="padding:10px;font-weight:600;">Custodian</th><th style="padding:10px;font-weight:600;">Status</th><th style="padding:10px;font-weight:600;text-align:center;">Version</th><th style="padding:10px;font-weight:600;text-align:center;">Controls</th>'
-    + '</tr></thead><tbody>'
-    + ispRow
-    + rows.map(policyRow).join('')
-    + '</tbody></table></div></div>';
-  body.innerHTML = html;
 }
 
 function _invBuildTypeCoverageIndex() {
@@ -2806,7 +2754,6 @@ function approveAllReviewQueue() {
 window.goToReportsDashboard = goToReportsDashboard;
 window.goToReportsLibrary = goToReportsLibrary;
 window.renderControlsInventory = renderControlsInventory;
-window.renderPoliciesInventory = renderPoliciesInventory;
 window.filterCtrlInvTable = filterCtrlInvTable;
 window.openPublishedPolicyFromReports = openPublishedPolicyFromReports;
 window.backToReportsPolicyLibrary = backToReportsPolicyLibrary;

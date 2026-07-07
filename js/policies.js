@@ -907,12 +907,12 @@ function policyToggleAdminDraftHint(btn) {
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
-function renderPolicyList() {
+function renderPolicyList(bodyEl) {
   const listPanel = document.getElementById('policy-list-panel');
   const wizPanel = document.getElementById('policy-wizard-panel');
   if (listPanel) listPanel.style.display = '';
   if (wizPanel) wizPanel.style.display = 'none';
-  const body = document.getElementById('policy-list-body');
+  const body = bodyEl || document.getElementById('policy-list-body');
   if (!body) return;
   if (!state.baseline) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">\uD83C\uDFDB\uFE0F</div><div class="es-title">CISO Setup Required</div><p>The CISO must complete all 7 steps of program setup before policy owners can begin. Ask your CISO to finish baseline selection, PM controls, security policy, and role assignments.</p></div>';

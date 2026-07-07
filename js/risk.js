@@ -1047,19 +1047,19 @@ function openIssueFromSidebar(issueId) {
   showTab('risk');
 }
 
-/** Phase 2 sidebar — risk & issue inventories (visible after program setup). */
+/** Risks & Issues sidebar inventories (Program section, after Reports; visible after setup). */
 function renderSidebarRiskInventory() {
-  var section = document.getElementById('sidebar-phase2-section');
   var list = document.getElementById('sidebar-risk-list');
   var btn = document.getElementById('sidebar-risk-toggle');
   var navRisk = document.getElementById('nav-risk');
-  if (!section || !list) return;
+  if (!list || !navRisk) return;
 
   var user = state.currentUserId && state.users
     ? state.users.find(function(u) { return u.id === state.currentUserId; })
     : null;
   var live = isPhase2LiveForUser(user);
-  section.style.display = live ? '' : 'none';
+  navRisk.style.display = live ? '' : 'none';
+  list.style.display = live ? '' : 'none';
   if (!live) return;
 
   if (state._phase2SidebarFirstLive) {
@@ -1127,7 +1127,6 @@ function renderSidebarRiskInventory() {
     btn.setAttribute('aria-expanded', state._sidebarRiskExpanded ? 'true' : 'false');
     btn.style.visibility = 'visible';
   }
-  if (navRisk) navRisk.style.display = '';
 }
 
 function renderRiskSummaryHtml() {
