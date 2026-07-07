@@ -13,7 +13,8 @@ function goToReportsDashboard() {
 }
 
 function goToReportsLibrary(page) {
-  state._reportsLibraryView = page === 'controls' ? 'controls' : 'policies';
+  var _valid = ['controls','policies','controls-inventory','policies-inventory'];
+  state._reportsLibraryView = _valid.indexOf(page) !== -1 ? page : 'policies';
   state._reportsLibraryPolicyFam = null;
   state._policyLibraryMode = false;
   state._controlLibraryMode = false;
@@ -39,9 +40,13 @@ function backToReportsPolicyLibrary() {
 function syncReportsLibraryNavActive() {
   var polNav = document.getElementById('nav-reports-library-policies');
   var ctrlNav = document.getElementById('nav-reports-library-controls');
-  var inLib = !!state._reportsLibraryView;
-  if (polNav) polNav.classList.toggle('active', inLib && state._reportsLibraryView === 'policies');
-  if (ctrlNav) ctrlNav.classList.toggle('active', inLib && state._reportsLibraryView === 'controls');
+  var ctrlInv = document.getElementById('nav-reports-inventory-controls');
+  var polInv = document.getElementById('nav-reports-inventory-policies');
+  var _v = state._reportsLibraryView;
+  if (polNav) polNav.classList.toggle('active', _v === 'policies');
+  if (ctrlNav) ctrlNav.classList.toggle('active', _v === 'controls');
+  if (ctrlInv) ctrlInv.classList.toggle('active', _v === 'controls-inventory');
+  if (polInv) polInv.classList.toggle('active', _v === 'policies-inventory');
 }
 
 function userHasReportsLibraryAccess(user) {
@@ -104,6 +109,20 @@ function renderReportsLibraryShell() {
     if (typeof renderPublishedControlLibrary === 'function') renderPublishedControlLibrary(body);
     return;
   }
+
+  if (state._reportsLibraryView === 'controls-inventory') {
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📋 Inventory</div><h1>Controls Inventory</h1><p>Every in-scope control with owner, governing policy, and associated asset/process types.</p></div>'
+      + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
+    renderControlsInventory(body);
+    return;
+  }
+
+  if (state._reportsLibraryView === 'policies-inventory') {
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📋 Inventory</div><h1>Policies Inventory</h1><p>Every domain policy with owner, custodian, status, version, and control count.</p></div>'
+      + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
+    renderPoliciesInventory(body);
+    return;
+  }
 }
 
 function showReportsDashboardPanels() {
@@ -112,6 +131,112 @@ function showReportsDashboardPanels() {
   if (dashPanel) dashPanel.style.display = '';
   if (libPanel) libPanel.style.display = 'none';
   syncReportsLibraryNavActive();
+}
+
+// ============================================================
+// REPORTS INVENTORIES (Controls Inventory, Policies Inventory)
+// Read views under Reports ▸ Inventory. Added 2026-07-06.
+// ============================================================
+function _invScopedControls() {
+  var user = state.currentUserId ? (state.users||[]).find(function(u){ return u.id === state.currentUserId; }) : null;
+  var isScoped = !!user && user.role !== 'admin';
+  var controls = (isScoped && typeof getScopedControls === 'function') ? getScopedControls() : (typeof getActiveControls === 'function' ? getActiveControls() : (CONTROLS||[]));
+  var families = (isScoped && typeof getScopedFamilies === 'function') ? getScopedFamilies() : (typeof getActiveFamilies === 'function' ? getActiveFamilies() : Object.keys(FAMILIES).sort());
+  return { controls: controls, families: families };
+}
+
+function renderControlsInventory(body) {
+  if (!body) return;
+  var sc = _invScopedControls();
+  var controls = sc.controls, families = sc.families;
+  function ownerCell(id){ var o=(state.controlOwners||{})[id]||{}; return o.name ? escapeHTML(o.name) : '<span style="color:#94a3b8;">Unassigned</span>'; }
+  function policyCell(fam){
+    var target = (state.policyMerges||{})[fam] || fam;
+    var ps = (state.policyStatus[target]||{}).status || (state.policyStatus[fam]||{}).status || 'Not Started';
+    if (ps === 'Not Started') return '<span style="color:#94a3b8;">N/A</span>';
+    var title = (typeof getPolicyMergedTitle==='function') ? getPolicyMergedTitle(fam) : (fam + ' Policy');
+    return escapeHTML(title) + ' ' + chipHTML(ps);
+  }
+  function typesCell(id){
+    var t = (typeof getCtrlCoveredAssetTypes==='function' ? getCtrlCoveredAssetTypes(id) : []).map(function(x){ return x.label; });
+    if (!t.length) return '<span style="color:#94a3b8;">N/A</span>';
+    return t.map(function(x){ return '<span style="display:inline-block;background:#f1f5f9;border-radius:4px;padding:1px 6px;margin:1px;font-size:11px;">' + escapeHTML(x) + '</span>'; }).join('');
+  }
+  var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + controls.length + ' controls in scope</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<input type="text" id="ctrlInvSearch" placeholder="Search…" oninput="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+    + '<select id="ctrlInvFamFilter" onchange="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">All Families</option>' + families.map(function(f){ return '<option value="'+f+'">'+f+'</option>'; }).join('') + '</select>'
+    + '<select id="ctrlInvStatusFilter" onchange="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">All Statuses</option><option>Not Started</option><option>Planned</option><option>Implemented</option><option>Not Applicable</option></select>'
+    + '</div></div>'
+    + '<div class="table-scroll"><table class="control-table" id="ctrlInvTable"><thead><tr>'
+    + '<th style="width:74px;">ID</th><th>Control Name</th><th style="width:56px;">Family</th><th>Owner</th><th>Associated Policy</th><th>Asset / Process Types</th><th style="width:120px;">Impl. Status</th>'
+    + '</tr></thead><tbody>'
+    + controls.map(function(c){
+        var cs = state.controlStatus[c.id]||{};
+        return '<tr data-id="'+c.id+'" data-family="'+c.f+'" data-status="'+(cs.status||'Not Started')+'">'
+          + '<td><span class="control-id">'+c.id+'</span></td>'
+          + '<td>'+escapeHTML(c.n)+'</td>'
+          + '<td><span class="family-badge">'+c.f+'</span></td>'
+          + '<td>'+ownerCell(c.id)+'</td>'
+          + '<td>'+policyCell(c.f)+'</td>'
+          + '<td>'+typesCell(c.id)+'</td>'
+          + '<td>'+chipHTML(cs.status||'Not Started')+'</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div></div>';
+  body.innerHTML = html;
+}
+
+function filterCtrlInvTable() {
+  var q = ((document.getElementById('ctrlInvSearch')||{}).value || '').toLowerCase();
+  var fam = (document.getElementById('ctrlInvFamFilter')||{}).value || '';
+  var st = (document.getElementById('ctrlInvStatusFilter')||{}).value || '';
+  var rows = document.querySelectorAll('#ctrlInvTable tbody tr');
+  rows.forEach(function(tr){
+    var okQ = !q || (tr.textContent||'').toLowerCase().indexOf(q) !== -1;
+    var okF = !fam || tr.getAttribute('data-family') === fam;
+    var okS = !st || tr.getAttribute('data-status') === st;
+    tr.style.display = (okQ && okF && okS) ? '' : 'none';
+  });
+}
+
+function renderPoliciesInventory(body) {
+  if (!body) return;
+  var sc = _invScopedControls();
+  var families = sc.families;
+  var merges = state.policyMerges || {};
+  var rows = families.filter(function(f){ return !merges[f]; });
+  function pName(o){ return (o && o.name) ? escapeHTML(o.name) : '<span style="color:#94a3b8;">Unassigned</span>'; }
+  var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">' + rows.length + ' domain policies</div>'
+    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:2px solid var(--border);text-align:left;">'
+    + '<th style="padding:10px;font-weight:600;">Domain</th><th style="padding:10px;font-weight:600;">Policy</th><th style="padding:10px;font-weight:600;">Owner</th><th style="padding:10px;font-weight:600;">Custodian</th><th style="padding:10px;font-weight:600;">Status</th><th style="padding:10px;font-weight:600;text-align:center;">Version</th><th style="padding:10px;font-weight:600;text-align:center;">Controls</th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(fam){
+        var title = (typeof getPolicyMergedTitle==='function') ? getPolicyMergedTitle(fam) : (fam+' Policy');
+        var allFams = (typeof getPolicyAllFamilies==='function') ? getPolicyAllFamilies(fam) : [fam];
+        var owner = (state.domainOwners||{})[fam] || {};
+        var cust = (state.policyCustodians||{})[fam] || {};
+        var ps = (state.policyStatus[fam]||{}).status || 'Not Started';
+        var vers = (state.policyVersions||{})[fam];
+        var vlabel = (vers && vers.length) ? escapeHTML(String(vers[vers.length-1].version || '—')) : '—';
+        var ctrlCount = allFams.reduce(function(a,f){ return a + (((state.policySelectedControls||{})[f])||[]).length; }, 0);
+        if (!ctrlCount) ctrlCount = allFams.reduce(function(a,f){ return a + (CONTROLS||[]).filter(function(c){return c.f===f;}).length; }, 0);
+        var famBadges = allFams.map(function(f){ return '<span class="family-badge" style="font-size:10px;padding:1px 5px;">'+f+'</span>'; }).join(' ');
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          + '<td style="padding:11px 10px;">'+famBadges+'</td>'
+          + '<td style="padding:11px 10px;font-weight:600;">'+escapeHTML(title)+'</td>'
+          + '<td style="padding:11px 10px;">'+pName(owner)+'</td>'
+          + '<td style="padding:11px 10px;">'+pName(cust)+'</td>'
+          + '<td style="padding:11px 10px;">'+chipHTML(ps)+'</td>'
+          + '<td style="padding:11px 10px;text-align:center;">'+vlabel+'</td>'
+          + '<td style="padding:11px 10px;text-align:center;font-weight:600;">'+ctrlCount+'</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div></div>';
+  body.innerHTML = html;
 }
 
 // ============================================================
@@ -1686,46 +1811,9 @@ function renderReports() {
       </div>
     </div>
 
-    <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <div style="font-weight:700; font-size:14px; color:var(--navy);">Control Inventory</div>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="reportSearch" placeholder="Search..." style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px;" oninput="filterReportTable()">
-          <select id="reportFamFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px;" onchange="filterReportTable()">
-            <option value="">All Families</option>
-            ${families.map(f=>`<option value="${f}">${f}</option>`).join('')}
-          </select>
-          <select id="reportStatusFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px;" onchange="filterReportTable()">
-            <option value="">All Statuses</option>
-            <option>Not Started</option><option>Planned</option><option>Implemented</option><option>Not Applicable</option>
-          </select>
-        </div>
-      </div>
-      <div class="table-scroll">
-        <table class="control-table" id="reportControlTable">
-          <thead>
-            <tr>
-              <th style="width:80px;">ID</th>
-              <th>Control Name</th>
-              <th style="width:70px;">Family</th>
-              <th>Baselines</th>
-              <th style="width:130px;">Impl. Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbod-${Math.random().toString(36).slice(2,8)}">
-            ${controls.map(c => {
-              const cs = state.controlStatus[c.id]||{};
-              return `<tr data-id="${c.id}" data-family="${c.f}" data-status="${cs.status||'Not Started'}">
-                <td><span class="control-id">${c.id}</span></td>
-                <td>${c.n}</td>
-                <td><span class="family-badge">${c.f}</span></td>
-                <td>${pillsHTML(c.bl)}</td>
-                <td>${chipHTML(cs.status||'Not Started')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
+    <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div><div style="font-weight:700; font-size:14px; color:var(--navy);">Controls Inventory</div><div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Full control list with owner, governing policy, and associated asset/process types — now its own view.</div></div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="goToReportsLibrary('controls-inventory')">Open Controls Inventory →</button>
     </div>
 
     <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:20px;">
@@ -2071,6 +2159,9 @@ function approveAllReviewQueue() {
 
 window.goToReportsDashboard = goToReportsDashboard;
 window.goToReportsLibrary = goToReportsLibrary;
+window.renderControlsInventory = renderControlsInventory;
+window.renderPoliciesInventory = renderPoliciesInventory;
+window.filterCtrlInvTable = filterCtrlInvTable;
 window.openPublishedPolicyFromReports = openPublishedPolicyFromReports;
 window.backToReportsPolicyLibrary = backToReportsPolicyLibrary;
 window.renderReportsLibraryEntryHtml = renderReportsLibraryEntryHtml;

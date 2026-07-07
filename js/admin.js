@@ -16,22 +16,33 @@ const ROLE_META = {
   'approver':      { label:'Policy Approver (ISP)',         icon:'✅', color:'#059669', desc:'Signs off the Tier 1 Information Security Policy when routed for review. Uses Command Center and Reports only — no control or asset workspaces.' },
 };
 
+function getRoleLabelOverride(role) {
+  var ov = (state.roleLabelOverrides || {})[role];
+  return (ov && String(ov).trim()) ? String(ov).trim() : '';
+}
 function getProgramRoleMeta(role) {
   if (!role) return { label: '', icon: '👤', color: '#64748b', desc: '' };
-  if (ROLE_META[role]) return ROLE_META[role];
-  var c = (state.customProgramRoles || []).find(function(x) { return x && x.slug === role; });
-  if (c) return { label: c.label, icon: '✦', color: '#0d9488', desc: 'Custom program role' };
-  return { label: role, icon: '👤', color: '#64748b', desc: '' };
+  var base;
+  if (ROLE_META[role]) base = { label: ROLE_META[role].label, icon: ROLE_META[role].icon, color: ROLE_META[role].color, desc: ROLE_META[role].desc };
+  else {
+    var c = (state.customProgramRoles || []).find(function(x) { return x && x.slug === role; });
+    if (c) base = { label: c.label, icon: '✦', color: '#0d9488', desc: 'Custom program role' };
+    else base = { label: role, icon: '👤', color: '#64748b', desc: '' };
+  }
+  var ov = getRoleLabelOverride(role);
+  if (ov) base.label = ov;
+  return base;
 }
 
 function buildProgramRoleSelectOptions(selectedValue) {
   var html = '<option value="">— select role —</option>';
   Object.keys(ROLE_META).forEach(function(r) {
-    html += '<option value="' + _esc(r) + '"' + (selectedValue === r ? ' selected' : '') + '>' + _esc(ROLE_META[r].icon + ' ' + ROLE_META[r].label) + '</option>';
+    var _m = getProgramRoleMeta(r);
+    html += '<option value="' + _esc(r) + '"' + (selectedValue === r ? ' selected' : '') + '>' + _esc(_m.icon + ' ' + _m.label) + '</option>';
   });
   (state.customProgramRoles || []).forEach(function(c) {
     if (!c || !c.slug) return;
-    html += '<option value="' + _esc(c.slug) + '"' + (selectedValue === c.slug ? ' selected' : '') + '>✦ ' + _esc(c.label) + '</option>';
+    html += '<option value="' + _esc(c.slug) + '"' + (selectedValue === c.slug ? ' selected' : '') + '>✦ ' + _esc(getProgramRoleMeta(c.slug).label) + '</option>';
   });
   return html;
 }
@@ -68,6 +79,36 @@ function removeCustomProgramRole(slug) {
   markDirty();
   renderUsersTab();
 }
+
+function setRoleLabel(slug) {
+  if (isUsersReadOnlyForCurrentUser()) { showToast('Read-only: AO cannot modify roles.', true); return; }
+  var el = document.getElementById('roleLabelInput-' + slug);
+  var val = el ? String(el.value || '').trim() : '';
+  if (!state.roleLabelOverrides) state.roleLabelOverrides = {};
+  var custom = (state.customProgramRoles || []).find(function(x){ return x && x.slug === slug; });
+  if (custom) {
+    if (val) custom.label = val;
+    delete state.roleLabelOverrides[slug];
+  } else if (ROLE_META[slug]) {
+    if (!val || val === ROLE_META[slug].label) delete state.roleLabelOverrides[slug];
+    else state.roleLabelOverrides[slug] = val;
+  } else if (val) {
+    state.roleLabelOverrides[slug] = val;
+  }
+  markDirty();
+  showToast('Role label updated.');
+  renderUsersTab();
+  if (typeof renderSidebar === 'function') renderSidebar();
+}
+
+function resetRoleLabel(slug) {
+  if (isUsersReadOnlyForCurrentUser()) { showToast('Read-only: AO cannot modify roles.', true); return; }
+  if (state.roleLabelOverrides) delete state.roleLabelOverrides[slug];
+  markDirty();
+  showToast('Reset to default label.');
+  renderUsersTab();
+}
+
 
 // Role-specific default workspaces
 const ROLE_DEFAULT_TAB = {
@@ -595,7 +636,7 @@ function renderUsersTab() {
   (state.users || []).forEach(function(u){ counts[u.role] = (counts[u.role]||0)+1; });
   html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">';
   Object.keys(ROLE_META).forEach(function(r) {
-    const m = ROLE_META[r];
+    const m = getProgramRoleMeta(r);
     html += '<div style="background:' + m.color + '18;border:1px solid ' + m.color + '44;border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;">'
       + '<span style="font-size:16px;">' + m.icon + '</span>'
       + '<span style="font-size:13px;font-weight:600;color:' + m.color + ';">' + (counts[r]||0) + '</span>'
@@ -608,29 +649,51 @@ function renderUsersTab() {
     html += '<div style="background:#0d948818;border:1px solid #0d948844;border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;">'
       + '<span style="font-size:16px;">✦</span>'
       + '<span style="font-size:13px;font-weight:600;color:#0d9488;">' + n + '</span>'
-      + '<span style="font-size:12px;color:#64748b;">' + _esc(c.label) + '</span>'
+      + '<span style="font-size:12px;color:#64748b;">' + _esc(getProgramRoleMeta(c.slug).label) + '</span>'
       + '</div>';
   });
   html += '</div>';
 
-  if (typeof renderEntraAdminSetupHtml === 'function') {
-    html += renderEntraAdminSetupHtml();
-  }
+  // Microsoft Entra admin setup section removed 2026-07-06.
 
+  // ── Program roles table (built-in + custom): rename any, delete custom ──
+  var _builtinRoleRows = Object.keys(ROLE_META).map(function(r){
+    var m = getProgramRoleMeta(r);
+    return { slug:r, label:m.label, icon:ROLE_META[r].icon, color:ROLE_META[r].color, type:'Built-in', tabs:'—', overridden: !!getRoleLabelOverride(r), isCustom:false };
+  });
+  var _customRoleRows = (state.customProgramRoles || []).filter(function(c){ return c && c.slug; }).map(function(c){
+    return { slug:c.slug, label:getProgramRoleMeta(c.slug).label, icon:'✦', color:'#0d9488', type:'Custom', tabs:(c.tabsTemplate==='reports-only'?'Reports only':'Assessor tabs'), overridden:false, isCustom:true };
+  });
+  var _allRoleRows = _builtinRoleRows.concat(_customRoleRows);
   html += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px;' + (readOnly ? 'opacity:0.7;' : '') + '">'
-    + '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:6px;">Custom program roles</div>'
-    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.5;">Define extra personas (e.g. 3PAO, independent SCA). Assign them from the Role dropdown when adding users. <strong>Assessor-like</strong> grants the Authorization &amp; Testing workspace; <strong>Reports only</strong> is for stakeholders who should not edit boundaries.</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'
-    + (state.customProgramRoles || []).map(function(c) {
-      if (!c || !c.slug) return '';
-      return '<div style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:12px;">'
-        + '<span style="font-weight:600;color:#0f172a;">' + _esc(c.label) + '</span>'
-        + '<span style="color:#94a3b8;font-family:monospace;">' + _esc(c.slug) + '</span>'
-        + '<span style="color:#64748b;">(' + _esc(c.tabsTemplate === 'reports-only' ? 'reports' : 'assessor tabs') + ')</span>'
-        + (readOnly ? '' : '<button type="button" onclick="removeCustomProgramRole(' + JSON.stringify(c.slug) + ')" style="margin-left:6px;color:#b91c1c;border:none;background:none;cursor:pointer;font-size:12px;">Remove</button>')
-        + '</div>';
-    }).join('')
-    + '</div>'
+    + '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:6px;">Program roles</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.5;">Rename any role to match your organization&rsquo;s vocabulary (e.g. call the Policy Owner a &ldquo;Domain Owner&rdquo;). Labels carry through the whole program. Built-in roles can be renamed but not deleted; custom roles can be renamed or removed.</div>'
+    + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    + '<thead><tr style="border-bottom:2px solid #e2e8f0;text-align:left;">'
+    + '<th style="padding:8px 10px;font-weight:600;">Role</th><th style="padding:8px 10px;font-weight:600;">Type</th><th style="padding:8px 10px;font-weight:600;">Id</th><th style="padding:8px 10px;font-weight:600;">Tab access</th><th style="padding:8px 10px;font-weight:600;">Users</th><th style="padding:8px 10px;font-weight:600;text-align:right;">Label</th>'
+    + '</tr></thead><tbody>'
+    + _allRoleRows.map(function(row){
+        var n = counts[row.slug] || 0;
+        var sq = "'" + row.slug + "'";
+        var actions = readOnly ? '' :
+          ('<input id="roleLabelInput-' + _esc(row.slug) + '" value="' + _esc(row.label) + '" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;width:150px;" />'
+           + ' <button type="button" class="btn btn-secondary btn-sm" onclick="setRoleLabel(' + sq + ')">Save</button>'
+           + (row.isCustom
+               ? ' <button type="button" onclick="removeCustomProgramRole(' + sq + ')" style="color:#b91c1c;border:1px solid #fca5a5;background:#fef2f2;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;">Delete</button>'
+               : (row.overridden ? ' <button type="button" onclick="resetRoleLabel(' + sq + ')" style="color:#475569;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;">Reset</button>' : '')));
+        return '<tr style="border-bottom:1px solid #f1f5f9;">'
+          + '<td style="padding:10px;"><span style="font-size:15px;">' + row.icon + '</span> <span style="font-weight:600;color:' + row.color + ';">' + _esc(row.label) + '</span>' + (row.overridden ? ' <span title="Renamed" style="font-size:10px;color:#0d9488;">&bull; renamed</span>' : '') + '</td>'
+          + '<td style="padding:10px;color:#64748b;">' + row.type + '</td>'
+          + '<td style="padding:10px;font-family:monospace;color:#94a3b8;">' + _esc(row.slug) + '</td>'
+          + '<td style="padding:10px;color:#64748b;">' + row.tabs + '</td>'
+          + '<td style="padding:10px;color:#64748b;">' + n + '</td>'
+          + '<td style="padding:10px;text-align:right;white-space:nowrap;">' + actions + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<div style="margin-top:18px;padding-top:16px;border-top:1px solid #f1f5f9;">'
+    + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;">Add a custom role</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:12px;line-height:1.5;">Define extra personas (e.g. 3PAO, independent SCA). <strong>Assessor-like</strong> grants the reports/testing workspace; <strong>Reports only</strong> is for stakeholders who should not edit boundaries.</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">'
     + '<div><label style="font-size:11px;font-weight:600;color:#475569;">Display label</label>'
     + '<input id="customRoleLabel" class="form-input" placeholder="e.g. Independent SCA" style="width:100%;margin-top:4px;font-size:13px;" ' + (readOnly ? 'disabled ' : '') + '/></div>'
@@ -642,7 +705,8 @@ function renderUsersTab() {
     + '<option value="reports-only">Reports only</option>'
     + '</select></div>'
     + '<button type="button" class="btn btn-primary btn-sm" ' + (readOnly ? 'disabled ' : 'onclick="addCustomProgramRole()"') + ' style="margin-bottom:2px;">Add role</button>'
-    + '</div></div>';
+    + '</div></div></div>';
+
 
   // Add user form (inline)
   html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:28px;' + (readOnly ? 'opacity:0.7;' : '') + '">'

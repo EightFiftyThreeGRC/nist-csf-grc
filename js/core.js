@@ -1125,6 +1125,7 @@ const state = {
   authBoundaries: [],       // [{ id, name, description, assetTypes, assetIds, processIds, aoUserId, assessorUserIds, atoStatus, atoGrantedDate, atoExpiresDate, conditions }]
   /** User-defined roles (slug on user.role); tabsTemplate: 'assessor' | 'reports-only' */
   customProgramRoles: [],
+  roleLabelOverrides: {},        // { 'ciso':'Domain Owner', ... } relabel built-in/custom roles
   assessmentPlans: {},      // { [boundaryId]: { scopeMode, inScopeControlIds[], controlPlans{} } }
   atoDecisions: {},         // { [boundaryId]: { boundaryId, decision, decidedByUserId, decidedAt, conditions[], expiresAt, residualRiskNarrative, signature } }
   _atoLibraryFilter: { families: [], assetTypes: [], assetIds: [], statuses: [], search: '' },
@@ -1543,6 +1544,7 @@ function migrateAtoStateShape() {
 
 function migrateCustomProgramRoles() {
   if (!Array.isArray(state.customProgramRoles)) state.customProgramRoles = [];
+  if (!state.roleLabelOverrides || typeof state.roleLabelOverrides !== 'object' || Array.isArray(state.roleLabelOverrides)) state.roleLabelOverrides = {};
   state.customProgramRoles = state.customProgramRoles.filter(function(x) {
     return x && typeof x === 'object' && String(x.slug || '').trim() && String(x.label || '').trim();
   }).map(function(x) {
