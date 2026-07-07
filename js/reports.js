@@ -13,7 +13,7 @@ function goToReportsDashboard() {
 }
 
 function goToReportsLibrary(page) {
-  var _valid = ['controls','policies','controls-inventory','policies-inventory'];
+  var _valid = ['controls','policies','assets','processes'];
   state._reportsLibraryView = _valid.indexOf(page) !== -1 ? page : 'policies';
   state._reportsLibraryPolicyFam = null;
   state._policyLibraryMode = false;
@@ -40,13 +40,13 @@ function backToReportsPolicyLibrary() {
 function syncReportsLibraryNavActive() {
   var polNav = document.getElementById('nav-reports-library-policies');
   var ctrlNav = document.getElementById('nav-reports-library-controls');
-  var ctrlInv = document.getElementById('nav-reports-inventory-controls');
-  var polInv = document.getElementById('nav-reports-inventory-policies');
+  var assetNav = document.getElementById('nav-reports-library-assets');
+  var procNav = document.getElementById('nav-reports-library-processes');
   var _v = state._reportsLibraryView;
   if (polNav) polNav.classList.toggle('active', _v === 'policies');
   if (ctrlNav) ctrlNav.classList.toggle('active', _v === 'controls');
-  if (ctrlInv) ctrlInv.classList.toggle('active', _v === 'controls-inventory');
-  if (polInv) polInv.classList.toggle('active', _v === 'policies-inventory');
+  if (assetNav) assetNav.classList.toggle('active', _v === 'assets');
+  if (procNav) procNav.classList.toggle('active', _v === 'processes');
 }
 
 function userHasReportsLibraryAccess(user) {
@@ -97,30 +97,30 @@ function renderReportsLibraryShell() {
   }
 
   if (state._reportsLibraryView === 'policies') {
-    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📚 Library</div><h1>Published policies</h1><p>Approved organizational and domain policies — the authoritative policy catalog for staff and auditors.</p></div>'
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📁 Policies</div><h1>Policies</h1><p>Every domain policy — owner, custodian, status, version, and control count. Open an approved policy to read the document.</p></div>'
       + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
-    if (typeof renderPublishedPolicyLibrary === 'function') renderPublishedPolicyLibrary(body);
+    renderPoliciesInventory(body);
     return;
   }
 
   if (state._reportsLibraryView === 'controls') {
-    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📚 Library</div><h1>Control requirements</h1><p>Controls at Planned status or beyond with design and downstream obligations — read-only for staff and auditors.</p></div>'
-      + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
-    if (typeof renderPublishedControlLibrary === 'function') renderPublishedControlLibrary(body);
-    return;
-  }
-
-  if (state._reportsLibraryView === 'controls-inventory') {
-    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📋 Inventory</div><h1>Controls Inventory</h1><p>Every in-scope control with owner, governing policy, and associated asset/process types.</p></div>'
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">🔧 Controls</div><h1>Controls</h1><p>Every in-scope control — owner, governing policy, asset/process types, and design status. Open a control for its read-only design detail.</p></div>'
       + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
     renderControlsInventory(body);
     return;
   }
 
-  if (state._reportsLibraryView === 'policies-inventory') {
-    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">📋 Inventory</div><h1>Policies Inventory</h1><p>Every domain policy with owner, custodian, status, version, and control count.</p></div>'
+  if (state._reportsLibraryView === 'assets') {
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">🖥️ Asset inventory</div><h1>Asset inventory</h1><p>Every asset type in the catalog (built-in and custom) — category, controls that scope it in control design, and registered systems in the asset inventory.</p></div>'
       + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
-    renderPoliciesInventory(body);
+    renderAssetTypesInventory(body);
+    return;
+  }
+
+  if (state._reportsLibraryView === 'processes') {
+    hdr.innerHTML = '<div class="page-header-row"><div><div class="role-badge">⚙️ Process inventory</div><h1>Process inventory</h1><p>Every process type from control design — controls scoped to each type and registered organizational processes.</p></div>'
+      + '<div class="page-header-actions"><button type="button" class="btn btn-secondary" onclick="goToReportsDashboard()">← Reports dashboard</button></div></div>';
+    renderProcessTypesInventory(body);
     return;
   }
 }
@@ -164,24 +164,26 @@ function renderControlsInventory(body) {
   }
   var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
-    + '<div style="font-size:12px;color:var(--text-muted);">' + controls.length + ' controls in scope</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + controls.length + ' controls in scope · click a row for read-only design detail</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     + '<input type="text" id="ctrlInvSearch" placeholder="Search…" oninput="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
     + '<select id="ctrlInvFamFilter" onchange="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">All Families</option>' + families.map(function(f){ return '<option value="'+f+'">'+f+'</option>'; }).join('') + '</select>'
     + '<select id="ctrlInvStatusFilter" onchange="filterCtrlInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">All Statuses</option><option>Not Started</option><option>Planned</option><option>Implemented</option><option>Not Applicable</option></select>'
     + '</div></div>'
     + '<div class="table-scroll"><table class="control-table" id="ctrlInvTable"><thead><tr>'
-    + '<th style="width:74px;">ID</th><th>Control Name</th><th style="width:56px;">Family</th><th>Owner</th><th>Associated Policy</th><th>Asset / Process Types</th><th style="width:120px;">Impl. Status</th>'
+    + '<th style="width:74px;">ID</th><th>Control Name</th><th style="width:56px;">Family</th><th>Owner</th><th>Associated Policy</th><th>Asset / Process Types</th><th style="width:74px;">Designed</th><th style="width:120px;">Impl. Status</th>'
     + '</tr></thead><tbody>'
     + controls.map(function(c){
         var cs = state.controlStatus[c.id]||{};
-        return '<tr data-id="'+c.id+'" data-family="'+c.f+'" data-status="'+(cs.status||'Not Started')+'">'
+        var designed = (typeof isControlDesigned==='function') && isControlDesigned(c.id);
+        return '<tr data-id="'+c.id+'" data-family="'+c.f+'" data-status="'+(cs.status||'Not Started')+'" style="cursor:pointer;" onclick="openControlLibraryReadOnly(\''+c.id+'\')" title="Open read-only design detail">'
           + '<td><span class="control-id">'+c.id+'</span></td>'
           + '<td>'+escapeHTML(c.n)+'</td>'
           + '<td><span class="family-badge">'+c.f+'</span></td>'
           + '<td>'+ownerCell(c.id)+'</td>'
           + '<td>'+policyCell(c.f)+'</td>'
           + '<td>'+typesCell(c.id)+'</td>'
+          + '<td style="font-weight:700;color:'+(designed?'#166534':'#94a3b8')+';">'+(designed?'Yes':'No')+'</td>'
           + '<td>'+chipHTML(cs.status||'Not Started')+'</td>'
           + '</tr>';
       }).join('')
@@ -209,34 +211,214 @@ function renderPoliciesInventory(body) {
   var merges = state.policyMerges || {};
   var rows = families.filter(function(f){ return !merges[f]; });
   function pName(o){ return (o && o.name) ? escapeHTML(o.name) : '<span style="color:#94a3b8;">Unassigned</span>'; }
+  function policyRow(fam){
+    var title = (typeof getPolicyMergedTitle==='function') ? getPolicyMergedTitle(fam) : (fam+' Policy');
+    var allFams = (typeof getPolicyAllFamilies==='function') ? getPolicyAllFamilies(fam) : [fam];
+    var owner = (state.domainOwners||{})[fam] || {};
+    var cust = (state.policyCustodians||{})[fam] || {};
+    var ps = (state.policyStatus[fam]||{}).status || 'Not Started';
+    var vers = (state.policyVersions||{})[fam];
+    var vlabel = (vers && vers.length) ? escapeHTML(String(vers[vers.length-1].version || '—')) : '—';
+    var ctrlCount = allFams.reduce(function(a,f){ return a + (((state.policySelectedControls||{})[f])||[]).length; }, 0);
+    if (!ctrlCount) ctrlCount = allFams.reduce(function(a,f){ return a + (CONTROLS||[]).filter(function(c){return c.f===f;}).length; }, 0);
+    var famBadges = allFams.map(function(f){ return '<span class="family-badge" style="font-size:10px;padding:1px 5px;">'+f+'</span>'; }).join(' ');
+    var clickable = ps === 'Approved';
+    var onclick = clickable ? ' onclick="openPublishedPolicyFromReports(\''+fam+'\')" title="Open policy document"' : '';
+    return '<tr style="border-bottom:1px solid var(--border);'+(clickable?'cursor:pointer;':'')+'"'+onclick+'>'
+      + '<td style="padding:11px 10px;">'+famBadges+'</td>'
+      + '<td style="padding:11px 10px;font-weight:600;color:'+(clickable?'var(--teal)':'inherit')+';">'+escapeHTML(title)+(clickable?' <span style="font-size:11px;">↗</span>':'')+'</td>'
+      + '<td style="padding:11px 10px;">'+pName(owner)+'</td>'
+      + '<td style="padding:11px 10px;">'+pName(cust)+'</td>'
+      + '<td style="padding:11px 10px;">'+chipHTML(ps)+'</td>'
+      + '<td style="padding:11px 10px;text-align:center;">'+vlabel+'</td>'
+      + '<td style="padding:11px 10px;text-align:center;font-weight:600;">'+ctrlCount+'</td>'
+      + '</tr>';
+  }
+  var ispStatus = (typeof getISPStatus==='function') ? getISPStatus() : (((state.policyStatus||{}).ISP||{}).status || 'Not Started');
+  var ispClickable = ispStatus === 'Approved';
+  var ispOnclick = ispClickable ? ' onclick="openPublishedPolicyFromReports(\'ISP\')" title="Open policy document"' : '';
+  var ispRow = '<tr style="border-bottom:1px solid var(--border);background:#f8fafc;'+(ispClickable?'cursor:pointer;':'')+'"'+ispOnclick+'>'
+    + '<td style="padding:11px 10px;"><span class="family-badge" style="font-size:10px;padding:1px 5px;background:#e0f2fe;color:#0369a1;">ISP</span></td>'
+    + '<td style="padding:11px 10px;font-weight:600;color:'+(ispClickable?'var(--teal)':'inherit')+';">Information Security Policy'+(ispClickable?' <span style="font-size:11px;">↗</span>':'')+'</td>'
+    + '<td style="padding:11px 10px;">'+((state.programOwner)?escapeHTML(state.programOwner):'<span style="color:#94a3b8;">Unassigned</span>')+'</td>'
+    + '<td style="padding:11px 10px;color:#94a3b8;">—</td>'
+    + '<td style="padding:11px 10px;">'+chipHTML(ispStatus)+'</td>'
+    + '<td style="padding:11px 10px;text-align:center;color:#94a3b8;">—</td>'
+    + '<td style="padding:11px 10px;text-align:center;color:#94a3b8;">—</td>'
+    + '</tr>';
   var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
-    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">' + rows.length + ' domain policies</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">' + (rows.length+1) + ' policies · open an approved policy to read the document</div>'
     + '<div class="table-scroll"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:2px solid var(--border);text-align:left;">'
     + '<th style="padding:10px;font-weight:600;">Domain</th><th style="padding:10px;font-weight:600;">Policy</th><th style="padding:10px;font-weight:600;">Owner</th><th style="padding:10px;font-weight:600;">Custodian</th><th style="padding:10px;font-weight:600;">Status</th><th style="padding:10px;font-weight:600;text-align:center;">Version</th><th style="padding:10px;font-weight:600;text-align:center;">Controls</th>'
     + '</tr></thead><tbody>'
-    + rows.map(function(fam){
-        var title = (typeof getPolicyMergedTitle==='function') ? getPolicyMergedTitle(fam) : (fam+' Policy');
-        var allFams = (typeof getPolicyAllFamilies==='function') ? getPolicyAllFamilies(fam) : [fam];
-        var owner = (state.domainOwners||{})[fam] || {};
-        var cust = (state.policyCustodians||{})[fam] || {};
-        var ps = (state.policyStatus[fam]||{}).status || 'Not Started';
-        var vers = (state.policyVersions||{})[fam];
-        var vlabel = (vers && vers.length) ? escapeHTML(String(vers[vers.length-1].version || '—')) : '—';
-        var ctrlCount = allFams.reduce(function(a,f){ return a + (((state.policySelectedControls||{})[f])||[]).length; }, 0);
-        if (!ctrlCount) ctrlCount = allFams.reduce(function(a,f){ return a + (CONTROLS||[]).filter(function(c){return c.f===f;}).length; }, 0);
-        var famBadges = allFams.map(function(f){ return '<span class="family-badge" style="font-size:10px;padding:1px 5px;">'+f+'</span>'; }).join(' ');
-        return '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:11px 10px;">'+famBadges+'</td>'
-          + '<td style="padding:11px 10px;font-weight:600;">'+escapeHTML(title)+'</td>'
-          + '<td style="padding:11px 10px;">'+pName(owner)+'</td>'
-          + '<td style="padding:11px 10px;">'+pName(cust)+'</td>'
-          + '<td style="padding:11px 10px;">'+chipHTML(ps)+'</td>'
-          + '<td style="padding:11px 10px;text-align:center;">'+vlabel+'</td>'
-          + '<td style="padding:11px 10px;text-align:center;font-weight:600;">'+ctrlCount+'</td>'
+    + ispRow
+    + rows.map(policyRow).join('')
+    + '</tbody></table></div></div>';
+  body.innerHTML = html;
+}
+
+function _invBuildTypeCoverageIndex() {
+  var sc = _invScopedControls();
+  var index = {};
+  sc.controls.forEach(function(c) {
+    var cov = ((state.controlStatus[c.id] || {}).assetCoverage) || {};
+    Object.keys(cov).forEach(function(key) {
+      if (!cov[key]) return;
+      if (!index[key]) index[key] = [];
+      index[key].push(c.id);
+    });
+  });
+  return index;
+}
+
+function _invControlBadgesHtml(ctrlIds) {
+  if (!ctrlIds || !ctrlIds.length) {
+    return '<span style="color:#94a3b8;">None</span>';
+  }
+  return ctrlIds.map(function(id) {
+    return '<span class="control-id" style="display:inline-block;margin:1px 2px;cursor:pointer;" onclick="event.stopPropagation();openControlLibraryReadOnly(\'' + id + '\')" title="Open read-only design detail">' + escapeHTML(id) + '</span>';
+  }).join(' ');
+}
+
+function _invAssetTypeRows() {
+  var rows = [];
+  if (typeof getActiveAssetTypeCatalog === 'function') {
+    getActiveAssetTypeCatalog().forEach(function(cat) {
+      if (cat.category === 'Process') return;
+      cat.types.forEach(function(t) {
+        rows.push({ key: t.key, label: t.label, category: cat.category, isCustom: false });
+      });
+    });
+  }
+  (state.customAssetTypes || []).forEach(function(name) {
+    if (!name || !String(name).trim()) return;
+    var group = ((state.customAssetTypeGroups || {})[name] || 'Custom').trim() || 'Custom';
+    rows.push({ key: 'custom_' + name, label: name, category: group, isCustom: true });
+  });
+  return rows;
+}
+
+function _invProcessTypeRows() {
+  var rows = [];
+  if (typeof getActiveAssetTypeCatalog === 'function') {
+    getActiveAssetTypeCatalog().forEach(function(cat) {
+      if (cat.category !== 'Process') return;
+      cat.types.forEach(function(t) {
+        rows.push({ key: t.key, label: t.label, category: cat.category });
+      });
+    });
+  }
+  return rows;
+}
+
+function _invRegisteredAssetsForType(row) {
+  var assets = state.assets || [];
+  if (row.isCustom) {
+    return assets.filter(function(a) { return String(a.type || '').trim() === row.label; });
+  }
+  return assets.filter(function(a) {
+    if (typeof getAssetTypeKey === 'function') {
+      var k = getAssetTypeKey(a.type);
+      if (k === row.key) return true;
+    }
+    return String(a.type || '').trim() === row.label;
+  });
+}
+
+function _invRegisteredProcessesForType(typeKey) {
+  return (state.processes || []).filter(function(p) {
+    return String(p.typeKey || '').trim() === typeKey;
+  });
+}
+
+function _invRegisteredNamesCell(items, emptyLabel) {
+  if (!items.length) return '<span style="color:#94a3b8;">' + (emptyLabel || 'None') + '</span>';
+  var names = items.map(function(x) { return String(x.name || x.id || '—').trim() || '—'; });
+  var preview = names.slice(0, 4).map(function(n) {
+    return '<span style="display:inline-block;background:#f8fafc;border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin:1px;font-size:11px;">' + escapeHTML(n) + '</span>';
+  }).join('');
+  if (names.length > 4) {
+    preview += ' <span style="font-size:11px;color:var(--text-muted);">+' + (names.length - 4) + ' more</span>';
+  }
+  return '<div style="font-weight:600;margin-bottom:2px;">' + items.length + '</div>' + preview;
+}
+
+function renderAssetTypesInventory(body) {
+  if (!body) return;
+  var rows = _invAssetTypeRows();
+  var coverage = _invBuildTypeCoverageIndex();
+  var categories = rows.map(function(r) { return r.category; }).filter(function(v, i, arr) { return arr.indexOf(v) === i; }).sort();
+  var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + rows.length + ' asset types · control scope from control design · registered systems from asset inventory</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<input type="text" id="assetInvSearch" placeholder="Search…" oninput="filterAssetInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+    + '<select id="assetInvCatFilter" onchange="filterAssetInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">All categories</option>'
+    + categories.map(function(c) { return '<option value="' + escapeHTML(c) + '">' + escapeHTML(c) + '</option>'; }).join('')
+    + '</select>'
+    + '</div></div>'
+    + '<div class="table-scroll"><table class="control-table" id="assetInvTable"><thead><tr>'
+    + '<th style="width:180px;">Category</th><th>Asset type</th><th style="width:90px;text-align:center;">Controls</th><th>Scoped controls</th><th style="width:220px;">Registered assets</th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(row) {
+        var ctrlIds = coverage[row.key] || [];
+        var assets = _invRegisteredAssetsForType(row);
+        return '<tr data-category="' + escapeHTML(row.category) + '" data-label="' + escapeHTML(row.label.toLowerCase()) + '">'
+          + '<td>' + escapeHTML(row.category) + (row.isCustom ? ' <span style="font-size:10px;color:#64748b;">(custom)</span>' : '') + '</td>'
+          + '<td style="font-weight:600;">' + escapeHTML(row.label) + '</td>'
+          + '<td style="text-align:center;font-weight:700;color:' + (ctrlIds.length ? '#166534' : '#94a3b8') + ';">' + ctrlIds.length + '</td>'
+          + '<td>' + _invControlBadgesHtml(ctrlIds) + '</td>'
+          + '<td>' + _invRegisteredNamesCell(assets, 'None registered') + '</td>'
           + '</tr>';
       }).join('')
     + '</tbody></table></div></div>';
   body.innerHTML = html;
+}
+
+function filterAssetInvTable() {
+  var q = ((document.getElementById('assetInvSearch') || {}).value || '').toLowerCase();
+  var cat = (document.getElementById('assetInvCatFilter') || {}).value || '';
+  var rows = document.querySelectorAll('#assetInvTable tbody tr');
+  rows.forEach(function(tr) {
+    var okQ = !q || (tr.textContent || '').toLowerCase().indexOf(q) !== -1;
+    var okC = !cat || tr.getAttribute('data-category') === cat;
+    tr.style.display = (okQ && okC) ? '' : 'none';
+  });
+}
+
+function renderProcessTypesInventory(body) {
+  if (!body) return;
+  var rows = _invProcessTypeRows();
+  var coverage = _invBuildTypeCoverageIndex();
+  var html = '<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:20px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + rows.length + ' process types · control scope from control design · registered processes from the process inventory</div>'
+    + '<input type="text" id="procInvSearch" placeholder="Search…" oninput="filterProcInvTable()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+    + '</div>'
+    + '<div class="table-scroll"><table class="control-table" id="procInvTable"><thead><tr>'
+    + '<th>Process type</th><th style="width:90px;text-align:center;">Controls</th><th>Scoped controls</th><th style="width:220px;">Registered processes</th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(row) {
+        var ctrlIds = coverage[row.key] || [];
+        var procs = _invRegisteredProcessesForType(row.key);
+        return '<tr data-label="' + escapeHTML(row.label.toLowerCase()) + '">'
+          + '<td style="font-weight:600;">' + escapeHTML(row.label) + '</td>'
+          + '<td style="text-align:center;font-weight:700;color:' + (ctrlIds.length ? '#166534' : '#94a3b8') + ';">' + ctrlIds.length + '</td>'
+          + '<td>' + _invControlBadgesHtml(ctrlIds) + '</td>'
+          + '<td>' + _invRegisteredNamesCell(procs, 'None registered') + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div></div>';
+  body.innerHTML = html;
+}
+
+function filterProcInvTable() {
+  var q = ((document.getElementById('procInvSearch') || {}).value || '').toLowerCase();
+  var rows = document.querySelectorAll('#procInvTable tbody tr');
+  rows.forEach(function(tr) {
+    var okQ = !q || (tr.textContent || '').toLowerCase().indexOf(q) !== -1;
+    tr.style.display = okQ ? '' : 'none';
+  });
 }
 
 // ============================================================
@@ -1813,7 +1995,7 @@ function renderReports() {
 
     <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div><div style="font-weight:700; font-size:14px; color:var(--navy);">Controls Inventory</div><div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Full control list with owner, governing policy, and associated asset/process types — now its own view.</div></div>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="goToReportsLibrary('controls-inventory')">Open Controls Inventory →</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="goToReportsLibrary('controls')">Open Controls →</button>
     </div>
 
     <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:20px;">
@@ -1987,9 +2169,20 @@ function renderAuditTrailPanel() {
       + '<div><label class="form-label" style="font-size:10px;">Date contains</label>'
       + '<input class="form-input" style="font-size:12px;min-width:140px;" placeholder="2026-04" value="' + escapeHTML(state._changeLogDateFilter || '') + '" oninput="setChangeLogDateFilter(this.value)"></div>'
       + '</div>';
+  if (state._reportsAuditLogHidden) {
+    panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+      + '<div style="font-weight:700;font-size:14px;color:var(--navy);">Activity &amp; change log</div>'
+      + '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="setReportsAuditLogHidden(false)">Show</button>'
+      + '</div>';
+    body.appendChild(panel);
+    return;
+  }
   panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">'
     + '<div style="font-weight:700;font-size:14px;color:var(--navy);">Activity &amp; change log</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;">'
     + '<div style="font-size:12px;color:var(--text-muted);">' + entries.length + ' events · ' + fieldCount + ' field edits (retained)</div>'
+    + '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="setReportsAuditLogHidden(true)">Hide</button>'
+    + '</div>'
     + '</div>'
     + modeRow
     + eventFilters
@@ -2002,6 +2195,13 @@ function filterAuditView(type) {
   state._auditTrailEventCatFilter = type || 'all';
   syncAuditTrailPanelContent();
 }
+
+function setReportsAuditLogHidden(hidden) {
+  state._reportsAuditLogHidden = !!hidden;
+  markDirty();
+  renderAuditTrailPanel();
+}
+window.setReportsAuditLogHidden = setReportsAuditLogHidden;
 
 // ── Attestation Review Queue (for CISO / ISSM on Reports) ──────────────
 function controlDesignQueueMatchesReviewer(r) {
