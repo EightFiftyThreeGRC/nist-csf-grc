@@ -172,37 +172,174 @@ function renderPolicyArchitectureCard() {
 
 var _origRenderCISOStep3 = typeof renderCISOStep3 === 'function' ? renderCISOStep3 : null;
 
+/** Consolidated Govern-policy requirement groups — each maps multiple CSF GV subcategories. */
+var GV_GOVERN_REQUIREMENT_GROUPS = [
+  {
+    subcategories: ['GV.OC-01', 'GV.OC-04', 'GV.OC-05'],
+    text: '{org} shall maintain understanding of its mission, critical objectives, and dependencies on services and capabilities it relies on or that stakeholders expect, and shall use that context to inform cybersecurity risk management.'
+  },
+  {
+    subcategories: ['GV.OC-02', 'GV.OC-03'],
+    text: '{org} shall identify internal and external stakeholders, understand their cybersecurity expectations, and manage applicable legal, regulatory, contractual, and privacy obligations.'
+  },
+  {
+    subcategories: ['GV.RM-01', 'GV.RM-02', 'GV.RM-04'],
+    text: '{org} shall establish cybersecurity risk management objectives, risk appetite and tolerance statements, and strategic direction for risk response options, and shall communicate these to organizational stakeholders.'
+  },
+  {
+    subcategories: ['GV.RM-03', 'GV.RM-07'],
+    text: '{org} shall integrate cybersecurity risk management into enterprise risk management processes and include characterization of strategic opportunities (positive risks) in cybersecurity risk discussions.'
+  },
+  {
+    subcategories: ['GV.RM-05', 'GV.RM-06'],
+    text: '{org} shall establish lines of communication for cybersecurity risks across the organization—including supplier and third-party risks—and maintain a standardized method to calculate, document, categorize, and prioritize cybersecurity risks.'
+  },
+  {
+    subcategories: ['GV.RR-01', 'GV.RR-02'],
+    text: '{org} shall assign leadership accountability for cybersecurity risk, foster a risk-aware and continually improving culture, and establish roles, responsibilities, and authorities that are communicated, understood, and enforced.'
+  },
+  {
+    subcategories: ['GV.RR-03', 'GV.RR-04'],
+    text: '{org} shall allocate resources commensurate with its cybersecurity risk strategy and include cybersecurity in human resources practices.'
+  },
+  {
+    subcategories: ['GV.PO-01', 'GV.PO-02'],
+    text: '{org} shall establish, communicate, and enforce policy for managing cybersecurity risks based on organizational context and strategy, and shall review and update that policy to reflect changes in requirements, threats, technology, and mission.'
+  },
+  {
+    subcategories: ['GV.OV-01', 'GV.OV-02', 'GV.OV-03'],
+    text: '{org} shall periodically review cybersecurity risk management strategy outcomes, organizational risk coverage, and program performance, adjusting strategy and direction as needed.'
+  },
+  {
+    subcategories: ['GV.SC-01', 'GV.SC-03', 'GV.SC-09'],
+    text: '{org} shall establish a cybersecurity supply chain risk management program integrated with enterprise and cybersecurity risk management, and shall monitor supplier security practices throughout the technology life cycle.'
+  },
+  {
+    subcategories: ['GV.SC-02', 'GV.SC-08'],
+    text: '{org} shall define and coordinate cybersecurity roles and responsibilities with suppliers, customers, and partners, and include relevant third parties in incident planning, response, and recovery activities.'
+  },
+  {
+    subcategories: ['GV.SC-04', 'GV.SC-06', 'GV.SC-10'],
+    text: '{org} shall identify and prioritize suppliers by criticality, perform due diligence before entering supplier relationships, and plan for supply chain risk activities after partnerships or service agreements end.'
+  },
+  {
+    subcategories: ['GV.SC-05', 'GV.SC-07'],
+    text: '{org} shall establish contractual requirements to address supply chain cybersecurity risks and shall assess, respond to, and monitor supplier-related risks throughout each relationship.'
+  }
+];
+
+function getActiveGvSubcategoryIds() {
+  ensureGvSubcategoriesSeeded();
+  return Object.keys(state.gvSubcategories || {}).filter(function(k) { return state.gvSubcategories[k]; });
+}
+
+function buildConsolidatedGvRequirements(activeGvIds, orgNameVal) {
+  orgNameVal = orgNameVal || 'the organization';
+  var activeSet = {};
+  (activeGvIds || []).forEach(function(id) { activeSet[id] = true; });
+  var reqs = [];
+  GV_GOVERN_REQUIREMENT_GROUPS.forEach(function(group) {
+    var activeInGroup = group.subcategories.filter(function(id) { return activeSet[id]; });
+    if (!activeInGroup.length) return;
+    var text = group.text.replace(/\{org\}/g, orgNameVal);
+    var refs = activeInGroup.join(', ');
+    reqs.push({
+      id: 'GV-REQ-' + (reqs.length + 1),
+      text: text + ' [NIST CSF 2.0: ' + refs + ']',
+      subcategories: activeInGroup.slice(),
+      controls: activeInGroup.slice()
+    });
+  });
+  return reqs;
+}
+
+function isVerbatimGvRequirement(req) {
+  var ids = (req.controls || []).concat(req.subcategories || []);
+  if (ids.length !== 1) return false;
+  var subId = ids[0];
+  if (!/^GV\./.test(String(subId))) return false;
+  var verbatim = CSF_SUBCATEGORY_TEXT && CSF_SUBCATEGORY_TEXT[subId];
+  return !!(verbatim && String(req.text || '').trim() === String(verbatim).trim());
+}
+
+function migrateVerbatimGvRequirementsIfNeeded() {
+  var isp = state.infoSecPolicy;
+  if (!isp || !isp.requirements || isp._gvRequirementsConsolidated) return false;
+  var gvOnly = isp.requirements.filter(function(r) {
+    var ids = (r.controls || []).concat(r.subcategories || []);
+    return ids.length && ids.every(function(id) { return /^GV\./.test(String(id)); });
+  });
+  if (gvOnly.length < 3) return false;
+  var verbatimCount = gvOnly.filter(isVerbatimGvRequirement).length;
+  if (verbatimCount < Math.ceil(gvOnly.length * 0.75)) return false;
+  var otherReqs = isp.requirements.filter(function(r) {
+    var ids = (r.controls || []).concat(r.subcategories || []);
+    return !ids.length || !ids.every(function(id) { return /^GV\./.test(String(id)); });
+  });
+  isp.requirements = otherReqs.concat(buildConsolidatedGvRequirements(getActiveGvSubcategoryIds(), state.orgName || 'the organization'));
+  isp._gvRequirementsConsolidated = true;
+  if (typeof renumberReqs === 'function') renumberReqs();
+  if (typeof markDirty === 'function') markDirty();
+  return true;
+}
+
 function draftUnmappedGvRequirements(rerender) {
   var isp = state.infoSecPolicy;
   if (!isp || !isp.requirements) return 0;
-  ensureGvSubcategoriesSeeded();
-  var allActive = Object.keys(state.gvSubcategories).filter(function(id) { return state.gvSubcategories[id]; });
-  var mapped = isp.requirements.flatMap(function(r) { return r.controls || r.subcategories || []; });
+  migrateVerbatimGvRequirementsIfNeeded();
+  var allActive = getActiveGvSubcategoryIds();
+  var mapped = isp.requirements.flatMap(function(r) { return (r.controls || []).concat(r.subcategories || []); });
   var unmapped = allActive.filter(function(id) { return mapped.indexOf(id) < 0; });
   if (!unmapped.length) return 0;
-  unmapped.forEach(function(subId) {
-    var n = isp.requirements.length + 1;
-    var text = (CSF_SUBCATEGORY_TEXT && CSF_SUBCATEGORY_TEXT[subId]) || subId;
-    isp.requirements.push({ id: 'GV-REQ-' + n, text: text, subcategories: [subId], controls: [subId] });
+  var orgNameVal = state.orgName || 'the organization';
+  var unmappedSet = {};
+  unmapped.forEach(function(id) { unmappedSet[id] = true; });
+  var added = 0;
+  GV_GOVERN_REQUIREMENT_GROUPS.forEach(function(group) {
+    var unmappedInGroup = group.subcategories.filter(function(id) { return unmappedSet[id]; });
+    if (!unmappedInGroup.length) return;
+    var activeInGroup = group.subcategories.filter(function(id) { return allActive.indexOf(id) >= 0; });
+    var existing = isp.requirements.find(function(r) {
+      var ids = (r.controls || []).concat(r.subcategories || []);
+      return group.subcategories.some(function(id) { return ids.indexOf(id) >= 0; });
+    });
+    if (existing) {
+      unmappedInGroup.forEach(function(id) {
+        if (!existing.controls) existing.controls = [];
+        if (existing.controls.indexOf(id) < 0) {
+          existing.controls.push(id);
+          added++;
+        }
+        if (!existing.subcategories) existing.subcategories = [];
+        if (existing.subcategories.indexOf(id) < 0) existing.subcategories.push(id);
+      });
+      return;
+    }
+    var text = group.text.replace(/\{org\}/g, orgNameVal);
+    var refs = activeInGroup.join(', ');
+    isp.requirements.push({
+      id: 'GV-REQ-' + (isp.requirements.length + 1),
+      text: text + ' [NIST CSF 2.0: ' + refs + ']',
+      subcategories: activeInGroup.slice(),
+      controls: activeInGroup.slice()
+    });
+    added += unmappedInGroup.length;
   });
   if (typeof renumberReqs === 'function') renumberReqs();
   markDirty();
   if (rerender !== false && typeof renderCISOStep3 === 'function') renderCISOStep3();
-  return unmapped.length;
+  return added;
 }
 
 function buildDefaultCsfInfoSecPolicy() {
   var orgNameVal = state.orgName || 'the organization';
   var ownerTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
   ensureGvSubcategoriesSeeded();
-  var gvIds = Object.keys(state.gvSubcategories || {}).filter(function(k) { return state.gvSubcategories[k]; });
+  var gvIds = getActiveGvSubcategoryIds();
   if (!gvIds.length && typeof GV_CORE_SUBCATEGORIES !== 'undefined') {
     gvIds = GV_CORE_SUBCATEGORIES.slice();
   }
-  var reqs = gvIds.map(function(subId, i) {
-    var text = (typeof CSF_SUBCATEGORY_TEXT !== 'undefined' && CSF_SUBCATEGORY_TEXT[subId]) || subId;
-    return { id: 'GV-REQ-' + (i + 1), text: text, subcategories: [subId], controls: [subId] };
-  });
+  var reqs = buildConsolidatedGvRequirements(gvIds, orgNameVal);
   return {
     title: getDefaultISPTitle(),
     custodian: { name: '', role: '', email: '' },
@@ -300,6 +437,7 @@ function selectAllPM(val) {
   if (!_origRenderCISOStep3) return;
   renderCISOStep3 = function() {
     sanitizeCsfSetupPolicyCopy();
+    migrateVerbatimGvRequirementsIfNeeded();
     _origRenderCISOStep3();
     var body = document.getElementById('ciso-step-4-body');
     if (!body) return;
@@ -316,6 +454,17 @@ function selectAllPM(val) {
     }
   };
 })();
+
+if (typeof renderRequirementsSection === 'function') {
+  var _origRenderRequirementsSection = renderRequirementsSection;
+  renderRequirementsSection = function(unmappedPM) {
+    var html = _origRenderRequirementsSection(unmappedPM);
+    return html.replace(
+      'Each requirement is a control objective mapped to specific NIST 800-53 controls.',
+      'Each requirement is a governance objective mapped to one or more NIST CSF 2.0 Govern subcategories.'
+    );
+  };
+}
 
 function renderCISOStep3Integrations() {
   /* Reg mapping removed — CSF program has no ISO/SOC 2/HIPAA crosswalk UI. */
