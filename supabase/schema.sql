@@ -36,6 +36,12 @@ create table if not exists public.programs (
 
 create index if not exists programs_owner_idx on public.programs (owner_id);
 
+-- Optional product discriminator when one Supabase project hosts multiple apps
+-- (e.g. 800-53 vs NIST CSF). Client also stores state.programKind for isolation
+-- when this column has not been migrated yet.
+alter table public.programs add column if not exists program_kind text;
+create index if not exists programs_owner_kind_idx on public.programs (owner_id, program_kind);
+
 -- ----------------------------------------------------------------------------
 -- Helper: is the calling user listed in a program roster (state.users[].email)?
 -- SECURITY DEFINER + STABLE so it can be used inside RLS without recursion and

@@ -984,6 +984,25 @@ function showCloudAccountMenu() {
 }
 
 // ── program load / create ────────────────────────────────────────────────────
+function getCloudProgramKind() {
+  if (typeof CLOUD_CONFIG === 'object' && CLOUD_CONFIG && CLOUD_CONFIG.programKind) {
+    return String(CLOUD_CONFIG.programKind).trim();
+  }
+  return 'csf';
+}
+
+function getProgramKindFromRow(row) {
+  if (!row) return '';
+  if (row.program_kind && String(row.program_kind).trim()) return String(row.program_kind).trim();
+  if (typeof resolveProgramKindFromSaved === 'function') return resolveProgramKindFromSaved(row.state);
+  var st = row.state || {};
+  return (st.programKind && String(st.programKind).trim()) || '800-53';
+}
+
+function programRowMatchesThisApp(row) {
+  return getProgramKindFromRow(row) === getCloudProgramKind();
+}
+
 function cloudUid() {
   try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
   return 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -998,6 +1017,7 @@ function buildSeedProgramState() {
   seed.users = [{ id: cloudUid(), name: name, email: email, role: 'ciso', families: [], controls: [], note: 'Program owner (created this program)' }];
   seed.programOwner = name;
   seed.programOwnerEmail = email;
+  seed.programKind = getCloudProgramKind();
   return seed;
 }
 
@@ -1012,16 +1032,27 @@ async function loadOrCreateCloudProgram() {
     showCloudSignInGate('Could not reach the database. Check your connection and try again.');
     return false;
   }
-  var rows = sel.data || [];
+  var rows = (sel.data || []).filter(programRowMatchesThisApp);
   var myId = __cloudSession.user.id;
   var row = rows.filter(function(r) { return r.owner_id === myId; })[0] || rows[0] || null;
 
   if (!row) {
-    // First time for this account and not yet invited anywhere -> create one.
+    // First CSF program for this account (800-53 rows are ignored by programKind filter).
+    var insPayload = {
+      name: (getCloudSessionName() + "'s CSF Program"),
+      owner_id: myId,
+      state: buildSeedProgramState()
+    };
+    if (getCloudProgramKind()) insPayload.program_kind = getCloudProgramKind();
     var ins = await sb.from('programs')
-      .insert({ name: (getCloudSessionName() + "'s GRC Program"), owner_id: myId, state: buildSeedProgramState() })
+      .insert(insPayload)
       .select()
       .single();
+    if (ins.error && insPayload.program_kind) {
+      // Older Supabase projects may not have program_kind yet — state.programKind still isolates apps.
+      delete insPayload.program_kind;
+      ins = await sb.from('programs').insert(insPayload).select().single();
+    }
     if (ins.error) {
       console.warn('create program', ins.error);
       showCloudSignInGate('Signed in, but no program is associated with ' + getCloudSessionEmail()
@@ -1032,13 +1063,22 @@ async function loadOrCreateCloudProgram() {
   }
 
   applyCloudProgramRow(row);
-  return true;
+  return !!__cloudProgramId;
 }
 
 function applyCloudProgramRow(row) {
+  if (!programRowMatchesThisApp(row)) {
+    console.warn('Refusing cloud program row — wrong product kind.');
+    return;
+  }
   __cloudProgramId = row.id;
   __cloudProgramOwnerId = row.owner_id;
-  if (row.state && typeof applyLoadedState === 'function') applyLoadedState(row.state);
+  if (row.state && typeof applyLoadedState === 'function' && !applyLoadedState(row.state)) {
+    __cloudProgramId = null;
+    __cloudProgramOwnerId = null;
+    console.warn('applyLoadedState rejected cloud program state');
+    return;
+  }
   rememberCloudLocalFingerprint();
   // Mirror into localStorage as an offline cache for this browser.
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(buildPersistedPayload())); } catch (e) {}

@@ -29,6 +29,7 @@ function getDefaultProgramOwnerTitle() {
 // APP STATE
 // ============================================================
 const state = {
+  programKind: 'csf',        // cloud discriminator — must match CLOUD_CONFIG.programKind
   selectedCategories: null,  // { 'GV.OC': true, ... } — null until CISO step 2 seeds all categories
   policyStructure: 'category', // 'function' | 'category' — Tier 2 policy granularity
   gvSubcategories: {},         // { 'GV.PO-01': true, ... } — Tier 1 Govern outcomes in scope
@@ -521,8 +522,28 @@ function seedXmplAtoDemoDataIfMissing() {
   };
 }
 
+function getExpectedProgramKind() {
+  if (typeof CLOUD_CONFIG === 'object' && CLOUD_CONFIG && CLOUD_CONFIG.programKind) {
+    return String(CLOUD_CONFIG.programKind).trim();
+  }
+  return 'csf';
+}
+
+/** Infer product from persisted state when programKind is missing (legacy imports). */
+function resolveProgramKindFromSaved(saved) {
+  if (!saved || typeof saved !== 'object') return '';
+  if (saved.programKind && String(saved.programKind).trim()) return String(saved.programKind).trim();
+  if (saved.selectedCategories && typeof saved.selectedCategories === 'object') return 'csf';
+  if ('baseline' in saved && saved.baseline != null) return '800-53';
+  return '800-53';
+}
+
 function applyLoadedState(saved) {
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return false;
+  if (resolveProgramKindFromSaved(saved) !== getExpectedProgramKind()) {
+    console.warn('Refusing to load program — wrong product kind (expected', getExpectedProgramKind() + ').');
+    return false;
+  }
   STATE_ALLOWED_KEYS.forEach(function(k) {
     if (k in saved) state[k] = saved[k];
   });

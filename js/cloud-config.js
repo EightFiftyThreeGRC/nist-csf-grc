@@ -5,7 +5,9 @@
 var CLOUD_CONFIG = {
   supabaseUrl: "https://mdysqwcbgfizzojqojwu.supabase.co",
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1keXNxd2NiZ2ZpenpvanFvand1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5ODkzNzAsImV4cCI6MjA5NzU2NTM3MH0.4TCS5T1bRq903w2M2J0DPaCr0n5r0L8biAqRg_tfptY",
-  appUrl: "https://eightfiftythreegrc.github.io/eightfiftythree-grc/app.html",
+  // Same Supabase auth as 800-53, but programs are isolated by programKind.
+  programKind: "csf",
+  appUrl: "https://eightfiftythreegrc.github.io/nist-csf-grc/app.html",
   enableMagicLink: false,
   enableEmailPassword: true,
   enableGoogle: false,
