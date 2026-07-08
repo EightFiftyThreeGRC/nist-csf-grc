@@ -923,9 +923,11 @@ function goToStep(tabId, step) {
     if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
     if (!state.programOwnerTitle || !state.programOwnerTitle.trim()) { showToast('Please enter the Program Owner title before continuing.', true); document.getElementById('programOwnerTitleInput')?.focus(); return; }
   }
-  if (tabId === 'ciso' && step > 2 && !state.baseline) {
-    showToast('Please select a baseline impact level first.', true);
-    return;
+  if (tabId === 'ciso' && step > 2) {
+    if (typeof getProgramScopeReady === 'function' && !getProgramScopeReady()) {
+      showToast('Select at least one CSF category before continuing.', true);
+      return;
+    }
   }
   // Hide all steps
   for (let i = 1; i <= max; i++) {
