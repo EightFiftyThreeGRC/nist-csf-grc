@@ -287,7 +287,7 @@ function cisoNext(fromStep) {
         return;
       }
     } else {
-      showToast('Assign a different ISP approver (not the program owner) for separation of duties.', true);
+      showToast('Assign the person the program owner reports to as governance policy approver (not the program owner).', true);
       return;
     }
     // Finalize the ISP and submit to the selected approver for review.
@@ -360,7 +360,7 @@ function submitISPForApproval(silent, options) {
   var isCustom = !!rc._customApprover;
   if (!isCustom) {
     if (!silent && typeof showToast === 'function') {
-      showToast('The ISP must be approved by someone other than the program owner. Turn on "Different approver" and assign a separate reviewer.', true);
+      showToast('The governance policy must be approved by the person the program owner reports to — assign that reviewer in the Policy Review card.', true);
     }
     return;
   }
@@ -370,7 +370,7 @@ function submitISPForApproval(silent, options) {
   if (typeof ispApproverViolatesSeparationOfDuties === 'function'
       && ispApproverViolatesSeparationOfDuties(approverEmail, approverName)) {
     if (!silent && typeof showToast === 'function') {
-      showToast('The ISP approver must be a different person than the program owner (separation of duties).', true);
+      showToast('The governance policy approver must be a different person than the program owner.', true);
     }
     return;
   }

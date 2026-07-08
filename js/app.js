@@ -215,7 +215,7 @@ function toggleCustomApprover(policyKey, checkbox) {
   if (policyKey === 'ISP' && !isCustom) {
     checkbox.checked = true;
     if (typeof showToast === 'function') {
-      showToast('The ISP must be approved by someone other than the program owner (separation of duties).', true);
+      showToast('The governance policy must be approved by the person the program owner reports to — not the program owner.', true);
     }
     return;
   }
@@ -251,15 +251,17 @@ function renderReviewCycleCard(policyKey, label) {
   if (!rc.nextReviewDue)  { var d = new Date(rc.lastReviewed + 'T00:00:00'); d.setFullYear(d.getFullYear() + 1); rc.nextReviewDue = d.toISOString().slice(0, 10); }
   if (!rc.approvalDate)   { rc.approvalDate  = today; }
 
-  // Initialize default approver if not set (always program owner unless "Different approver")
-  if (!rc.approvedBy && !rc._customApprover) {
+  // Initialize default approver for domain policies (program owner unless "Different approver")
+  if (policyKey !== 'ISP' && !rc.approvedBy && !rc._customApprover) {
     rc.approvedBy = (state.programOwner || '').trim();
   }
-  if (policyKey === 'ISP' && !rc._customApprover) {
+  if (policyKey === 'ISP') {
     rc._customApprover = true;
-  }
-  if (policyKey !== 'ISP'
-      && typeof domainPolicyRequiresSeparateApprover === 'function'
+    var poNmIsp = (state.programOwner || '').trim();
+    if (poNmIsp && (rc.approvedBy || '').trim().toLowerCase() === poNmIsp.toLowerCase()) {
+      rc.approvedBy = '';
+    }
+  } else if (typeof domainPolicyRequiresSeparateApprover === 'function'
       && domainPolicyRequiresSeparateApprover(policyKey)
       && !rc._customApprover) {
     rc._customApprover = true;
@@ -290,13 +292,13 @@ function renderReviewCycleCard(policyKey, label) {
   var approverHTML = '';
   if (policyKey === 'ISP' || requiresSeparate) {
     var sodNote = policyKey === 'ISP'
-      ? 'The governance policy must be approved by someone other than the program owner (separation of duties). Assign a senior reviewer below.'
+      ? 'The governance policy must be approved by the person the program owner reports to (e.g., CIO, CEO, or board designee). Assign that reviewer below.'
       : 'You are drafting this domain policy — it must be approved by someone other than you (separation of duties). Assign a separate reviewer below.';
     approverHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">'
       + sodNote + '</div>'
       + '<div id="custom-approver-' + policyKey + '" style="display:block;margin-top:0;">'
       + '<div style="display:flex;gap:4px;">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Approver name" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="' + (policyKey === 'ISP' ? 'Approver name (e.g. CIO)' : 'Approver name') + '" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
       + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
       + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
       + '</div>';
@@ -308,7 +310,7 @@ function renderReviewCycleCard(policyKey, label) {
       + '<input type="checkbox" ' + (isCustom ? 'checked' : '') + ' style="accent-color:#6366f1;cursor:pointer;" onclick="toggleCustomApprover(\'' + escKey + '\', this)"> Different approver</label>'
       + '<div id="custom-approver-' + policyKey + '" style="display:' + (isCustom ? 'block' : 'none') + ';margin-top:8px;">'
       + '<div style="display:flex;gap:4px;">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Approver name" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
+      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="' + (policyKey === 'ISP' ? 'Approver name (e.g. CIO)' : 'Approver name') + '" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
       + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
       + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
       + '</div>';
@@ -337,7 +339,7 @@ function renderReviewCycleCard(policyKey, label) {
     + '<input class="form-input" type="date" style="font-size:12px;" value="' + (rc.approvalDate||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvalDate=this.value;; window.markDirty();">'
     + '</div>'
     + '</div>'
-    + '<div style="font-size:10px;color:var(--text-muted);margin-top:10px;">NIST 800-53 requires policies be reviewed at least annually. Auditors will ask: &ldquo;When was this last reviewed and by whom?&rdquo;</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);margin-top:10px;">Policies should be reviewed at least annually. Auditors will ask: &ldquo;When was this last reviewed and by whom?&rdquo;</div>'
     + '</div>';
 }
 

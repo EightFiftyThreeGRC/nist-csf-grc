@@ -455,7 +455,7 @@ function validateISPApproverAssignment(rc, silent) {
   rc = rc || (state.policyReviewCycle || {}).ISP || {};
   if (!rc._customApprover) {
     if (!silent && typeof showToast === 'function') {
-      showToast('The ISP must be approved by someone other than the program owner. Turn on "Different approver" and assign a separate reviewer.', true);
+      showToast('Assign the person the program owner reports to as governance policy approver in the Policy Review card.', true);
     }
     return false;
   }
@@ -475,7 +475,7 @@ function validateISPApproverAssignment(rc, silent) {
   }
   if (ispApproverViolatesSeparationOfDuties(email, name)) {
     if (!silent && typeof showToast === 'function') {
-      showToast('The ISP approver must be a different person than the program owner (separation of duties).', true);
+      showToast('The governance policy approver must be a different person than the program owner.', true);
     }
     return false;
   }
