@@ -2,13 +2,13 @@
 
 Browser-based NIST Cybersecurity Framework 2.0 program management tool. Sign in with your work account; program data syncs through Supabase.
 
-**[Launch the tool](https://eightfiftythreegrc.github.io/eightfiftythree-grc/)** (repo: [EightFiftyThreeGRC/eightfiftythree-grc](https://github.com/EightFiftyThreeGRC/eightfiftythree-grc))
+**[Launch the tool](https://eightfiftythreegrc.github.io/nist-csf-grc/)** (repo: [EightFiftyThreeGRC/nist-csf-grc](https://github.com/EightFiftyThreeGRC/nist-csf-grc))
 
 If the link shows “404 / There isn’t a GitHub Pages site here,” open the repo on GitHub → **Settings → Pages** → set **Source** to **GitHub Actions**, then push to `main` (or run the **Deploy GitHub Pages** workflow manually).
 
 ## Repository Status
 
-This repository is the canonical source for the public **EightFiftyThree GRC** release.
+This repository is the canonical source for **EightFiftyThree GRC — NIST CSF 2.0** (separate from the [800-53 edition](https://github.com/EightFiftyThreeGRC/eightfiftythree-grc)).
 
 - Intended for public GitHub upload and GitHub Pages deployment
 - Root documentation is intentionally scoped to operator and contributor essentials
@@ -60,8 +60,8 @@ tests/e2e/                  Playwright smoke tests (npm run test:e2e)
 Technical characteristics:
 
 - no framework, no build pipeline
-- program state synced to Supabase; mirrored in `localStorage` under `eightfiftythree-grc-v1` for the signed-in browser
-- saved snapshots stored in `localStorage` under `eightfiftythree-grc-snapshots`
+- program state synced to Supabase; mirrored in `localStorage` under `eightfiftythree-csf-v1` for the signed-in browser
+- saved snapshots stored in `localStorage` under `eightfiftythree-csf-snapshots`
 - existing users with data under the legacy `larsen-grc-*` or `hawthorn-grc-*` keys are automatically migrated on first load
 
 ## Design Constraints (What This Deliberately Is Not)
