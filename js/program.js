@@ -2543,11 +2543,18 @@ function ensureDefaultDeadlinesForMasters(masters) {
   if (changed && typeof markDirty === 'function') markDirty();
 }
 
+/** Policy units shown on Assign owners — category IDs in CSF mode, not function codes. */
+function getOwnerAssignmentUnits() {
+  if (typeof getDomainPolicyUnits === 'function') return getDomainPolicyUnits();
+  return getActiveFamilies().filter(function(f) { return f !== 'PM'; });
+}
+
 function applyOwnerEmailToFamilies(famList, email, meta) {
   var em = (email || '').trim();
   if (!isValidOwnerEmail(em)) return 0;
   meta = meta || {};
-  var families = getActiveFamilies().filter(function(f) { return f !== 'PM'; });
+  if (!state.domainOwners) state.domainOwners = {};
+  var units = getOwnerAssignmentUnits();
   var merges = state.policyMerges || {};
   var count = 0;
   famList.forEach(function(fam) {
@@ -2557,7 +2564,7 @@ function applyOwnerEmailToFamilies(famList, email, meta) {
       role: (meta.role || '').trim() || DOMAIN_SUGGESTED_ROLES[fam] || 'Security Manager'
     };
     delete state.domainOwners[fam].isDemoPlaceholder;
-    families.filter(function(f) { return merges[f] === fam; }).forEach(function(mf) {
+    units.filter(function(f) { return merges[f] === fam; }).forEach(function(mf) {
       state.domainOwners[mf] = Object.assign({}, state.domainOwners[fam]);
     });
     autoPopulateControlOwnersFromDomain(fam);
@@ -2574,15 +2581,17 @@ function applyProgramOwnerToAllDomains() {
     goToStep('ciso', 1);
     return;
   }
-  var families = getActiveFamilies().filter(function(f) { return f !== 'PM'; });
+  var units = getOwnerAssignmentUnits();
   var merges = state.policyMerges || {};
-  var masters = families.filter(function(f) { return !merges[f]; });
+  var masters = units.filter(function(f) { return !merges[f]; });
   ensureDefaultDeadlinesForMasters(masters);
-  applyOwnerEmailToFamilies(masters, email, {
+  var applied = applyOwnerEmailToFamilies(masters, email, {
     name: (state.programOwner || '').trim(),
     role: (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle()
   });
-  showToast('Program owner email assigned to all ' + masters.length + ' policy domains. Owners complete name and title on first sign-in.');
+  showToast(applied
+    ? ('Program owner assigned to all ' + applied + ' policy domain' + (applied === 1 ? '' : 's') + '.')
+    : 'Could not assign program owner — check the email in Step 1.', true);
   renderActiveCisoSetupStep();
 }
 
@@ -2610,7 +2619,7 @@ function renderCISOStep4b() {
   body.innerHTML = `
     ${cisoStepProgressHtml(6, 'Assign owners')}
     <div class="section-title">Assign owners</div>
-    <div class="section-subtitle">Add people by email only. They enter name and title on first sign-in.</div>
+    <div class="section-subtitle">Name, title, and email for each domain owner. Email is required; invitees can confirm name and title on first sign-in.</div>
 
     <div class="owner-step-hero${pct === 100 ? ' owner-step-hero--complete' : ''}">
       <div class="owner-step-hero-top">
@@ -2648,7 +2657,7 @@ function renderCISOStep4b() {
 
     <div class="owner-step-list-head">
       <span>Domain roster</span>
-      <span class="owner-step-list-hint">Override email or deadline per domain if needed</span>
+      <span class="owner-step-list-hint">Override owner details or deadline per domain if needed</span>
     </div>
     <div class="owner-step-list">
       ${masters.map(fam => {
@@ -2672,7 +2681,11 @@ function renderCISOStep4b() {
             <div class="owner-step-row-title">${escapeHTML(policyTitle)}</div>
           </div>
           <div class="owner-step-row-fields">
-            <input class="form-input owner-step-email${hasOwner ? ' owner-step-email--set' : ''}" type="email" placeholder="owner@company.com" value="${escapeHTML(o.email||'')}"
+            <input class="form-input owner-step-name" type="text" placeholder="Owner name" autocomplete="name" value="${escapeHTML(o.name||'')}"
+              oninput="setDomainOwner('${fam}','name',this.value);${merged.map(mf=>`setDomainOwner('${mf}','name',this.value);`).join('')}">
+            <input class="form-input owner-step-role" type="text" placeholder="${escapeHTML(DOMAIN_SUGGESTED_ROLES[fam] || 'Title')}" autocomplete="organization-title" value="${escapeHTML(o.role||'')}"
+              oninput="setDomainOwner('${fam}','role',this.value);${merged.map(mf=>`setDomainOwner('${mf}','role',this.value);`).join('')}">
+            <input class="form-input owner-step-email${hasOwner ? ' owner-step-email--set' : ''}" type="email" placeholder="owner@company.com" autocomplete="email" value="${escapeHTML(o.email||'')}"
               oninput="setDomainOwner('${fam}','email',this.value);${merged.map(mf=>`setDomainOwner('${mf}','email',this.value);`).join('')}">
             <input type="date" class="owner-step-date${isCustomDeadline ? ' owner-step-date--custom' : ''}" value="${deadline}" onchange="setDomainDeadline('${fam}',this.value)" title="Draft deadline">
           </div>
@@ -2988,7 +3001,7 @@ function autoPopulateControlOwnersFromDomain(fam) {
   }
   // Also handle merged families
   var merges = state.policyMerges || {};
-  var slaveFams = getActiveFamilies().filter(function(f) { return merges[f] === fam; });
+  var slaveFams = getOwnerAssignmentUnits().filter(function(f) { return merges[f] === fam; });
   slaveFams.forEach(function(sf) {
     var sfSelected = (state.policySelectedControls || {})[sf] || [];
     if (!sfSelected.length) {
