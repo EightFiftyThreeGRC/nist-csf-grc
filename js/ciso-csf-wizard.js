@@ -191,6 +191,39 @@ function draftUnmappedGvRequirements(rerender) {
   return unmapped.length;
 }
 
+function buildDefaultCsfInfoSecPolicy() {
+  var orgNameVal = state.orgName || 'the organization';
+  var ownerTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
+  ensureGvSubcategoriesSeeded();
+  var gvIds = Object.keys(state.gvSubcategories || {}).filter(function(k) { return state.gvSubcategories[k]; });
+  if (!gvIds.length && typeof GV_CORE_SUBCATEGORIES !== 'undefined') {
+    gvIds = GV_CORE_SUBCATEGORIES.slice();
+  }
+  var reqs = gvIds.map(function(subId, i) {
+    var text = (typeof CSF_SUBCATEGORY_TEXT !== 'undefined' && CSF_SUBCATEGORY_TEXT[subId]) || subId;
+    return { id: 'GV-REQ-' + (i + 1), text: text, subcategories: [subId], controls: [subId] };
+  });
+  return {
+    title: getDefaultISPTitle(),
+    custodian: { name: '', role: '', email: '' },
+    sections: [
+      { type: 'purpose', title: 'Purpose', content: 'This policy establishes ' + orgNameVal + '\'s cybersecurity governance framework aligned to NIST CSF 2.0 Govern outcomes and Tier 2 policy architecture.' },
+      { type: 'scope', title: 'Scope', content: 'Applies to all personnel, contractors, and systems involved in ' + orgNameVal + ' cybersecurity risk management.' },
+      { type: 'roles', title: 'Roles & Responsibilities' },
+      { type: 'requirements', title: 'Govern Policy Requirements' },
+      { type: 'enforcement', title: 'Enforcement & Violations', content: typeof getDefaultISPEnforcementContent === 'function' ? getDefaultISPEnforcementContent(orgNameVal) : '' },
+      { type: 'exceptions', title: 'Exceptions & Waivers', content: typeof getDefaultISPExceptionsContent === 'function' ? getDefaultISPExceptionsContent(orgNameVal) : '' },
+      { type: 'documents', title: 'Related Documents & Standards' },
+      { type: 'revision-history', title: 'Revision History' }
+    ],
+    roles: buildDefaultISPRoles(ownerTitle),
+    requirements: reqs,
+    documents: [
+      { title: 'NIST Cybersecurity Framework 2.0', desc: 'Framework for managing and reducing cybersecurity risk.', url: 'https://www.nist.gov/cyberframework' }
+    ]
+  };
+}
+
 function buildDefaultISPRoles(ownerTitle) {
   return [
     { name: 'Executive Leadership', responsibilities: ['Approve cybersecurity governance policy', 'Allocate resources for the cybersecurity program', 'Accept enterprise-level cyber risk within delegated authority'] },

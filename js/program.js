@@ -1657,12 +1657,19 @@ function renderISPEditorBody(body, opts) {
   opts = opts || {};
   var isRevision = opts.context === 'revision';
   if (!body) return;
-  if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No Baseline Selected</div><p>Return to Step 2 to choose an impact level (Low, Moderate, or High) that matches your system\'s risk profile.</p></div>';
+  var scopeReady = typeof getProgramScopeReady === 'function' && getProgramScopeReady();
+  if (!state.baseline && !scopeReady) {
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Return to Step 2 and select at least one CSF category before drafting your governance policy.</p></div>';
     return;
   }
   // Init policy state
   if (!state.infoSecPolicy) {
+    if (scopeReady && typeof buildDefaultCsfInfoSecPolicy === 'function') {
+      state.infoSecPolicy = buildDefaultCsfInfoSecPolicy();
+    } else if (!state.baseline) {
+      body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Return to Step 2 and select at least one CSF category before drafting your governance policy.</p></div>';
+      return;
+    } else {
     const minus1 = getActiveControls().filter(function(c) { return isPolicyAndProceduresControl(c.id); }).map(function(c) { return c.id; });
     const ownerName  = state.programOwner || 'Program Owner';
     const ownerTitle = (state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle();
@@ -1706,6 +1713,7 @@ function renderISPEditorBody(body, opts) {
         { title:'NIST SP 800-37 Rev. 2 (RMF)', desc:'Risk Management Framework for Information Systems and Organizations: A System Life Cycle Approach.', url:'https://csrc.nist.gov/publications/detail/sp/800-37/rev-2/final' },
       ],
     };
+    }
   }
 
   // Migration: if old format (no sections array), convert
@@ -1740,7 +1748,11 @@ function renderISPEditorBody(body, opts) {
   ensureISPPrivacyRoles();
 
   if (state.infoSecPolicy && !state.infoSecPolicy._pmAutoSeeded) {
-    draftUnmappedPMRequirements(false);
+    if (scopeReady && typeof draftUnmappedGvRequirements === 'function') {
+      draftUnmappedGvRequirements(false);
+    } else {
+      draftUnmappedPMRequirements(false);
+    }
     state.infoSecPolicy._pmAutoSeeded = true;
   }
 
@@ -1752,7 +1764,7 @@ function renderISPEditorBody(body, opts) {
 
   const isp = state.infoSecPolicy;
   const activeControls = getActiveControls();
-  const allActivePM = Object.keys(state.pmControls).filter(id => state.pmControls[id]);
+  const allActivePM = Object.keys(state.pmControls || {}).filter(id => state.pmControls && state.pmControls[id]);
   const mappedControls = isp.requirements.flatMap(r => r.controls);
   const unmappedPM = allActivePM.filter(id => !mappedControls.includes(id));
 
