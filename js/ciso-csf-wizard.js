@@ -545,11 +545,9 @@ function renderCisoMergeSuggestionsGrouped(families, merges) {
   var groups = fnOrder.filter(function(fn) { return byFn[fn] && byFn[fn].length; }).map(function(fn) {
     var rows = byFn[fn].map(function(mg) {
       var alreadyMerged = mg.families.slice(1).every(function(f) { return merges[f] === mg.families[0]; });
+      if (alreadyMerged) return '';
       var masterFam = mg.families[0];
       var slaveFams = mg.families.slice(1);
-      var actionBtn = alreadyMerged
-        ? '<button type="button" data-ciso-unmerge-slaves="' + escapeHTML(slaveFams.join(',')) + '" style="font-size:11px;font-weight:700;color:#991b1b;background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Unmerge</button>'
-        : '<button type="button" data-ciso-merge-apply data-master="' + escapeHTML(masterFam) + '" data-slaves="' + escapeHTML(slaveFams.join(',')) + '" style="font-size:11px;font-weight:700;color:#1e40af;background:#dbeafe;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Apply merge</button>';
       return '<div style="display:flex;align-items:center;gap:10px;background:white;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:6px;">'
         + '<div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;">'
         + mg.families.map(function(f, i) {
@@ -561,17 +559,18 @@ function renderCisoMergeSuggestionsGrouped(families, merges) {
         + '<span style="font-size:12px;font-weight:700;color:#1e40af;">' + escapeHTML(mg.label) + '</span>'
         + '<span style="font-size:11px;color:#3b82f6;margin-left:6px;">' + escapeHTML(mg.reason || 'Suggested category merge.') + '</span>'
         + '</div>'
-        + actionBtn
+        + '<button type="button" data-ciso-merge-apply data-master="' + escapeHTML(masterFam) + '" data-slaves="' + escapeHTML(slaveFams.join(',')) + '" style="font-size:11px;font-weight:700;color:#1e40af;background:#dbeafe;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Apply merge</button>'
         + '</div>';
-    }).join('');
+    }).filter(Boolean).join('');
+    if (!rows) return '';
     return '<div style="margin-bottom:14px;">'
       + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#475569;margin-bottom:8px;">'
       + escapeHTML(fn) + ' — ' + escapeHTML((typeof FUNCTIONS !== 'undefined' && FUNCTIONS[fn]) || fn)
       + '</div>'
       + rows
       + '</div>';
-  }).join('');
-  return groups || '<div style="font-size:12px;color:#64748b;">No merge suggestions for your current scope.</div>';
+  }).filter(Boolean).join('');
+  return groups;
 }
 
 function renderCisoConsolidateTableRows(masters, families, merges, showMerges) {
@@ -585,29 +584,42 @@ function renderCisoConsolidateTableRows(masters, families, merges, showMerges) {
   return fnOrder.filter(function(fn) { return byFn[fn] && byFn[fn].length; }).map(function(fn) {
     var header = '<tr class="csf-consolidate-fn-row"><td colspan="3" style="background:#f1f5f9;padding:10px 12px;border-bottom:2px solid #e2e8f0;">'
       + '<span style="font-size:12px;font-weight:800;color:var(--navy);">' + escapeHTML(fn) + ' — ' + escapeHTML((typeof FUNCTIONS !== 'undefined' && FUNCTIONS[fn]) || fn) + '</span>'
-      + '<span style="font-size:11px;color:#64748b;margin-left:8px;">' + byFn[fn].length + ' categor' + (byFn[fn].length === 1 ? 'y' : 'ies') + '</span>'
+      + '<span style="font-size:11px;color:#64748b;margin-left:8px;">' + byFn[fn].length + ' polic' + (byFn[fn].length === 1 ? 'y' : 'ies') + '</span>'
       + '</td></tr>';
     var rows = byFn[fn].map(function(fam) {
       var merged = families.filter(function(f) { return merges[f] === fam; });
+      var allUnits = [fam].concat(merged);
       var subCount = countSubcategoriesForPolicyUnit(fam, merges, families);
       var mergeOptions = showMerges ? families.filter(function(f) { return f !== fam && merges[f] !== fam && !merges[f]; }) : [];
       var tier = getPriority(fam);
       var m = PRIORITY_META[tier];
       var isDefault = typeof getCsfCategoryPriorityDefault === 'function' ? !!getCsfCategoryPriorityDefault(fam) : !!(PRIORITY_DEFAULTS[fam]);
+      var mergedTitle = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam;
+      var suggestedMerge = showMerges && !merged.length ? (typeof COMMON_MERGES !== 'undefined' ? COMMON_MERGES : []).find(function(mg) {
+        return mg.families[0] === fam && mg.families.slice(1).every(function(f) { return families.indexOf(f) >= 0 && !merges[f]; });
+      }) : null;
       return ''
-        + '<tr>'
+        + '<tr' + (merged.length ? ' style="background:rgba(13,148,136,0.03);"' : '') + '>'
         + '<td>'
         + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">'
-        + '<span class="family-badge">' + escapeHTML(fam) + '</span>'
-        + merged.map(function(mf) {
-          return '<span class="family-badge" style="font-size:11px;background:#e0f2f1;color:var(--teal);border-color:rgba(13,148,136,0.3);">+' + escapeHTML(mf)
-            + ' <span role="button" tabindex="0" style="cursor:pointer;" data-ciso-unmerge="' + escapeHTML(mf) + '" title="Unmerge">✕</span></span>';
+        + allUnits.map(function(uid, idx) {
+          if (idx === 0) {
+            return '<span class="family-badge">' + escapeHTML(uid) + '</span>';
+          }
+          return '<span style="font-size:11px;color:#93c5fd;font-weight:700;">+</span>'
+            + '<span class="family-badge" style="font-size:11px;background:#e0f2f1;color:var(--teal);border-color:rgba(13,148,136,0.3);">'
+            + escapeHTML(uid)
+            + ' <span role="button" tabindex="0" style="cursor:pointer;" data-ciso-unmerge="' + escapeHTML(uid) + '" title="Unmerge">✕</span></span>';
         }).join('')
+        + (merged.length ? '<span style="font-size:10px;font-weight:700;color:var(--teal);background:rgba(13,148,136,0.1);padding:2px 8px;border-radius:10px;">Merged policy</span>' : '')
         + '</div>'
-        + '<input class="form-input" style="font-size:12px;font-weight:600;margin-bottom:3px;' + (state.domainCustomNames[fam] ? 'border-color:#6366f1;background:rgba(99,102,241,0.04);' : '') + '" placeholder="' + escapeHTML(getPolicyMergedTitle(fam)) + '" value="' + escapeHTML(state.domainCustomNames[fam] || '') + '" oninput="setDomainCustomName(\'' + escapeHTML(fam).replace(/'/g, "\\'") + '\',this.value);this.style.borderColor=this.value?\'#6366f1\':\'\';this.style.background=this.value?\'rgba(99,102,241,0.04)\':\'\';">'
+        + '<input class="form-input" style="font-size:12px;font-weight:600;margin-bottom:3px;' + (state.domainCustomNames[fam] ? 'border-color:#6366f1;background:rgba(99,102,241,0.04);' : '') + '" placeholder="' + escapeHTML(mergedTitle) + '" value="' + escapeHTML(state.domainCustomNames[fam] || '') + '" oninput="setDomainCustomName(\'' + escapeHTML(fam).replace(/'/g, "\\'") + '\',this.value);this.style.borderColor=this.value?\'#6366f1\':\'\';this.style.background=this.value?\'rgba(99,102,241,0.04)\':\'\';">'
         + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + subCount + ' subcategor' + (subCount === 1 ? 'y' : 'ies')
         + (state.domainCustomNames[fam] ? ' · <span style="color:#6366f1;">✏ custom name</span>' : '') + '</div>'
         + (FAMILY_DESC[fam] ? '<div style="font-size:11px;color:#64748b;line-height:1.4;">' + escapeHTML(FAMILY_DESC[fam] || unitDisplayName(fam)) + '</div>' : '')
+        + (suggestedMerge
+          ? '<div style="margin-top:8px;"><button type="button" data-ciso-merge-apply data-master="' + escapeHTML(fam) + '" data-slaves="' + escapeHTML(suggestedMerge.families.slice(1).join(',')) + '" style="font-size:11px;font-weight:700;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;cursor:pointer;">Apply suggested merge: ' + escapeHTML(suggestedMerge.label) + '</button></div>'
+          : '')
         + '</td>'
         + '<td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
         + Object.entries(PRIORITY_META).map(function(entry) {
@@ -625,7 +637,9 @@ function renderCisoConsolidateTableRows(masters, families, merges, showMerges) {
             + '</select>'
             + '<button type="button" data-ciso-merge-dropdown-apply data-master="' + escapeHTML(fam) + '" style="display:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid #1e40af;background:#dbeafe;color:#1e40af;cursor:pointer;white-space:nowrap;">Apply merge</button>'
             + '</div>'
-          : '<span style="font-size:11px;color:var(--text-muted);">—</span>')
+          : (merged.length
+            ? '<button type="button" data-ciso-unmerge-slaves="' + escapeHTML(merged.join(',')) + '" style="font-size:11px;font-weight:700;color:#991b1b;background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;">Unmerge all</button>'
+            : '<span style="font-size:11px;color:var(--text-muted);">—</span>'))
         + '</td></tr>';
     }).join('');
     return header + rows;

@@ -2467,6 +2467,7 @@ function renderCISOStep4a() {
   const mergeSuggestionsHtml = (typeof renderCisoMergeSuggestionsGrouped === 'function')
     ? renderCisoMergeSuggestionsGrouped(families, merges)
     : '';
+  const hasPendingMergeSuggestions = !!(mergeSuggestionsHtml && mergeSuggestionsHtml.trim());
   const tableRowsHtml = (typeof renderCisoConsolidateTableRows === 'function')
     ? renderCisoConsolidateTableRows(masters, families, merges, showMerges)
     : '';
@@ -2477,7 +2478,7 @@ function renderCISOStep4a() {
     </div>
 
     <div class="section-title">Consolidate &amp; Prioritize Policies</div>
-    <div class="section-subtitle">Merge categories that belong in a single policy document, then set urgency for each. Govern (GV) outcomes are already covered by your governance policy — only Identify through Recover appear here.</div>
+    <div class="section-subtitle">Merge categories that belong in a single policy document, then set urgency for each. Applied merges appear as one row in the table below — use ✕ or Unmerge all to split them again. Govern (GV) is covered by your governance policy.</div>
 
     <!-- Priority summary pills -->
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
@@ -2492,13 +2493,14 @@ function renderCISOStep4a() {
     ${renderPolicyPriorityRoadmapHTML(masters, merges, families, controls)}
 
     <!-- Common merges callout -->
-    ${showMerges ? `<div style="border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;padding:14px 18px;margin-bottom:20px;">
+    ${showMerges && hasPendingMergeSuggestions ? `<div style="border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;padding:14px 18px;margin-bottom:20px;">
       <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-      <span>💡 Common merges for lean teams</span>
+      <span>💡 Suggested merges</span>
       <button type="button" class="btn btn-primary" style="padding:4px 10px;font-size:11px;" data-ciso-apply-all-merges>Apply All Non-Conflicting</button>
 </div>
+      <div style="font-size:11px;color:#3b82f6;margin-bottom:10px;">Quick-apply common combinations — once applied, they move into the policy table below.</div>
       ${mergeSuggestionsHtml}
-    </div>` : '<div class="info-alert" style="margin-bottom:20px;"><div class="ia-icon">ℹ️</div><div class="ia-text">Function-level policy mode — one policy per CSF function (excluding Govern). Category merges are not used.</div></div>'}
+    </div>` : (showMerges ? '' : '<div class="info-alert" style="margin-bottom:20px;"><div class="ia-icon">ℹ️</div><div class="ia-text">Function-level policy mode — one policy per CSF function (excluding Govern). Category merges are not used.</div></div>')}
 
     <!-- Consolidate + Prioritize table -->
     <div class="table-scroll">
@@ -2834,6 +2836,7 @@ window.applyAllMerges = function() {
   });
 
   window.markDirty && window.markDirty();
+  if (typeof syncPolicyMergesToCategoryMerges === 'function') syncPolicyMergesToCategoryMerges();
   showToast(applied > 0 ? ('✅ Applied ' + applied + ' recommended merge(s).') : 'Recommended merges already applied.');
   renderActiveCisoSetupStep();
 };
@@ -2858,6 +2861,7 @@ function mergePolicy(slaveFam, masterFam) {
     state.domainOwners[slaveFam] = Object.assign({}, masterOwner);
   }
   addAuditEntry('program', null, 'Merged ' + slaveFam + ' into ' + masterFam);
+  if (typeof syncPolicyMergesToCategoryMerges === 'function') syncPolicyMergesToCategoryMerges();
   try { window.markDirty && window.markDirty(); } catch (e) {}
   renderActiveCisoSetupStep();
 }
@@ -2874,6 +2878,7 @@ function unmergePolicy(fam) {
     }
   });
   if (state.policyMerges) delete state.policyMerges[fam];
+  if (typeof syncPolicyMergesToCategoryMerges === 'function') syncPolicyMergesToCategoryMerges();
   addAuditEntry('program', null, 'Unmerged ' + fam + ' from its master policy');
   try { window.markDirty && window.markDirty(); } catch (e) {}
   renderActiveCisoSetupStep();
