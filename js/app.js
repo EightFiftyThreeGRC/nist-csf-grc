@@ -704,7 +704,7 @@ function resetApp() {
 // Tab IDs, showTab, role-view routing, CISO wizard shell
 // (step dispatch, toast, cisoFinish, sidebar badges).
 // ============================================================
-const TAB_IDS = ['home','ciso','policy','control','asset','frameworks','risk','reports','users'];
+const TAB_IDS = ['home','ciso','policy','control','asset','risk','reports','users'];
 try { window.TAB_IDS = TAB_IDS; } catch (e) {}
 
 
@@ -868,7 +868,6 @@ function showTab(tabId) {
   if (tabId === 'policy')   renderPolicyTab();
   if (tabId === 'control')  renderControlTab();
   if (tabId === 'asset')    renderAssetTab();
-  if (tabId === 'frameworks') renderFrameworksTab();
   if (tabId === 'risk')     renderRiskTab();
   if (tabId === 'reports')    renderReports();
   if (tabId === 'users')    renderUsersTab();

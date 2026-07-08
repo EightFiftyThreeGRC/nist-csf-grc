@@ -292,7 +292,7 @@ function selectAllPM(val) {
 })();
 
 function renderCISOStep3Integrations() {
-  /* Reg mapping removed from setup wizard — use Framework alignment tab. */
+  /* Reg mapping removed — CSF program has no ISO/SOC 2/HIPAA crosswalk UI. */
 }
 
 function renderCISOStep(step) {

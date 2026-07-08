@@ -269,10 +269,6 @@ function cisoNext(fromStep) {
     if (!state.programOwner || !state.programOwner.trim()) { showToast('Please enter the Security Program Owner name before continuing.', true); document.getElementById('programOwnerInput')?.focus(); return; }
     if (!state.programOwnerTitle || !state.programOwnerTitle.trim()) { showToast('Please enter the Program Owner title before continuing.', true); document.getElementById('programOwnerTitleInput')?.focus(); return; }
     if (!isValidOwnerEmail(state.programOwnerEmail)) { showToast('Please enter the program owner email before continuing.', true); document.getElementById('programOwnerEmailInput')?.focus(); return; }
-    if (typeof isOrgClassificationComplete === 'function' && !isOrgClassificationComplete()) {
-      showToast('Select organization type' + (state.orgOwnership === 'government' ? ', government level,' : '') + ' and sector before continuing.', true);
-      return;
-    }
   }
   if (fromStep===2) {
     if (typeof getProgramScopeReady === 'function' && !getProgramScopeReady()) {
@@ -1010,7 +1006,6 @@ function renderCISOStep1() {
         <input class="form-input" id="orgNameInput" placeholder="e.g., Acme Corp, Department of Defense — Agency X" value="${escapeHTML(state.orgName)}" oninput="state.orgName=this.value; window.markDirty();">
         <div class="form-hint">Full legal name of the organization this information security program governs.</div>
       </div>
-      ${typeof renderOrgClassificationFieldsHtml === 'function' ? renderOrgClassificationFieldsHtml() : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Security Program Owner — Full Name <span class="required">*</span></label>

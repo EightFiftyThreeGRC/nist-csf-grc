@@ -46,7 +46,6 @@ js/controls.js              Control Implementation wizard + control library
 js/assets.js                Assets & SSP wizard + asset libraries
 js/baseline-elevation.js    Baseline elevation triggers and review flow
 js/authorization.js         AO decision data + decision modal
-js/frameworks.js            Framework alignment tab (ISO 27001 / SOC 2 / HIPAA crosswalks)
 js/hub.js                   Command Center home tab
 js/reports.js               Reports & Dashboard, audit/change-log, review queues
 js/admin.js                 Users & roles, profile / account menu

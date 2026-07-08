@@ -113,14 +113,14 @@ function renderOnboardingHome() {
     + '<div class="onboard-hero">'
     + '<p class="onboard-eyebrow">EightFiftyThree GRC</p>'
     + '<h2 class="onboard-title">NIST CSF 2.0.<br>Without the spreadsheet.</h2>'
-    + '<p class="onboard-lead">The landing page got you here — now let\'s stand up your program in <strong>seven short steps</strong>. One screen at a time, no overwhelm.</p>'
+    + '<p class="onboard-lead">The landing page got you here — now let\'s stand up your program in <strong>six short steps</strong>. One screen at a time, no overwhelm.</p>'
     + '<div class="onboard-step-rail">' + stepChips + '</div>'
     + '<div class="onboard-actions">'
     + '<button type="button" class="btn btn-primary onboard-cta" onclick="startProgramSetup()">' + (hasStarted ? 'Continue setup' : 'Start program setup') + '</button>'
     + '</div>'
     + (hasStarted
       ? '<p class="onboard-resume">You\'re on step ' + progress.step + ' — <strong>' + escapeHTML(progress.label) + '</strong>. Pick up where you left off.</p>'
-      : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes. Optional framework crosswalks live under Framework alignment after setup.</p>')
+      : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes.</p>')
     + '</div>'
     + '<div class="onboard-features">'
     + '<div class="onboard-feature"><span>📋</span><div><strong>Policies</strong><p>Build AC, AU, SC, and the rest after setup.</p></div></div>'
@@ -381,13 +381,6 @@ function userHasControlDraftWork(user) {
   });
 }
 
-function userHasFrameworkMapping() {
-  if (!getProgramScopeReady()) return false;
-  var fw = typeof getActiveFrameworkIds === 'function' ? getActiveFrameworkIds() : [];
-  var laws = typeof getActiveComplianceLawIds === 'function' ? getActiveComplianceLawIds() : [];
-  return fw.length > 0 || laws.length > 0;
-}
-
 function getScopedRiskIssueOpenCount(user) {
   if (typeof getScopedIssueOpenCount === 'function') return getScopedIssueOpenCount(user);
   return typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0;
@@ -449,10 +442,6 @@ function getHubWorkspaces() {
     }
   }
 
-  if (tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping()) {
-    workspaces.push({ icon: '◇', label: 'Frameworks', desc: 'ISO / SOC 2 / CIS alignment', fn: "showTab('frameworks')", group: 'program' });
-  }
-
   var riskOpen = getScopedRiskIssueOpenCount(user);
   if (tabs.indexOf('risk') !== -1 && riskOpen > 0) {
     var riskLabel = typeof hasPm4PoamControl === 'function' && hasPm4PoamControl() ? 'POA&M & risks' : 'Risks & issues';
@@ -472,11 +461,6 @@ function renderHubWorkspaceGroupHtml(title, items) {
         + '<span class="hub-workspace-label">' + escapeHTML(w.label) + '</span>'
         + '<span class="hub-workspace-desc">' + escapeHTML(w.desc) + '</span></button>';
     }).join('') + '</div></div>';
-}
-
-function shouldShowHubFrameworkStrip() {
-  var tabs = getHubVisibleTabIds();
-  return tabs.indexOf('frameworks') !== -1 && userHasFrameworkMapping();
 }
 
 function shouldShowHubRiskStrip() {
@@ -546,7 +530,6 @@ function renderHomeTab() {
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
     + '<div class="hub-kpi"><div class="hub-kpi-val">' + (typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0) + '</div><div class="hub-kpi-label">Open risks &amp; issues</div></div>'
     + '</div>'
-    + (shouldShowHubFrameworkStrip() && typeof renderFrameworkDashboardStripHtml === 'function' ? renderFrameworkDashboardStripHtml() : '')
     + '<div class="hub-lower-grid">'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'

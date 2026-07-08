@@ -17,7 +17,6 @@ test.describe('EightFiftyThree GRC smoke', function() {
     var tabs = await page.evaluate(function() { return window.TAB_IDS; });
     expect(tabs).toContain('home');
     expect(tabs).toContain('risk');
-    expect(tabs).toContain('frameworks');
   });
 
   test('program setup step renders when invoked', async function({ page }) {
@@ -77,20 +76,5 @@ test.describe('EightFiftyThree GRC smoke', function() {
     await expect(page.locator('#risk-body')).toContainText('E2E test issue');
   });
 
-  test('framework alignment tab shows crosswalk', async function({ page }) {
-    await page.goto('/app.html', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(function() { return typeof window.renderFrameworksTab === 'function'; });
-    await page.evaluate(function() {
-      if (window.state) {
-        window.state.selectedCategories = window.state.selectedCategories || {};
-        if (typeof CATEGORIES !== 'undefined') {
-          CATEGORIES.forEach(function(c) { window.state.selectedCategories[c.id] = true; });
-        }
-        window.state.cisoComplete = true;
-      }
-      window.renderFrameworksTab();
-    });
-    await expect(page.locator('#frameworks-body')).toContainText(/ISO 27001|SOC 2|HIPAA/i);
-  });
 
 });

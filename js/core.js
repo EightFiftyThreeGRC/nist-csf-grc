@@ -8,9 +8,9 @@ const ROLE_TABS = {
   // AOs still record decisions through openAtoDecisionModal() launched from the
   // Reports dashboard. Asssessors no longer have a dedicated workspace —
   // assessment data persists in state but is not edited via UI.
-  'ciso':          ['home','ciso','policy','asset','frameworks','risk','reports'],
-  'issm':          ['home','policy','asset','frameworks','risk','reports'],
-  'control-owner': ['home','control','frameworks','risk','reports'],
+  'ciso':          ['home','ciso','policy','asset','risk','reports'],
+  'issm':          ['home','policy','asset','risk','reports'],
+  'control-owner': ['home','control','risk','reports'],
   'asset-owner':   ['home','asset','risk','reports'],
   'custodian':     ['home','policy','reports'],
   'assessor':      ['home','risk','reports'],

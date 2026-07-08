@@ -10,7 +10,7 @@
   <meta name="description" content="EightFiftyThree GRC — NIST Cybersecurity Framework 2.0 program management">
   <title>EightFiftyThree GRC — Application</title>
 
-    <link rel="stylesheet" href="css/app.css?v=20260708c">
+    <link rel="stylesheet" href="css/app.css?v=20260708f">
 
 </head>
 <body>
@@ -85,9 +85,6 @@
       <div class="sidebar-item sidebar-sub-item" onclick="goToReportsLibrary('assets')" id="nav-reports-library-assets">Asset inventory</div>
       <div class="sidebar-item sidebar-sub-item" onclick="goToReportsLibrary('processes')" id="nav-reports-library-processes">Process inventory</div>
       <div class="sidebar-item sidebar-sub-item" onclick="goToRiskWorkspace()" id="nav-reports-library-risks" style="display:none;">Risks &amp; Issues<span class="sidebar-item-badge warn" id="badge-risk" style="display:none;margin-left:6px;"></span></div>
-    </div>
-    <div class="sidebar-item" onclick="showTab('frameworks')" id="nav-frameworks">
-      <span class="icon">◇</span> Framework alignment
     </div>
     <div class="sidebar-item" onclick="showTab('users')" id="nav-users">
       <span class="icon">👥</span> Users &amp; roles
@@ -557,18 +554,6 @@
   </div>
 
   <!-- ============================================================ -->
-  <!-- FRAMEWORK ALIGNMENT TAB -->
-  <!-- ============================================================ -->
-  <div class="tab-panel" id="tab-frameworks">
-    <div class="page-header">
-      <div class="role-badge">◇ Framework alignment</div>
-      <h1>Multi-framework coverage</h1>
-      <p>See how your NIST 800-53 controls map to ISO 27001, SOC 2, and HIPAA — one implementation, multiple audit lenses.</p>
-    </div>
-    <div style="padding:24px 32px;" id="frameworks-body"></div>
-  </div>
-
-  <!-- ============================================================ -->
   <!-- REPORTS TAB -->
   <!-- ============================================================ -->
   <div class="tab-panel" id="tab-reports">
@@ -702,12 +687,11 @@
 <script src="js/assets.js?v=20260708"></script>
 <script src="js/assets-csf-phase2.js?v=20260708"></script>
 <script src="js/authorization.js?v=20260708"></script>
-<script src="js/frameworks.js?v=20260708"></script>
 <script src="js/entra-auth.js?v=20260625a"></script>
 <script src="js/risk.js?v=20260708"></script>
-<script src="js/hub.js?v=20260708e"></script>
+<script src="js/hub.js?v=20260708f"></script>
 <script src="js/reports.js?v=20260708"></script>
-<script src="js/admin.js?v=20260708"></script>
+<script src="js/admin.js?v=20260708f"></script>
 <!-- Cloud sign-in + cross-computer sync via Supabase. See MULTI_USER_SETUP.md. -->
 <script src="js/cloud-config.js?v=20260708b"></script>
 <script>
@@ -723,7 +707,7 @@
 <script src="js/program.js?v=20260708f"></script>
 <script src="js/ciso-csf-wizard.js?v=20260708f"></script>
 <script src="js/downstream-csf-patch.js?v=20260708"></script>
-<script src="js/app.js?v=20260708e"></script>
+<script src="js/app.js?v=20260708f"></script>
 
 </body>
 </html>

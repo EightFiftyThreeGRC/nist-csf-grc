@@ -154,39 +154,6 @@ const SEGMENTS = [
     ],
   },
   {
-    id: '05-frameworks',
-    narration:
-      'One program, many audit lenses. Turn on ISO 27001, SOC 2, or HIPAA, and every control maps across — with coverage updating live as owners mark implementation. Build the program once; report against whichever framework the auditor in front of you cares about.',
-    scenes: [
-      {
-        weight: 0.38,
-        capture: async (page) => {
-          await page.evaluate(() => {
-            state.currentUserId = null;
-            closeDemoOverlays();
-            if (!state.activeFrameworks) state.activeFrameworks = {};
-            if (!state.activeComplianceLaws) state.activeComplianceLaws = {};
-            state.activeFrameworks.iso27001 = true;
-            state.activeFrameworks.soc2 = true;
-            state.activeComplianceLaws.hipaa = true;
-            state._frameworkFilter = '';
-            showTab('frameworks');
-            if (typeof renderFrameworksTab === 'function') renderFrameworksTab();
-          });
-        },
-      },
-      {
-        weight: 0.62,
-        capture: async (page) => {
-          await page.evaluate(() => {
-            state._frameworkFilter = 'iso27001';
-            if (typeof renderFrameworksTab === 'function') renderFrameworksTab();
-          });
-        },
-      },
-    ],
-  },
-  {
     id: '06-thesis',
     narration:
       "And every bit of this is deliberate — zero dependencies, everything runs in your browser, and your entire program exports to a file in one click. Built in the open, on purpose. That's EightFiftyThree GRC.",
