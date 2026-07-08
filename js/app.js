@@ -290,7 +290,7 @@ function renderReviewCycleCard(policyKey, label) {
   var approverHTML = '';
   if (policyKey === 'ISP' || requiresSeparate) {
     var sodNote = policyKey === 'ISP'
-      ? 'The Tier 1 ISP must be approved by someone other than the program owner (separation of duties). Assign a senior reviewer below.'
+      ? 'The governance policy must be approved by someone other than the program owner (separation of duties). Assign a senior reviewer below.'
       : 'You are drafting this domain policy — it must be approved by someone other than you (separation of duties). Assign a separate reviewer below.';
     approverHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">'
       + sodNote + '</div>'

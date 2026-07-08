@@ -119,7 +119,7 @@ function renderCISOStep4Govern() {
   var sel = Object.keys(state.gvSubcategories).filter(function(k) { return state.gvSubcategories[k]; }).length;
   body.innerHTML = cisoStepProgressHtml(3, 'Govern outcomes')
     + '<div class="section-title">Select Govern (GV) outcomes</div>'
-    + '<div class="section-subtitle">These outcomes drive your Tier 1 Governance Policy. Core GV subcategories are pre-selected.</div>'
+    + '<div class="section-subtitle">These outcomes drive your Governance Policy. Core GV subcategories are pre-selected.</div>'
     + '<div style="display:flex;gap:8px;margin-bottom:12px;">'
     + '<button class="btn btn-secondary btn-sm" type="button" onclick="selectAllGvSubcategories(true)">Select all GV</button>'
     + '<button class="btn btn-secondary btn-sm" type="button" onclick="selectAllGvSubcategories(false)">Clear all</button></div>'
@@ -161,7 +161,7 @@ function renderPolicyArchitectureCard() {
   var ps = state.policyStructure || 'category';
   return '<div class="summary-box" style="margin:16px 0;border:2px solid var(--teal);">'
     + '<h3>Policy architecture</h3>'
-    + '<div class="section-subtitle" style="margin-bottom:12px;">Choose how Tier 2 policies are organized for the rest of the program.</div>'
+    + '<div class="section-subtitle" style="margin-bottom:12px;">Choose how function or category policies are organized for the rest of the program.</div>'
     + '<label style="display:block;margin-bottom:8px;cursor:pointer;"><input type="radio" name="policyStructure" value="function" '
     + (ps === 'function' ? 'checked' : '') + ' onchange="setPolicyStructure(\'function\')" style="margin-right:8px;">'
     + '<strong>One policy per function</strong> — up to 6 policies (GV, ID, PR, DE, RS, RC)</label>'
@@ -207,7 +207,7 @@ function buildDefaultCsfInfoSecPolicy() {
     title: getDefaultISPTitle(),
     custodian: { name: '', role: '', email: '' },
     sections: [
-      { type: 'purpose', title: 'Purpose', content: 'This policy establishes ' + orgNameVal + '\'s cybersecurity governance framework aligned to NIST CSF 2.0 Govern outcomes and Tier 2 policy architecture.' },
+      { type: 'purpose', title: 'Purpose', content: 'This policy establishes ' + orgNameVal + '\'s cybersecurity governance framework aligned to NIST CSF 2.0 Govern outcomes.' },
       { type: 'scope', title: 'Scope', content: 'Applies to all personnel, contractors, and systems involved in ' + orgNameVal + ' cybersecurity risk management.' },
       { type: 'roles', title: 'Roles & Responsibilities' },
       { type: 'requirements', title: 'Govern Policy Requirements' },
@@ -227,10 +227,35 @@ function buildDefaultCsfInfoSecPolicy() {
 function buildDefaultISPRoles(ownerTitle) {
   return [
     { name: 'Executive Leadership', responsibilities: ['Approve cybersecurity governance policy', 'Allocate resources for the cybersecurity program', 'Accept enterprise-level cyber risk within delegated authority'] },
-    { name: ownerTitle, responsibilities: ['Establish and maintain Tier 1 governance policy aligned to CSF Govern outcomes', 'Lead cybersecurity risk management strategy and oversight', 'Report program effectiveness to executive leadership'] },
-    { name: 'Policy Owners', responsibilities: ['Develop and maintain Tier 2 function or category policies', 'Assign subcategory implementation owners', 'Submit policies for review and approval'] },
+    { name: ownerTitle, responsibilities: ['Establish and maintain the organization\'s governance policy aligned to CSF Govern outcomes', 'Lead cybersecurity risk management strategy and oversight', 'Report program effectiveness to executive leadership'] },
+    { name: 'Policy Owners', responsibilities: ['Develop and maintain function or category policies', 'Assign subcategory implementation owners', 'Submit policies for review and approval'] },
     { name: 'All Personnel', responsibilities: ['Comply with cybersecurity policies applicable to their role', 'Complete security awareness training', 'Report suspected incidents and policy violations'] }
   ];
+}
+
+function sanitizeCsfSetupPolicyCopy() {
+  var isp = state.infoSecPolicy;
+  if (!isp) return;
+  if (isp.sections) {
+    isp.sections.forEach(function(sec) {
+      if (sec.type === 'purpose' && sec.content) {
+        sec.content = sec.content
+          .replace(/\s+and Tier 2 policy architecture\.?/gi, '.')
+          .replace(/Tier 2 policy architecture\s+and\s+/gi, '');
+      }
+    });
+  }
+  if (isp.roles) {
+    isp.roles.forEach(function(r) {
+      if (!r.responsibilities) return;
+      r.responsibilities = r.responsibilities.map(function(line) {
+        return line
+          .replace(/Tier 1 governance policy/gi, 'governance policy')
+          .replace(/Tier 2 function or category policies/gi, 'function or category policies')
+          .replace(/Establish and maintain Tier 1 governance policy/gi, 'Establish and maintain the organization\'s governance policy');
+      });
+    });
+  }
 }
 
 function togglePrivacy() {}
@@ -274,6 +299,7 @@ function selectAllPM(val) {
 (function patchRenderCISOStep3() {
   if (!_origRenderCISOStep3) return;
   renderCISOStep3 = function() {
+    sanitizeCsfSetupPolicyCopy();
     _origRenderCISOStep3();
     var body = document.getElementById('ciso-step-4-body');
     if (!body) return;
