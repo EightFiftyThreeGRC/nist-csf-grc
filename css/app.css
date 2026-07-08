@@ -880,6 +880,62 @@
       margin-bottom: 16px;
     }
 
+    /* CSF CISO wizard — category scope step */
+    .csf-scope-helper {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .csf-scope-helper p { margin: 0 0 8px; }
+    .csf-scope-helper p:last-child { margin-bottom: 0; }
+    .csf-scope-fn-block { margin-bottom: 22px; }
+    .csf-scope-fn-header {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .csf-scope-fn-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin: 0 0 10px;
+      max-width: 920px;
+    }
+    .csf-scope-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 8px;
+    }
+    .csf-scope-cat-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .csf-scope-cat-card--on {
+      border-color: var(--teal);
+      background: #ecfdf5;
+    }
+    .csf-scope-cat-card input { margin-top: 3px; accent-color: var(--teal); flex-shrink: 0; }
+    .csf-scope-cat-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .csf-scope-cat-desc {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .csf-scope-cat-meta { font-size: 11px; color: var(--text-muted); }
+
     /* Control Table */
     .control-table {
       width: 100%;

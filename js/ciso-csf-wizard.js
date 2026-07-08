@@ -34,22 +34,31 @@ function renderCISOStep2CategoryScope() {
   var fnOrder = ['GV', 'ID', 'PR', 'DE', 'RS', 'RC'];
   var blocks = fnOrder.map(function(fn) {
     var cats = getCategoriesForFunction(fn);
+    var fnDesc = (typeof FUNCTION_DESC !== 'undefined' && FUNCTION_DESC[fn]) ? FUNCTION_DESC[fn] : '';
     var rows = cats.map(function(c) {
       var on = !!state.selectedCategories[c.id];
       var subs = getSubcategoriesForCategory(c.id).length;
-      return '<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid ' + (on ? 'var(--teal)' : 'var(--border)') + ';border-radius:8px;background:' + (on ? '#ecfdf5' : '#fff') + ';cursor:pointer;">'
-        + '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="toggleCategoryScope(\'' + escapeHTML(c.id).replace(/'/g, "\\'") + '\')" style="margin-top:2px;">'
-        + '<div><div style="font-weight:700;font-size:13px;">' + escapeHTML(c.id) + ' — ' + escapeHTML(c.name) + '</div>'
-        + '<div style="font-size:12px;color:var(--text-muted);">' + subs + ' subcategor' + (subs === 1 ? 'y' : 'ies') + '</div></div></label>';
+      var catDesc = (typeof CATEGORY_DESC !== 'undefined' && CATEGORY_DESC[c.id]) ? CATEGORY_DESC[c.id] : '';
+      return '<label class="csf-scope-cat-card' + (on ? ' csf-scope-cat-card--on' : '') + '">'
+        + '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="toggleCategoryScope(\'' + escapeHTML(c.id).replace(/'/g, "\\'") + '\')">'
+        + '<div class="csf-scope-cat-body">'
+        + '<div class="csf-scope-cat-title">' + escapeHTML(c.id) + ' — ' + escapeHTML(c.name) + '</div>'
+        + (catDesc ? '<div class="csf-scope-cat-desc">' + escapeHTML(catDesc) + '</div>' : '')
+        + '<div class="csf-scope-cat-meta">' + subs + ' subcategor' + (subs === 1 ? 'y' : 'ies') + '</div>'
+        + '</div></label>';
     }).join('');
-    return '<div style="margin-bottom:16px;"><div style="font-weight:800;font-size:14px;color:var(--navy);margin-bottom:8px;">'
-      + escapeHTML(fn) + ' — ' + escapeHTML(FUNCTIONS[fn] || fn) + '</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;">' + rows + '</div></div>';
+    return '<section class="csf-scope-fn-block">'
+      + '<div class="csf-scope-fn-header">' + escapeHTML(fn) + ' — ' + escapeHTML(FUNCTIONS[fn] || fn) + '</div>'
+      + (fnDesc ? '<p class="csf-scope-fn-desc">' + escapeHTML(fnDesc) + '</p>' : '')
+      + '<div class="csf-scope-cat-grid">' + rows + '</div></section>';
   }).join('');
 
   body.innerHTML = cisoStepProgressHtml(2, 'Category scope')
     + '<div class="section-title">Select CSF categories in scope</div>'
-    + '<div class="section-subtitle">Tag or untag NIST CSF 2.0 categories for your program. All categories are selected by default — remove any that do not apply.</div>'
+    + '<div class="csf-scope-helper">'
+    + '<p>Selecting all CSF categories is typical for a comprehensive cybersecurity program. You can tailor the list below to match your organization\u2019s scope and priorities.</p>'
+    + '<p>Function and category policy owners will refine scope further during policy design by selecting or deselecting subcategories within their assigned areas.</p>'
+    + '</div>'
     + '<div style="display:flex;gap:8px;margin-bottom:14px;">'
     + '<button class="btn btn-secondary btn-sm" type="button" onclick="selectAllCategories(true)">Select all</button>'
     + '<button class="btn btn-secondary btn-sm" type="button" onclick="selectAllCategories(false)">Clear all</button>'
