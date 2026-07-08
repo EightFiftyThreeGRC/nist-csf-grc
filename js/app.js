@@ -794,7 +794,7 @@ function goToProgramSetupOrDashboard() {
 function goToDomainOwnersFromDashboard() {
   if (!state.currentUserId) {
     showTab('ciso');
-    goToStep('ciso', 7);
+    goToStep('ciso', 6);
     return;
   }
   if (state.cisoComplete) {
@@ -802,7 +802,7 @@ function goToDomainOwnersFromDashboard() {
     return;
   }
   showTab('ciso');
-  goToStep('ciso', 7);
+  goToStep('ciso', 6);
 }
 
 function showTab(tabId) {
@@ -907,7 +907,7 @@ function enhanceKeyboardAccessibility() {
 const currentStep = { ciso:1, policy:1, control:1, asset:1 };
 
 function goToStep(tabId, step) {
-  const maxSteps = { ciso:7, policy:4, control:4, asset:4 };
+  const maxSteps = { ciso:6, policy:4, control:4, asset:4 };
   const max = maxSteps[tabId] || 4;
   if (step < 1 || step > max) return;
   if (tabId === 'asset') {

@@ -1,6 +1,7 @@
 // js/ciso-csf-wizard.js — CSF 2.0 CISO wizard step overrides (loads after program.js)
 
-var CISO_STEP_LABELS = ['Organization', 'Category scope', 'Reg mapping', 'Govern outcomes', 'Governance Policy', 'Consolidate', 'Assign Owners'];
+var CISO_WIZARD_STEPS = 6;
+var CISO_STEP_LABELS = ['Organization', 'Category scope', 'Govern outcomes', 'Governance Policy', 'Consolidate', 'Assign Owners'];
 
 function ensureSelectedCategoriesSeeded() {
   if (!state.selectedCategories) {
@@ -97,7 +98,7 @@ function selectAllGvSubcategories(val) {
 }
 
 function renderCISOStep4Govern() {
-  var body = document.getElementById('ciso-step-4-body');
+  var body = document.getElementById('ciso-step-3-body');
   if (!body) return;
   ensureGvSubcategoriesSeeded();
   var gvSubs = SUBCATEGORIES.filter(function(s) { return s.fn === 'GV'; });
@@ -116,7 +117,8 @@ function renderCISOStep4Govern() {
       + '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;">' + escapeHTML(text) + '</div></td></tr>';
   }).join('');
   var sel = Object.keys(state.gvSubcategories).filter(function(k) { return state.gvSubcategories[k]; }).length;
-  body.innerHTML = '<div class="section-title">Select Govern (GV) outcomes</div>'
+  body.innerHTML = cisoStepProgressHtml(3, 'Govern outcomes')
+    + '<div class="section-title">Select Govern (GV) outcomes</div>'
     + '<div class="section-subtitle">These outcomes drive your Tier 1 Governance Policy. Core GV subcategories are pre-selected.</div>'
     + '<div style="display:flex;gap:8px;margin-bottom:12px;">'
     + '<button class="btn btn-secondary btn-sm" type="button" onclick="selectAllGvSubcategories(true)">Select all GV</button>'
@@ -223,7 +225,7 @@ function selectAllPM(val) {
         return;
       }
     }
-    if (fromStep === 4) {
+    if (fromStep === 3) {
       ensureGvSubcategoriesSeeded();
       var gvSel = Object.keys(state.gvSubcategories).filter(function(k) { return state.gvSubcategories[k]; }).length;
       if (!gvSel) {
@@ -240,7 +242,7 @@ function selectAllPM(val) {
   if (!_origRenderCISOStep3) return;
   renderCISOStep3 = function() {
     _origRenderCISOStep3();
-    var body = document.getElementById('ciso-step-5-body');
+    var body = document.getElementById('ciso-step-4-body');
     if (!body) return;
     var card = document.getElementById('csf-policy-architecture-card');
     if (!card) {
@@ -257,12 +259,20 @@ function selectAllPM(val) {
 })();
 
 function renderCISOStep3Integrations() {
-  var body = document.getElementById('ciso-step-3-body');
-  if (!body) return;
-  body.innerHTML = cisoStepProgressHtml(3, 'Reg mapping')
-    + '<div class="section-title">Regulatory &amp; framework mapping</div>'
-    + '<div class="section-subtitle">NIST CSF 2.0 is your anchor. Choose voluntary standards and applicable laws — suggestions follow your organization profile from Step 1.</div>'
-    + (typeof renderFrameworkSetupSectionHtml === 'function' ? renderFrameworkSetupSectionHtml() : '')
-    + (typeof renderComplianceLawSetupSectionHtml === 'function' ? renderComplianceLawSetupSectionHtml() : '')
-    + (typeof renderCustomRegAddFormHtml === 'function' ? renderCustomRegAddFormHtml() : '');
+  /* Reg mapping removed from setup wizard — use Framework alignment tab. */
+}
+
+function renderCISOStep(step) {
+  if (step === 1) renderCISOStep1();
+  else if (step === 2) renderCISOStep2Baseline();
+  else if (step === 3) renderCISOStep2();
+  else if (step === 4) renderCISOStep3();
+  else if (step === 5) renderCISOStep4a();
+  else if (step === 6) renderCISOStep4b();
+  updateCisoSetupProgress(step);
+}
+
+function renderActiveCisoSetupStep() {
+  if (currentStep.ciso === 6) renderCISOStep4b();
+  else if (currentStep.ciso === 5) renderCISOStep4a();
 }

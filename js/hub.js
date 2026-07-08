@@ -2,9 +2,12 @@
 
 function getSetupProgressSummary() {
   var step = (typeof currentStep !== 'undefined' && currentStep.ciso) ? currentStep.ciso : 1;
-  var pct = Math.round((step / 7) * 100);
-  var labels = ['Organization', 'Baseline', 'Reg mapping', 'PM Controls', 'InfoSec Policy', 'Consolidate', 'Assign Owners'];
-  return { step: step, pct: pct, label: labels[step - 1] || 'Organization' };
+  var total = (typeof CISO_WIZARD_STEPS === 'number' && CISO_WIZARD_STEPS > 0) ? CISO_WIZARD_STEPS : 6;
+  var pct = Math.round((step / total) * 100);
+  var labels = (typeof CISO_STEP_LABELS !== 'undefined' && CISO_STEP_LABELS.length)
+    ? CISO_STEP_LABELS
+    : ['Organization', 'Category scope', 'Govern outcomes', 'Governance Policy', 'Consolidate', 'Assign Owners'];
+  return { step: step, pct: pct, label: labels[step - 1] || 'Organization', total: total };
 }
 
 function startProgramSetup() {
@@ -85,17 +88,19 @@ function renderOnboardingHome() {
   if (!body) return;
 
   var progress = getSetupProgressSummary();
-  var hasStarted = !!(String(state.orgName || '').trim() || String(state.programOwner || '').trim() || state.baseline);
+  var hasStarted = !!(String(state.orgName || '').trim() || String(state.programOwner || '').trim()
+    || (typeof getProgramScopeReady === 'function' && getProgramScopeReady()));
 
-  var steps = [
-    { n: 1, label: 'Organization' },
-    { n: 2, label: 'Baseline' },
-    { n: 3, label: 'Reg mapping' },
-    { n: 4, label: 'PM controls' },
-    { n: 5, label: 'InfoSec policy' },
-    { n: 6, label: 'Consolidate' },
-    { n: 7, label: 'Assign owners' }
-  ];
+  var steps = (typeof CISO_STEP_LABELS !== 'undefined' && CISO_STEP_LABELS.length)
+    ? CISO_STEP_LABELS.map(function(label, i) { return { n: i + 1, label: label }; })
+    : [
+      { n: 1, label: 'Organization' },
+      { n: 2, label: 'Category scope' },
+      { n: 3, label: 'Govern outcomes' },
+      { n: 4, label: 'Governance Policy' },
+      { n: 5, label: 'Consolidate' },
+      { n: 6, label: 'Assign owners' }
+    ];
 
   var stepChips = steps.map(function(s) {
     var done = s.n < progress.step;
@@ -115,7 +120,7 @@ function renderOnboardingHome() {
     + '</div>'
     + (hasStarted
       ? '<p class="onboard-resume">You\'re on step ' + progress.step + ' — <strong>' + escapeHTML(progress.label) + '</strong>. Pick up where you left off.</p>'
-      : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes. Step 3 maps ISO, SOC 2, CIS, and sector-specific laws.</p>')
+      : '<p class="onboard-resume">Most teams finish setup in 15–20 minutes. Optional framework crosswalks live under Framework alignment after setup.</p>')
     + '</div>'
     + '<div class="onboard-features">'
     + '<div class="onboard-feature"><span>📋</span><div><strong>Policies</strong><p>Build AC, AU, SC, and the rest after setup.</p></div></div>'
@@ -130,7 +135,7 @@ function getNextActions() {
 
   if (!state.cisoComplete) {
     var p = getSetupProgressSummary();
-    actions.push({ priority: 1, icon: '🏛️', label: 'Continue program setup', desc: 'Step ' + p.step + ' of 7 — ' + p.label + '.', action: "startProgramSetup();" });
+    actions.push({ priority: 1, icon: '🏛️', label: 'Continue program setup', desc: 'Step ' + p.step + ' of ' + (p.total || 6) + ' — ' + p.label + '.', action: "startProgramSetup();" });
     return actions;
   }
 

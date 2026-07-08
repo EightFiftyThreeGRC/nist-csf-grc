@@ -168,7 +168,7 @@ function updateCISOFinishBtn() {
     btn.innerHTML = '⚠️ Replace demo placeholder owners';
     btn.style.opacity = '0.5';
     if (!document.getElementById('fake-review-panel')) {
-      btn.insertAdjacentHTML('beforebegin', '<div id="fake-review-panel" style="padding:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin-bottom:16px;"><h4 style="color:#92400e;margin:0 0 8px 0;">Demo placeholder owners</h4><p style="font-size:12px;color:#78350f;margin:0 0 8px 0;">The following names are flagged as portfolio demo data and cannot be used for real attestations: <strong>' + escapeHTML(demoNames.join(', ')) + '</strong>. Replace demo emails in Step 7 to clear the DEMO badge, then finalize.</p></div>');
+      btn.insertAdjacentHTML('beforebegin', '<div id="fake-review-panel" style="padding:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin-bottom:16px;"><h4 style="color:#92400e;margin:0 0 8px 0;">Demo placeholder owners</h4><p style="font-size:12px;color:#78350f;margin:0 0 8px 0;">The following names are flagged as portfolio demo data and cannot be used for real attestations: <strong>' + escapeHTML(demoNames.join(', ')) + '</strong>. Replace demo emails in Step 6 to clear the DEMO badge, then finalize.</p></div>');
     }
     return;
   }
@@ -190,13 +190,13 @@ function updateCISOFinishBtn() {
     return;
   }
 
-  // Step 6 (consolidate): hide finalize — use Next in footer to reach step 7
-  if (currentStep.ciso === 6) {
+  // Step 5 (consolidate): hide finalize — use Next in footer to reach step 6
+  if (currentStep.ciso === 5) {
     btn.style.display = 'none';
     return;
   }
-  // Step 7 (owners): show finalize when all owners assigned
-  if (currentStep.ciso === 7) {
+  // Step 6 (owners): show finalize when all owners assigned
+  if (currentStep.ciso === 6) {
     btn.style.display = '';
     const ready = allOwnersAssigned();
     btn.innerHTML = ready ? '✓ Finalise Program Setup' : '✓ Finalise Program Setup — assign all owners first';
@@ -223,8 +223,8 @@ function updateCISOFinishBtn() {
 // renderCISOStep router, cisoNext, allOwnersAssigned,
 // updateCISOFinishBtn, goToStep, prefillFakeOwners, etc.
 // ============================================================
-var CISO_WIZARD_STEPS = 7;
-var CISO_STEP_LABELS = ['Organization', 'Baseline', 'Reg mapping', 'PM Controls', 'InfoSec Policy', 'Consolidate', 'Assign Owners'];
+var CISO_WIZARD_STEPS = 6;
+var CISO_STEP_LABELS = ['Organization', 'Category scope', 'Govern outcomes', 'Governance Policy', 'Consolidate', 'Assign Owners'];
 
 function updateCisoSetupProgress(step) {
   var s = step || (typeof currentStep !== 'undefined' ? currentStep.ciso : 1) || 1;
@@ -249,18 +249,17 @@ function refreshCurrentCisoStep() {
 function renderCISOStep(step) {
   if (step===1) renderCISOStep1();
   if (step===2) renderCISOStep2Baseline();
-  if (step===3) renderCISOStep3Integrations();
-  if (step===4) renderCISOStep2();
-  if (step===5) renderCISOStep3();
-  if (step===6) renderCISOStep4a();
-  if (step===7) renderCISOStep4b();
+  if (step===3) renderCISOStep2();
+  if (step===4) renderCISOStep3();
+  if (step===5) renderCISOStep4a();
+  if (step===6) renderCISOStep4b();
   updateCisoSetupProgress(step);
 }
 
-/** After merge/unmerge while on setup steps 6 or 7, refresh the visible panel only. */
+/** After merge/unmerge while on setup steps 5 or 6, refresh the visible panel only. */
 function renderActiveCisoSetupStep() {
-  if (currentStep.ciso === 7) renderCISOStep4b();
-  else if (currentStep.ciso === 6) renderCISOStep4a();
+  if (currentStep.ciso === 6) renderCISOStep4b();
+  else if (currentStep.ciso === 5) renderCISOStep4a();
 }
 
 function cisoNext(fromStep) {
@@ -281,7 +280,7 @@ function cisoNext(fromStep) {
       return;
     }
   }
-  if (fromStep===5) {
+  if (fromStep===4) {
     var ispRc = (state.policyReviewCycle || {}).ISP || {};
     if (typeof validateISPApproverAssignment === 'function') {
       if (!validateISPApproverAssignment(ispRc, false)) return;
@@ -1631,7 +1630,7 @@ function renderCISOStep3() {
     renderISPRevisionPanel();
     return;
   }
-  var body = document.getElementById('ciso-step-5-body');
+  var body = document.getElementById('ciso-step-4-body');
   if (!body) return;
   renderISPEditorBody(body, { context: 'setup' });
 }
@@ -2442,7 +2441,7 @@ function ownerSummaryHTML(masters, families, merges) {
 
 // --- Step 4: Consolidate & Prioritize ---
 function renderCISOStep4a() {
-  const body = document.getElementById('ciso-step-6-body');
+  const body = document.getElementById('ciso-step-5-body');
   if (!body) return;
   if (!getProgramScopeReady()) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Complete Step 2 first.</p></div>';
@@ -2459,7 +2458,7 @@ function renderCISOStep4a() {
 
   body.innerHTML = `
     <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:16px;">
-      <span style="opacity:0.55;margin-right:8px;">Step 6 of 7</span> Consolidate &amp; Prioritize
+      <span style="opacity:0.55;margin-right:8px;">Step 5 of 6</span> Consolidate &amp; Prioritize
     </div>
 
     <div class="section-title">Consolidate &amp; Prioritize Policies</div>
@@ -2628,7 +2627,7 @@ function applyProgramOwnerToAllDomains() {
 
 // --- Step 7: Assign Owners & Deadlines ---
 function renderCISOStep4b() {
-  const body = document.getElementById('ciso-step-7-body');
+  const body = document.getElementById('ciso-step-6-body');
   if (!body) return;
   if (!getProgramScopeReady()) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Complete Step 2 first.</p></div>';
@@ -2648,7 +2647,7 @@ function renderCISOStep4b() {
   var canApplyOwner = isValidOwnerEmail(programOwnerEmail);
 
   body.innerHTML = `
-    ${cisoStepProgressHtml(7, 'Assign owners')}
+    ${cisoStepProgressHtml(6, 'Assign owners')}
     <div class="section-title">Assign owners</div>
     <div class="section-subtitle">Add people by email only. They enter name and title on first sign-in.</div>
 

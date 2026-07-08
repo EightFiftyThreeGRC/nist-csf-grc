@@ -66,7 +66,7 @@ const SEGMENTS = [
         weight: 0.4,
         capture: async (page) => {
           await page.evaluate(() => {
-            goToStep('ciso', 7);
+            goToStep('ciso', 6);
           });
         },
       },
