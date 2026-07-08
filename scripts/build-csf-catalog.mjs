@@ -223,10 +223,8 @@ const CATEGORY_DESC = {
 const COMMON_CATEGORY_MERGES = [
   { slaves: ['PR.AT'], master: 'PR.AA', label: 'People & Access (PR.AA+PR.AT)' },
   { slaves: ['DE.AE'], master: 'DE.CM', label: 'Detection Operations (DE.CM+DE.AE)' },
-  { slaves: ['RS.MI', 'RS.CO'], master: 'RS.MA', label: 'Incident Response (RS.MA+RS.AN+RS.CO+RS.MI)' },
-  { slaves: ['RS.AN', 'RS.CO', 'RS.MI'], master: 'RS.MA', label: 'Incident Response (RS.MA bundle)' },
+  { slaves: ['RS.AN', 'RS.CO', 'RS.MI'], master: 'RS.MA', label: 'Incident Response (RS.MA+RS.AN+RS.CO+RS.MI)' },
   { slaves: ['RC.CO'], master: 'RC.RP', label: 'Recovery (RC.RP+RC.CO)' },
-  { slaves: ['GV.OV'], master: 'GV.RM', label: 'Governance & Oversight (GV.RM+GV.OV)' },
   { slaves: ['ID.IM'], master: 'ID.RA', label: 'Risk & Improvement (ID.RA+ID.IM)' },
 ];
 

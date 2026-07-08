@@ -2454,7 +2454,8 @@ function renderCISOStep4a() {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Complete Step 2 first.</p></div>';
     return;
   }
-  const families = getCisoWizardUnits();
+  if (typeof migrateGvOutOfDomainPolicies === 'function') migrateGvOutOfDomainPolicies();
+  const families = typeof getDomainPolicyUnits === 'function' ? getDomainPolicyUnits() : getCisoWizardUnits();
   const merges = state.policyMerges || {};
   const masters = families.filter(f => !merges[f]);
   const controls = getActiveControls();
@@ -2463,13 +2464,20 @@ function renderCISOStep4a() {
   const priorityCounts = { now: 0, soon: 0, later: 0 };
   masters.forEach(f => priorityCounts[getPriority(f)]++);
 
+  const mergeSuggestionsHtml = (typeof renderCisoMergeSuggestionsGrouped === 'function')
+    ? renderCisoMergeSuggestionsGrouped(families, merges)
+    : '';
+  const tableRowsHtml = (typeof renderCisoConsolidateTableRows === 'function')
+    ? renderCisoConsolidateTableRows(masters, families, merges, showMerges)
+    : '';
+
   body.innerHTML = `
     <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:16px;">
       <span style="opacity:0.55;margin-right:8px;">Step 5 of 6</span> Consolidate &amp; Prioritize
     </div>
 
     <div class="section-title">Consolidate &amp; Prioritize Policies</div>
-    <div class="section-subtitle">First, merge any domains that belong in a single policy document. Then set the urgency for each — this drives the draft deadlines in the next step.</div>
+    <div class="section-subtitle">Merge categories that belong in a single policy document, then set urgency for each. Govern (GV) outcomes are already covered by your governance policy — only Identify through Recover appear here.</div>
 
     <!-- Priority summary pills -->
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
@@ -2489,26 +2497,8 @@ function renderCISOStep4a() {
       <span>💡 Common merges for lean teams</span>
       <button type="button" class="btn btn-primary" style="padding:4px 10px;font-size:11px;" data-ciso-apply-all-merges>Apply All Non-Conflicting</button>
 </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${COMMON_MERGES.filter(mg => mg.families.every(f => families.includes(f))).map(mg => {
-          const alreadyMerged = mg.families.slice(1).every(f => merges[f] === mg.families[0]);
-          const masterFam = mg.families[0];
-          const slaveFams = mg.families.slice(1);
-          return `<div style="display:flex;align-items:center;gap:10px;background:white;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;">
-            <div style="display:flex;gap:4px;flex-shrink:0;">
-              ${mg.families.map(f => `<span class="family-badge" style="font-size:11px;">${f}</span>`).join('<span style="font-size:11px;color:#93c5fd;font-weight:700;">+</span>')}
-            </div>
-            <div style="flex:1;">
-              <span style="font-size:12px;font-weight:700;color:#1e40af;">${mg.label}</span>
-              <span style="font-size:11px;color:#3b82f6;margin-left:6px;">${mg.reason}</span>
-            </div>
-            ${alreadyMerged
-              ? `<span style="font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border-radius:6px;padding:3px 10px;">✓ Merged</span>`
-              : `<button type="button" data-ciso-merge-apply data-master="${masterFam}" data-slaves="${slaveFams.join(',')}" style="font-size:11px;font-weight:700;color:#1e40af;background:#dbeafe;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Apply merge</button>`}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : '<div class="info-alert" style="margin-bottom:20px;"><div class="ia-icon">ℹ️</div><div class="ia-text">Function-level policy mode — one policy per CSF function. Category merges are not used.</div></div>'}
+      ${mergeSuggestionsHtml}
+    </div>` : '<div class="info-alert" style="margin-bottom:20px;"><div class="ia-icon">ℹ️</div><div class="ia-text">Function-level policy mode — one policy per CSF function (excluding Govern). Category merges are not used.</div></div>'}
 
     <!-- Consolidate + Prioritize table -->
     <div class="table-scroll">
@@ -2520,58 +2510,20 @@ function renderCISOStep4a() {
         </colgroup>
         <thead>
           <tr>
-            <th>Policy Domain</th>
+            <th>Policy category</th>
             <th>Priority</th>
-            <th>Merge Into</th>
+            <th>Merge into</th>
           </tr>
         </thead>
         <tbody id="tbod-${Math.random().toString(36).slice(2,8)}">
-          ${masters.map(fam => {
-            const merged = families.filter(f => merges[f] === fam);
-            const subCount = countSubcategoriesForPolicyUnit(fam, merges, families);
-            const mergeOptions = showMerges ? families.filter(f => f !== fam && merges[f] !== fam && !merges[f]) : [];
-            const tier = getPriority(fam);
-            const m = PRIORITY_META[tier];
-            const isDefault = !!(PRIORITY_DEFAULTS[fam]);
-            return `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
-                  <span class="family-badge">${fam}</span>
-                  ${merged.map(mf => `<span class="family-badge" style="font-size:11px;background:#e0f2f1;color:var(--teal);border-color:rgba(13,148,136,0.3);">+${mf} <span role="button" tabindex="0" style="cursor:pointer;" data-ciso-unmerge="${mf}">✕</span></span>`).join('')}
-                </div>
-                <input class="form-input" style="font-size:12px;font-weight:600;margin-bottom:3px;${state.domainCustomNames[fam]?'border-color:#6366f1;background:rgba(99,102,241,0.04);':''}" placeholder="${escapeHTML(getPolicyMergedTitle(fam))}" value="${escapeHTML(state.domainCustomNames[fam]||'')}" oninput="setDomainCustomName('${fam}',this.value);this.style.borderColor=this.value?'#6366f1':'';this.style.background=this.value?'rgba(99,102,241,0.04)':'';">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${subCount} subcategor${subCount===1?'y':'ies'}${state.domainCustomNames[fam] ? ' · <span style="color:#6366f1;">✏ custom name</span>' : ''}</div>
-                ${FAMILY_DESC[fam] ? `<div style="font-size:11px;color:#64748b;line-height:1.4;">${escapeHTML(FAMILY_DESC[fam]||unitDisplayName(fam))}</div>` : ''}
-              </td>
-              <td>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                  ${Object.entries(PRIORITY_META).map(([t,pm]) => `
-                  <button onclick="setPolicyPriority('${fam}','${t}')" style="padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid ${tier===t?pm.bar:'#e2e8f0'};background:${tier===t?pm.bg:'white'};color:${tier===t?pm.fg:'#94a3b8'};transition:all 0.15s;">${pm.label}</button>`).join('')}
-                  ${isDefault ? `<span style="font-size:10px;color:var(--text-muted);margin-left:2px;">suggested</span>` : ''}
-                </div>
-              </td>
-              <td>
-                ${mergeOptions.length > 0 ? `
-                <div class="ciso-merge-dropdown-wrap" style="display:flex;flex-direction:column;gap:6px;align-items:stretch;max-width:220px;">
-                  <select class="form-select" style="font-size:11px;padding:4px 6px;" data-ciso-merge-master="${fam}" aria-label="Merge another domain into ${fam}">
-                    <option value="">+ Merge…</option>
-                    ${mergeOptions.map(f => `<option value="${f}">${unitDisplayName(f)}</option>`).join('')}
-                  </select>
-                  <button type="button" data-ciso-merge-dropdown-apply data-master="${fam}" style="display:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid #1e40af;background:#dbeafe;color:#1e40af;cursor:pointer;white-space:nowrap;">
-                    Apply merge
-                  </button>
-                </div>` : '<span style="font-size:11px;color:var(--text-muted);">—</span>'}
-              </td>
-            </tr>`;
-          }).join('')}
+          ${tableRowsHtml || masters.map(fam => '').join('')}
         </tbody>
       </table>
     </div>
 
     <div class="info-alert" style="margin-top:16px;">
       <div class="ia-icon">💡</div>
-      <div class="ia-text"><strong>Now</strong> = audit-critical or high-risk (IR, AC, IA, CP). <strong>Soon</strong> = important but not blocking. <strong>Later</strong> = real but low-urgency. These drive the default deadlines in the next step — you can still override per domain.</div>
+      <div class="ia-text"><strong>Now</strong> = foundation categories (Identify assets/risk, Protect essentials, Respond). <strong>Soon</strong> = operational maturity (Detect, extended Protect). <strong>Later</strong> = Recover and lower-urgency items. These drive default deadlines in the next step.</div>
     </div>
 
   `;
@@ -2640,7 +2592,7 @@ function renderCISOStep4b() {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">No categories in scope</div><p>Complete Step 2 first.</p></div>';
     return;
   }
-  const families = getCisoWizardUnits();
+  const families = typeof getDomainPolicyUnits === 'function' ? getDomainPolicyUnits() : getCisoWizardUnits();
   const merges = state.policyMerges || {};
   const masters = families.filter(f => !merges[f]);
 
@@ -2727,7 +2679,7 @@ function renderCISOStep4b() {
       }).join('')}
     </div>
 
-    <p class="owner-step-footnote">GV subcategories stay with the program owner. Draft deadlines come from your Step 6 priorities.</p>
+    <p class="owner-step-footnote">Govern (GV) stays with the program owner via the governance policy. Draft deadlines below follow your Step 5 priorities.</p>
   `;
   updateCISOFinishBtn();
 }
@@ -2846,7 +2798,8 @@ function reassignReturnedPolicyByEmail(fam, newEmail) {
 // Clears any pre-existing conflicting slave entries first so manual merges
 // done out-of-order can't permanently block the button.
 window.applyAllMerges = function() {
-  var families = typeof getCisoWizardUnits === 'function' ? getCisoWizardUnits() : getActiveCategories();
+  var families = typeof getDomainPolicyUnits === 'function' ? getDomainPolicyUnits()
+    : (typeof getCisoWizardUnits === 'function' ? getCisoWizardUnits() : getActiveCategories());
   if (!state.policyMerges) state.policyMerges = {};
 
   // Pass 1: clear any slave entries belonging to in-scope COMMON_MERGES so we
@@ -2956,6 +2909,15 @@ window.unmergePolicy = unmergePolicy;
       ev.preventDefault();
       var fam = unmergeEl.getAttribute('data-ciso-unmerge');
       if (fam && typeof window.unmergePolicy === 'function') window.unmergePolicy(fam);
+      return;
+    }
+    var unmergeSlaves = t.closest('[data-ciso-unmerge-slaves]');
+    if (unmergeSlaves) {
+      ev.preventDefault();
+      var slaveList = (unmergeSlaves.getAttribute('data-ciso-unmerge-slaves') || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      if (typeof window.unmergePolicy === 'function') {
+        slaveList.forEach(function(sf) { window.unmergePolicy(sf); });
+      }
       return;
     }
     var applyDrop = t.closest('[data-ciso-merge-dropdown-apply]');

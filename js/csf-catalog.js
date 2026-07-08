@@ -883,20 +883,12 @@ const COMMON_CATEGORY_MERGES = [
   },
   {
     "slaves": [
-      "RS.MI",
-      "RS.CO"
-    ],
-    "master": "RS.MA",
-    "label": "Incident Response (RS.MA+RS.AN+RS.CO+RS.MI)"
-  },
-  {
-    "slaves": [
       "RS.AN",
       "RS.CO",
       "RS.MI"
     ],
     "master": "RS.MA",
-    "label": "Incident Response (RS.MA bundle)"
+    "label": "Incident Response (RS.MA+RS.AN+RS.CO+RS.MI)"
   },
   {
     "slaves": [
@@ -904,13 +896,6 @@ const COMMON_CATEGORY_MERGES = [
     ],
     "master": "RC.RP",
     "label": "Recovery (RC.RP+RC.CO)"
-  },
-  {
-    "slaves": [
-      "GV.OV"
-    ],
-    "master": "GV.RM",
-    "label": "Governance & Oversight (GV.RM+GV.OV)"
   },
   {
     "slaves": [

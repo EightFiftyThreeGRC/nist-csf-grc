@@ -466,6 +466,172 @@ if (typeof renderRequirementsSection === 'function') {
   };
 }
 
+/** Domain-level policy units — Govern (GV) is covered by the governance policy (ISP), not domain policies. */
+function getDomainPolicyUnits() {
+  if (state.policyStructure === 'function') {
+    return getActiveFunctions().filter(function(fn) { return fn !== 'GV'; });
+  }
+  return getActiveCategories().filter(function(catId) { return catId.indexOf('GV.') !== 0; });
+}
+
+getCisoWizardUnits = getDomainPolicyUnits;
+
+function migrateGvOutOfDomainPolicies() {
+  var merges = state.policyMerges || {};
+  var changed = false;
+  Object.keys(merges).forEach(function(k) {
+    if (k.indexOf('GV.') === 0 || String(merges[k] || '').indexOf('GV.') === 0) {
+      delete merges[k];
+      changed = true;
+    }
+  });
+  if (state.categoryMerges) {
+    Object.keys(state.categoryMerges).forEach(function(k) {
+      if (k.indexOf('GV.') === 0 || String(state.categoryMerges[k] || '').indexOf('GV.') === 0) {
+        delete state.categoryMerges[k];
+        changed = true;
+      }
+    });
+  }
+  Object.keys(state.domainOwners || {}).forEach(function(k) {
+    if (k.indexOf('GV.') === 0) {
+      delete state.domainOwners[k];
+      changed = true;
+    }
+  });
+  if (changed && typeof markDirty === 'function') markDirty();
+}
+
+var CSF_FUNCTION_PRIORITY_DEFAULTS = { ID: 'now', PR: 'now', DE: 'soon', RS: 'now', RC: 'later' };
+var CSF_CATEGORY_PRIORITY_DEFAULTS = {
+  'ID.AM': 'now', 'ID.RA': 'now', 'ID.IM': 'soon',
+  'PR.AA': 'now', 'PR.AT': 'later', 'PR.DS': 'now', 'PR.PS': 'soon', 'PR.IR': 'soon',
+  'DE.CM': 'soon', 'DE.AE': 'soon',
+  'RS.MA': 'now', 'RS.AN': 'now', 'RS.CO': 'now', 'RS.MI': 'now',
+  'RC.RP': 'later', 'RC.CO': 'later'
+};
+
+function getCsfCategoryPriorityDefault(unit) {
+  if (state.policyStructure === 'function') return CSF_FUNCTION_PRIORITY_DEFAULTS[unit] || null;
+  return CSF_CATEGORY_PRIORITY_DEFAULTS[unit] || null;
+}
+
+(function patchGetPriority() {
+  if (typeof getPriority !== 'function') return;
+  var _origGetPriority = getPriority;
+  getPriority = function(fam) {
+    if (state.policyPriorities && state.policyPriorities[fam]) return state.policyPriorities[fam];
+    var csfDefault = getCsfCategoryPriorityDefault(fam);
+    if (csfDefault) return csfDefault;
+    return _origGetPriority(fam);
+  };
+})();
+
+function csfPolicyFunctionKey(unit) {
+  return unit.indexOf('.') >= 0 ? unit.split('.')[0] : unit;
+}
+
+function renderCisoMergeSuggestionsGrouped(families, merges) {
+  var fnOrder = ['ID', 'PR', 'DE', 'RS', 'RC'];
+  var mergeList = (typeof COMMON_MERGES !== 'undefined' ? COMMON_MERGES : []).filter(function(mg) {
+    return mg.families.every(function(f) { return families.indexOf(f) >= 0 && f.indexOf('GV.') !== 0; });
+  });
+  var byFn = {};
+  mergeList.forEach(function(mg) {
+    var fn = csfPolicyFunctionKey(mg.families[0]);
+    if (!byFn[fn]) byFn[fn] = [];
+    byFn[fn].push(mg);
+  });
+  var groups = fnOrder.filter(function(fn) { return byFn[fn] && byFn[fn].length; }).map(function(fn) {
+    var rows = byFn[fn].map(function(mg) {
+      var alreadyMerged = mg.families.slice(1).every(function(f) { return merges[f] === mg.families[0]; });
+      var masterFam = mg.families[0];
+      var slaveFams = mg.families.slice(1);
+      var actionBtn = alreadyMerged
+        ? '<button type="button" data-ciso-unmerge-slaves="' + escapeHTML(slaveFams.join(',')) + '" style="font-size:11px;font-weight:700;color:#991b1b;background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Unmerge</button>'
+        : '<button type="button" data-ciso-merge-apply data-master="' + escapeHTML(masterFam) + '" data-slaves="' + escapeHTML(slaveFams.join(',')) + '" style="font-size:11px;font-weight:700;color:#1e40af;background:#dbeafe;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;white-space:nowrap;">Apply merge</button>';
+      return '<div style="display:flex;align-items:center;gap:10px;background:white;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:6px;">'
+        + '<div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;">'
+        + mg.families.map(function(f, i) {
+          return (i ? '<span style="font-size:11px;color:#93c5fd;font-weight:700;">+</span>' : '')
+            + '<span class="family-badge" style="font-size:11px;">' + escapeHTML(f) + '</span>';
+        }).join('')
+        + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<span style="font-size:12px;font-weight:700;color:#1e40af;">' + escapeHTML(mg.label) + '</span>'
+        + '<span style="font-size:11px;color:#3b82f6;margin-left:6px;">' + escapeHTML(mg.reason || 'Suggested category merge.') + '</span>'
+        + '</div>'
+        + actionBtn
+        + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:14px;">'
+      + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#475569;margin-bottom:8px;">'
+      + escapeHTML(fn) + ' — ' + escapeHTML((typeof FUNCTIONS !== 'undefined' && FUNCTIONS[fn]) || fn)
+      + '</div>'
+      + rows
+      + '</div>';
+  }).join('');
+  return groups || '<div style="font-size:12px;color:#64748b;">No merge suggestions for your current scope.</div>';
+}
+
+function renderCisoConsolidateTableRows(masters, families, merges, showMerges) {
+  var fnOrder = ['ID', 'PR', 'DE', 'RS', 'RC'];
+  var byFn = {};
+  masters.forEach(function(fam) {
+    var fn = csfPolicyFunctionKey(fam);
+    if (!byFn[fn]) byFn[fn] = [];
+    byFn[fn].push(fam);
+  });
+  return fnOrder.filter(function(fn) { return byFn[fn] && byFn[fn].length; }).map(function(fn) {
+    var header = '<tr class="csf-consolidate-fn-row"><td colspan="3" style="background:#f1f5f9;padding:10px 12px;border-bottom:2px solid #e2e8f0;">'
+      + '<span style="font-size:12px;font-weight:800;color:var(--navy);">' + escapeHTML(fn) + ' — ' + escapeHTML((typeof FUNCTIONS !== 'undefined' && FUNCTIONS[fn]) || fn) + '</span>'
+      + '<span style="font-size:11px;color:#64748b;margin-left:8px;">' + byFn[fn].length + ' categor' + (byFn[fn].length === 1 ? 'y' : 'ies') + '</span>'
+      + '</td></tr>';
+    var rows = byFn[fn].map(function(fam) {
+      var merged = families.filter(function(f) { return merges[f] === fam; });
+      var subCount = countSubcategoriesForPolicyUnit(fam, merges, families);
+      var mergeOptions = showMerges ? families.filter(function(f) { return f !== fam && merges[f] !== fam && !merges[f]; }) : [];
+      var tier = getPriority(fam);
+      var m = PRIORITY_META[tier];
+      var isDefault = typeof getCsfCategoryPriorityDefault === 'function' ? !!getCsfCategoryPriorityDefault(fam) : !!(PRIORITY_DEFAULTS[fam]);
+      return ''
+        + '<tr>'
+        + '<td>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">'
+        + '<span class="family-badge">' + escapeHTML(fam) + '</span>'
+        + merged.map(function(mf) {
+          return '<span class="family-badge" style="font-size:11px;background:#e0f2f1;color:var(--teal);border-color:rgba(13,148,136,0.3);">+' + escapeHTML(mf)
+            + ' <span role="button" tabindex="0" style="cursor:pointer;" data-ciso-unmerge="' + escapeHTML(mf) + '" title="Unmerge">✕</span></span>';
+        }).join('')
+        + '</div>'
+        + '<input class="form-input" style="font-size:12px;font-weight:600;margin-bottom:3px;' + (state.domainCustomNames[fam] ? 'border-color:#6366f1;background:rgba(99,102,241,0.04);' : '') + '" placeholder="' + escapeHTML(getPolicyMergedTitle(fam)) + '" value="' + escapeHTML(state.domainCustomNames[fam] || '') + '" oninput="setDomainCustomName(\'' + escapeHTML(fam).replace(/'/g, "\\'") + '\',this.value);this.style.borderColor=this.value?\'#6366f1\':\'\';this.style.background=this.value?\'rgba(99,102,241,0.04)\':\'\';">'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + subCount + ' subcategor' + (subCount === 1 ? 'y' : 'ies')
+        + (state.domainCustomNames[fam] ? ' · <span style="color:#6366f1;">✏ custom name</span>' : '') + '</div>'
+        + (FAMILY_DESC[fam] ? '<div style="font-size:11px;color:#64748b;line-height:1.4;">' + escapeHTML(FAMILY_DESC[fam] || unitDisplayName(fam)) + '</div>' : '')
+        + '</td>'
+        + '<td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+        + Object.entries(PRIORITY_META).map(function(entry) {
+          var t = entry[0]; var pm = entry[1];
+          return '<button onclick="setPolicyPriority(\'' + escapeHTML(fam).replace(/'/g, "\\'") + '\',\'' + t + '\')" style="padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid ' + (tier === t ? pm.bar : '#e2e8f0') + ';background:' + (tier === t ? pm.bg : 'white') + ';color:' + (tier === t ? pm.fg : '#94a3b8') + ';transition:all 0.15s;">' + pm.label + '</button>';
+        }).join('')
+        + (isDefault ? '<span style="font-size:10px;color:var(--text-muted);margin-left:2px;">suggested</span>' : '')
+        + '</div></td>'
+        + '<td>'
+        + (mergeOptions.length > 0
+          ? '<div class="ciso-merge-dropdown-wrap" style="display:flex;flex-direction:column;gap:6px;align-items:stretch;max-width:220px;">'
+            + '<select class="form-select" style="font-size:11px;padding:4px 6px;" data-ciso-merge-master="' + escapeHTML(fam) + '" aria-label="Merge another category into ' + escapeHTML(fam) + '">'
+            + '<option value="">+ Merge…</option>'
+            + mergeOptions.map(function(f) { return '<option value="' + escapeHTML(f) + '">' + escapeHTML(unitDisplayName(f)) + '</option>'; }).join('')
+            + '</select>'
+            + '<button type="button" data-ciso-merge-dropdown-apply data-master="' + escapeHTML(fam) + '" style="display:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid #1e40af;background:#dbeafe;color:#1e40af;cursor:pointer;white-space:nowrap;">Apply merge</button>'
+            + '</div>'
+          : '<span style="font-size:11px;color:var(--text-muted);">—</span>')
+        + '</td></tr>';
+    }).join('');
+    return header + rows;
+  }).join('');
+}
+
 function renderCISOStep3Integrations() {
   /* Reg mapping removed — CSF program has no ISO/SOC 2/HIPAA crosswalk UI. */
 }

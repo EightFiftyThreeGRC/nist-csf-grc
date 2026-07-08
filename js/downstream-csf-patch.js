@@ -46,6 +46,22 @@ if (typeof isPm4InScope === 'function') {
   isPm4InScope = function() { return true; };
 }
 
+if (typeof getActivePolicyUnits === 'function') {
+  var _origGetActivePolicyUnits = getActivePolicyUnits;
+  getActivePolicyUnits = function() {
+    if (typeof getDomainPolicyUnits === 'function') return getDomainPolicyUnits();
+    return _origGetActivePolicyUnits();
+  };
+}
+
+if (typeof renderCISOStep4a === 'function' && typeof migrateGvOutOfDomainPolicies === 'function') {
+  var _origRenderCISOStep4a = renderCISOStep4a;
+  renderCISOStep4a = function() {
+    migrateGvOutOfDomainPolicies();
+    _origRenderCISOStep4a();
+  };
+}
+
 function getProgramBaselineLabel() {
   var n = getActiveCategories().length;
   return n + ' categor' + (n === 1 ? 'y' : 'ies') + ' in scope';
