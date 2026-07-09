@@ -136,12 +136,21 @@ function getDomainPolicyApproverMeta(fam) {
   fam = fam || state._policyDomain;
   if (!state.policyReviewCycle) state.policyReviewCycle = {};
   var rc = state.policyReviewCycle[fam] || {};
-  var useCustom = !!(rc._customApprover && (rc.approvedBy || '').trim());
+  var requiresSeparate = typeof domainPolicyRequiresSeparateApprover === 'function'
+    && domainPolicyRequiresSeparateApprover(fam);
+  if (requiresSeparate || rc._customApprover) {
+    return {
+      useCustom: true,
+      name: String(rc.approvedBy || '').trim(),
+      role: String(rc.approverRole || '').trim(),
+      email: String(rc.approverEmail || '').trim()
+    };
+  }
   return {
-    useCustom: useCustom,
-    name: useCustom ? String(rc.approvedBy || '').trim() : String(state.programOwner || '').trim(),
-    role: useCustom ? String(rc.approverRole || '').trim() : String(state.programOwnerTitle || '').trim(),
-    email: useCustom ? String(rc.approverEmail || '').trim() : String(state.programOwnerEmail || '').trim()
+    useCustom: false,
+    name: String(state.programOwner || '').trim(),
+    role: String(state.programOwnerTitle || '').trim(),
+    email: String(state.programOwnerEmail || '').trim()
   };
 }
 
@@ -1998,7 +2007,7 @@ function renderPolicyStep1() {
   `;
 
   if (body) body.innerHTML = `
-    <div style="max-width:620px;">
+    <div class="policy-step-form">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">${allBadgesHtml}</div>
       <div style="font-size:20px; font-weight:800; color:var(--navy); margin-bottom:6px;">${escapeHTML(mergedTitle)}</div>
       <div style="font-size:13px; color:var(--text-muted); margin-bottom:28px;">${dd.purpose ? dd.purpose.slice(0,120) + '\u2026' : 'Domain-specific security policy'}</div>

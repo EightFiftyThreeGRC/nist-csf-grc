@@ -503,6 +503,18 @@ function domainPolicyRequiresSeparateApprover(fam) {
   return false;
 }
 
+/** Clear approver fields that match the domain owner when SoD requires a separate reviewer. */
+function sanitizeDomainPolicyApproverFields(fam, rc) {
+  if (!rc) return;
+  if (typeof domainPolicyRequiresSeparateApprover !== 'function'
+      || !domainPolicyRequiresSeparateApprover(fam)) return;
+  rc._customApprover = true;
+  if (domainPolicyApproverViolatesSeparationOfDuties(fam, rc.approverEmail, rc.approvedBy)) {
+    rc.approvedBy = '';
+    rc.approverEmail = '';
+  }
+}
+
 function getDomainDesignatedApproverEmail(fam) {
   var ps = (state.policyStatus || {})[fam] || {};
   var rc = (state.policyReviewCycle || {})[fam] || {};
@@ -537,7 +549,7 @@ function validateDomainApproverAssignment(fam, rc, silent) {
     }
     return false;
   }
-  var useCustom = !!rc._customApprover;
+  var useCustom = !!rc._customApprover || domainPolicyRequiresSeparateApprover(fam);
   var approverEmail = useCustom ? (rc.approverEmail || '').trim() : (state.programOwnerEmail || '').trim();
   var approverName = useCustom ? (rc.approvedBy || '').trim() : (state.programOwner || '').trim();
   if (useCustom) {
@@ -1399,6 +1411,7 @@ if (typeof window !== 'undefined') {
   window.getSessionReturnedDomainPoliciesNeedingOwner = getSessionReturnedDomainPoliciesNeedingOwner;
   window.ispApproverViolatesSeparationOfDuties = ispApproverViolatesSeparationOfDuties;
   window.validateISPApproverAssignment = validateISPApproverAssignment;
+  window.sanitizeDomainPolicyApproverFields = sanitizeDomainPolicyApproverFields;
   window.domainPolicyRequiresSeparateApprover = domainPolicyRequiresSeparateApprover;
   window.getDomainDesignatedApproverEmail = getDomainDesignatedApproverEmail;
   window.getDomainDesignatedApproverName = getDomainDesignatedApproverName;

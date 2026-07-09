@@ -668,6 +668,146 @@
       align-items: center;
       background-color: #f9fafb;
       flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Domain policy wizard — help rail + main body */
+    #policy-wizard-header {
+      flex-shrink: 0;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+    }
+    .policy-wizard-container {
+      padding: 0;
+      gap: 0;
+      flex-wrap: nowrap;
+    }
+    .policy-step-layout {
+      display: flex;
+      height: 100%;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .policy-step-help {
+      width: 240px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      background: #fafbfc;
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+    }
+    .policy-step-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .policy-step-body {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 28px 32px;
+    }
+    .policy-step-body--compact {
+      padding: 24px 28px;
+    }
+    #policy-wizard-panel .wizard-step {
+      height: 100%;
+      min-height: 0;
+    }
+    #policy-wizard-panel .policy-wizard-content {
+      min-width: 0;
+    }
+    .policy-step-form {
+      max-width: 620px;
+      width: 100%;
+    }
+    .review-cycle-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .review-cycle-approver-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .review-cycle-approver-row .form-input {
+      flex: 1 1 140px;
+      min-width: 0;
+      width: auto !important;
+      font-size: 12px;
+    }
+    .review-cycle-approver-row .review-cycle-role-select {
+      flex: 1 1 160px;
+      min-width: 0;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+    .review-cycle-approver-row .review-cycle-role-custom {
+      flex: 1 1 100%;
+    }
+
+    @media (max-width: 1280px) {
+      .program-phase-bar {
+        padding: 10px 20px 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      #policy-wizard-panel {
+        overflow: auto;
+      }
+      #policy-wizard-panel .policy-wizard-container {
+        flex-direction: column;
+        overflow: visible;
+      }
+      #policy-wizard-panel .policy-wizard-step-nav {
+        width: 100%;
+        max-height: none;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px 16px;
+        gap: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      #policy-wizard-panel .policy-wizard-step-nav .step-nav-title,
+      #policy-wizard-panel .policy-wizard-step-nav .step-connector {
+        display: none;
+      }
+      #policy-wizard-panel .policy-wizard-step-nav .step-item {
+        flex: 0 0 auto;
+        min-width: 132px;
+      }
+      #policy-wizard-panel .policy-step-layout {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+      }
+      #policy-wizard-panel .policy-step-help {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      #policy-wizard-panel .policy-step-body,
+      #policy-wizard-panel .policy-step-body--compact {
+        padding: 20px 16px;
+      }
+      #policy-wizard-panel .wizard-step-footer {
+        padding: 14px 16px;
+      }
+      #policy-wizard-header {
+        padding: 10px 16px;
+      }
+      .review-cycle-fields {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* Form Elements */

@@ -10,7 +10,7 @@
   <meta name="description" content="EightFiftyThree GRC — NIST Cybersecurity Framework 2.0 program management">
   <title>EightFiftyThree GRC — Application</title>
 
-    <link rel="stylesheet" href="css/app.css?v=20260708m">
+    <link rel="stylesheet" href="css/app.css?v=20260708o">
 
 </head>
 <body>
@@ -260,9 +260,9 @@
     </div>
     <!-- WIZARD VIEW: 4-step flow (hidden until domain selected) — same side step-nav pattern as CISO / control -->
     <div id="policy-wizard-panel" style="display:none; flex-direction:column; height:100%; overflow:hidden;">
-      <div id="policy-wizard-header" style="flex-shrink:0; background:white; border-bottom:1px solid var(--border); padding:12px 32px;"></div>
-      <div class="wizard-container" id="policy-wizard-main" style="flex:1; min-height:0; overflow:hidden;">
-        <div class="step-nav">
+      <div id="policy-wizard-header"></div>
+      <div class="wizard-container policy-wizard-container" id="policy-wizard-main" style="flex:1; min-height:0; overflow:hidden;">
+        <div class="step-nav policy-wizard-step-nav">
           <div class="step-nav-title">Domain Policy Steps</div>
           <div class="step-item active" onclick="goToStep('policy',1)" id="policy-step-item-1">
             <div class="step-circle active" id="policy-circle-1">1</div>
@@ -296,13 +296,13 @@
             </div>
           </div>
         </div>
-        <div class="wizard-content">
+        <div class="wizard-content policy-wizard-content">
           <!-- Step 1: Review & Custodian -->
-          <div class="wizard-step active" id="policy-step-1" style="height:100%;">
-            <div style="display:flex; height:100%; overflow:hidden;">
-              <div id="policy-step-1-help" style="width:240px; flex-shrink:0; overflow-y:auto; background:#fafbfc; border-right:1px solid var(--border); padding:20px 16px;"></div>
-              <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-                <div id="policy-step-1-body" style="flex:1; overflow-y:auto; padding:28px 32px;"></div>
+          <div class="wizard-step active" id="policy-step-1">
+            <div class="policy-step-layout">
+              <div id="policy-step-1-help" class="policy-step-help"></div>
+              <div class="policy-step-main">
+                <div id="policy-step-1-body" class="policy-step-body"></div>
                 <div class="wizard-step-footer">
                   <button class="btn btn-secondary" onclick="exitPolicyWizard()">← All Domains</button>
                   <button class="btn btn-primary" onclick="policyNext(1)">Control Selection →</button>
@@ -311,11 +311,11 @@
             </div>
           </div>
           <!-- Step 2: Control Selection -->
-          <div class="wizard-step" id="policy-step-2" style="height:100%;">
-            <div style="display:flex; height:100%; overflow:hidden;">
-              <div id="policy-step-2-help" style="width:240px; flex-shrink:0; overflow-y:auto; background:#fafbfc; border-right:1px solid var(--border); padding:20px 16px;"></div>
-              <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-                <div id="policy-step-2-body" style="flex:1; overflow-y:auto; padding:24px 28px;"></div>
+          <div class="wizard-step" id="policy-step-2">
+            <div class="policy-step-layout">
+              <div id="policy-step-2-help" class="policy-step-help"></div>
+              <div class="policy-step-main">
+                <div id="policy-step-2-body" class="policy-step-body policy-step-body--compact"></div>
                 <div class="wizard-step-footer">
                   <button class="btn btn-secondary" onclick="goToStep('policy',1)">← Back</button>
                   <span id="policy-step-2-count" style="font-size:13px; color:var(--text-muted);"></span>
@@ -678,9 +678,9 @@
 
 <script src="js/csf-subcategory-text.js?v=20260708"></script>
 <script src="js/csf-catalog.js?v=20260708j"></script>
-<script src="js/core.js?v=20260708o"></script>
+<script src="js/core.js?v=20260708p"></script>
 <script src="js/csf-snapshots.js?v=20260708"></script>
-<script src="js/policies.js?v=20260708o"></script>
+<script src="js/policies.js?v=20260708q"></script>
 <script src="js/policies-csf-patch.js?v=20260708n"></script>
 <script src="js/controls.js?v=20260708"></script>
 <script src="js/controls-csf-patch.js?v=20260708"></script>
@@ -703,11 +703,11 @@
   if (gate) gate.style.display = 'flex';
 })();
 </script>
-<script src="js/cloud-auth.js?v=20260708i"></script>
+<script src="js/cloud-auth.js?v=20260708j"></script>
 <script src="js/program.js?v=20260708l"></script>
 <script src="js/ciso-csf-wizard.js?v=20260708k"></script>
 <script src="js/downstream-csf-patch.js?v=20260708j"></script>
-<script src="js/app.js?v=20260708i"></script>
+<script src="js/app.js?v=20260708l"></script>
 
 </body>
 </html>

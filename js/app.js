@@ -240,6 +240,148 @@ function toggleCustomApprover(policyKey, checkbox) {
   window.markDirty && window.markDirty();
 }
 
+function onPolicyApproverFieldInput(policyKey, field, el) {
+  if (!state.policyReviewCycle) state.policyReviewCycle = {};
+  if (!state.policyReviewCycle[policyKey]) state.policyReviewCycle[policyKey] = {};
+  var rc = state.policyReviewCycle[policyKey];
+  var prev = el.value;
+  rc[field] = prev;
+  if (policyKey === 'ISP') {
+    if (typeof ispApproverViolatesSeparationOfDuties === 'function'
+        && ispApproverViolatesSeparationOfDuties(rc.approverEmail, rc.approvedBy)) {
+      if (field === 'approvedBy') { rc.approvedBy = ''; el.value = ''; }
+      if (field === 'approverEmail') { rc.approverEmail = ''; el.value = ''; }
+      if (typeof showToast === 'function') {
+        showToast('The governance policy must be approved by someone other than the program owner.', true);
+      }
+    }
+  } else if (typeof sanitizeDomainPolicyApproverFields === 'function') {
+    sanitizeDomainPolicyApproverFields(policyKey, rc);
+    if ((field === 'approvedBy' && !rc.approvedBy && prev)
+        || (field === 'approverEmail' && !rc.approverEmail && prev)) {
+      el.value = '';
+      if (typeof showToast === 'function') {
+        showToast('Approver must be someone other than the policy owner (separation of duties).', true);
+      }
+    }
+  }
+  window.markDirty && window.markDirty();
+}
+
+function getPolicyApproverRoleOptions(policyKey) {
+  var opts = [];
+  var seen = {};
+  function add(v) {
+    v = String(v || '').trim();
+    if (!v) return;
+    var k = v.toLowerCase();
+    if (seen[k]) return;
+    seen[k] = true;
+    opts.push(v);
+  }
+
+  add('Chief Information Officer (CIO)');
+  add('Chief Executive Officer (CEO)');
+  add('Chief Operating Officer (COO)');
+  add('Authorizing Official');
+  add('Board designee');
+
+  if (typeof getProgramOwnerTitleShortForms === 'function') {
+    getProgramOwnerTitleShortForms().forEach(add);
+  } else {
+    add((state.programOwnerTitle || '').trim());
+  }
+
+  (state.users || []).forEach(function(u) { add(u.note); });
+  Object.keys(state.domainOwners || {}).forEach(function(fam) {
+    add((state.domainOwners[fam] || {}).role);
+  });
+
+  var excludePo = policyKey === 'ISP'
+    || (typeof domainPolicyRequiresSeparateApprover === 'function'
+        && domainPolicyRequiresSeparateApprover(policyKey));
+  if (excludePo) {
+    var poForms = typeof getProgramOwnerTitleShortForms === 'function'
+      ? getProgramOwnerTitleShortForms().map(function(s) { return s.toLowerCase(); })
+      : [(state.programOwnerTitle || '').trim().toLowerCase()];
+    opts = opts.filter(function(o) {
+      return poForms.indexOf(o.toLowerCase()) === -1;
+    });
+  } else if (typeof getDefaultProgramOwnerTitle === 'function') {
+    add((state.programOwnerTitle || '').trim() || getDefaultProgramOwnerTitle());
+  }
+
+  return opts;
+}
+
+function renderPolicyApproverRoleField(policyKey, rc) {
+  var escKey = policyKey.replace(/'/g, "\\'");
+  var options = getPolicyApproverRoleOptions(policyKey);
+  var current = String(rc.approverRole || '').trim();
+  var inList = current && options.some(function(o) { return o.toLowerCase() === current.toLowerCase(); });
+  var showCustom = current && !inList;
+  var selectVal = inList ? current : (showCustom ? '__custom__' : '');
+
+  var html = '<select class="form-select review-cycle-role-select" aria-label="Approver role" onchange="onPolicyApproverRoleSelect(\'' + escKey + '\', this)">';
+  html += '<option value=""' + (!selectVal ? ' selected' : '') + '>Select role\u2026</option>';
+  options.forEach(function(o) {
+    html += '<option value="' + escapeHTML(o) + '"' + (selectVal === o ? ' selected' : '') + '>' + escapeHTML(o) + '</option>';
+  });
+  html += '<option value="__custom__"' + (selectVal === '__custom__' ? ' selected' : '') + '>Other\u2026</option>';
+  html += '</select>';
+  html += '<input class="form-input review-cycle-role-custom" id="approver-role-custom-' + escapeHTML(policyKey) + '" placeholder="Custom title" autocomplete="off"'
+    + ' style="display:' + (showCustom || selectVal === '__custom__' ? 'block' : 'none') + ';"'
+    + ' value="' + escapeHTML(showCustom ? current : '') + '"'
+    + ' oninput="onPolicyApproverFieldInput(\'' + escKey + '\', \'approverRole\', this)">';
+  return html;
+}
+
+function onPolicyApproverRoleSelect(policyKey, el) {
+  if (!state.policyReviewCycle) state.policyReviewCycle = {};
+  if (!state.policyReviewCycle[policyKey]) state.policyReviewCycle[policyKey] = {};
+  var rc = state.policyReviewCycle[policyKey];
+  var val = el.value;
+  var customEl = document.getElementById('approver-role-custom-' + policyKey);
+  if (val === '__custom__') {
+    if (customEl) {
+      customEl.style.display = 'block';
+      rc.approverRole = customEl.value || '';
+      customEl.focus();
+    }
+  } else {
+    if (customEl) customEl.style.display = 'none';
+    rc.approverRole = val;
+    if (val && typeof findRosterContactByApproverRole === 'function') {
+      var contact = findRosterContactByApproverRole(val);
+      if (contact) {
+        var row = el.closest('.review-cycle-approver-row');
+        if (row) {
+          var nameInput = row.querySelector('[data-approver-field="name"]');
+          var emailInput = row.querySelector('[data-approver-field="email"]');
+          if (nameInput && contact.name) {
+            nameInput.value = contact.name;
+            rc.approvedBy = contact.name;
+          }
+          if (emailInput && contact.email) {
+            emailInput.value = contact.email;
+            rc.approverEmail = contact.email;
+          }
+        }
+      }
+    }
+  }
+  window.markDirty && window.markDirty();
+}
+
+function renderReviewCycleApproverFields(policyKey, rc, isIsp) {
+  var escKey = policyKey.replace(/'/g, "\\'");
+  var namePh = isIsp ? 'Approver name (e.g. CIO)' : 'Approver name';
+  return '<div class="review-cycle-approver-row">'
+    + '<input class="form-input" data-approver-field="name" placeholder="' + namePh + '" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="onPolicyApproverFieldInput(\'' + escKey + '\', \'approvedBy\', this)">'
+    + renderPolicyApproverRoleField(policyKey, rc)
+    + '<input class="form-input" data-approver-field="email" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="onPolicyApproverFieldInput(\'' + escKey + '\', \'approverEmail\', this)"></div>';
+}
+
 function renderReviewCycleCard(policyKey, label) {
   if (!state.policyReviewCycle) state.policyReviewCycle = {};
   if (!state.policyReviewCycle[policyKey]) state.policyReviewCycle[policyKey] = {};
@@ -251,8 +393,12 @@ function renderReviewCycleCard(policyKey, label) {
   if (!rc.nextReviewDue)  { var d = new Date(rc.lastReviewed + 'T00:00:00'); d.setFullYear(d.getFullYear() + 1); rc.nextReviewDue = d.toISOString().slice(0, 10); }
   if (!rc.approvalDate)   { rc.approvalDate  = today; }
 
-  // Initialize default approver for domain policies (program owner unless "Different approver")
-  if (policyKey !== 'ISP' && !rc.approvedBy && !rc._customApprover) {
+  var requiresSeparate = policyKey !== 'ISP'
+    && typeof domainPolicyRequiresSeparateApprover === 'function'
+    && domainPolicyRequiresSeparateApprover(policyKey);
+
+  // Initialize default approver for domain policies (program owner unless SoD requires a separate reviewer)
+  if (policyKey !== 'ISP' && !rc.approvedBy && !rc._customApprover && !requiresSeparate) {
     rc.approvedBy = (state.programOwner || '').trim();
   }
   if (policyKey === 'ISP') {
@@ -261,14 +407,15 @@ function renderReviewCycleCard(policyKey, label) {
     if (poNmIsp && (rc.approvedBy || '').trim().toLowerCase() === poNmIsp.toLowerCase()) {
       rc.approvedBy = '';
     }
-  } else if (typeof domainPolicyRequiresSeparateApprover === 'function'
-      && domainPolicyRequiresSeparateApprover(policyKey)
-      && !rc._customApprover) {
+  } else if (requiresSeparate) {
     rc._customApprover = true;
+    if (typeof sanitizeDomainPolicyApproverFields === 'function') {
+      sanitizeDomainPolicyApproverFields(policyKey, rc);
+    }
   }
 
-  // Legacy: domain cards used ISSM name as "Approved By" while the badge said Program Owner — realign to program owner when still the old mistaken value.
-  if (policyKey !== 'ISP' && !rc._customApprover) {
+  // Legacy: domain cards used ISSM name as "Approved By" — realign to program owner when still the old mistaken value.
+  if (policyKey !== 'ISP' && !rc._customApprover && !requiresSeparate) {
     var domOwnNm = ((state.domainOwners || {})[policyKey] || {}).name;
     domOwnNm = domOwnNm ? String(domOwnNm).trim() : '';
     var poNm = (state.programOwner || '').trim();
@@ -286,9 +433,6 @@ function renderReviewCycleCard(policyKey, label) {
   // Always render both the default badge and the custom fields — the checkbox
   // toggles display:none/block on the custom div. No innerHTML swap needed.
   var isCustom = !!rc._customApprover;
-  var requiresSeparate = policyKey !== 'ISP'
-    && typeof domainPolicyRequiresSeparateApprover === 'function'
-    && domainPolicyRequiresSeparateApprover(policyKey);
   var approverHTML = '';
   if (policyKey === 'ISP' || requiresSeparate) {
     var sodNote = policyKey === 'ISP'
@@ -297,10 +441,7 @@ function renderReviewCycleCard(policyKey, label) {
     approverHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">'
       + sodNote + '</div>'
       + '<div id="custom-approver-' + policyKey + '" style="display:block;margin-top:0;">'
-      + '<div style="display:flex;gap:4px;">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="' + (policyKey === 'ISP' ? 'Approver name (e.g. CIO)' : 'Approver name') + '" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
+      + renderReviewCycleApproverFields(policyKey, rc, policyKey === 'ISP')
       + '</div>';
   } else {
     approverHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;font-size:12px;font-weight:600;color:var(--navy);">'
@@ -309,10 +450,7 @@ function renderReviewCycleCard(policyKey, label) {
       + '<label style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;font-size:11px;color:var(--text-muted);">'
       + '<input type="checkbox" ' + (isCustom ? 'checked' : '') + ' style="accent-color:#6366f1;cursor:pointer;" onclick="toggleCustomApprover(\'' + escKey + '\', this)"> Different approver</label>'
       + '<div id="custom-approver-' + policyKey + '" style="display:' + (isCustom ? 'block' : 'none') + ';margin-top:8px;">'
-      + '<div style="display:flex;gap:4px;">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="' + (policyKey === 'ISP' ? 'Approver name (e.g. CIO)' : 'Approver name') + '" autocomplete="off" value="' + escapeHTML(rc.approvedBy||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approvedBy=this.value; window.markDirty();">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Role (e.g. CIO)" autocomplete="off" value="' + escapeHTML(rc.approverRole||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverRole=this.value; window.markDirty();">'
-      + '<input class="form-input" style="font-size:12px;width:33%;" placeholder="Email" autocomplete="off" value="' + escapeHTML(rc.approverEmail||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].approverEmail=this.value; window.markDirty();"></div>'
+      + renderReviewCycleApproverFields(policyKey, rc, policyKey === 'ISP')
       + '</div>';
   }
 
@@ -321,7 +459,7 @@ function renderReviewCycleCard(policyKey, label) {
     + '<div style="font-size:13px;font-weight:700;color:var(--navy);display:flex;align-items:center;">' + reviewStatusDot(policyKey) + ' Policy Review Status — ' + label + '</div>'
     + '<span style="font-size:11px;font-weight:600;color:' + rs.color + ';background:white;border:1px solid ' + rs.border + ';padding:2px 10px;border-radius:12px;">' + rs.label + '</span>'
     + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+    + '<div class="review-cycle-fields">'
     + '<div class="form-group" style="margin-bottom:0;">'
     + '<label class="form-label" style="font-size:11px;">Last Reviewed</label>'
     + '<input class="form-input" type="date" style="font-size:12px;" value="' + (rc.lastReviewed||'') + '" oninput="state.policyReviewCycle[\'' + escKey + '\'].lastReviewed=this.value; autoSetNextReview(\'' + escKey + '\');; window.markDirty();">'
