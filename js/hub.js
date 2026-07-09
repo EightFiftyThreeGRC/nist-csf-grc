@@ -596,10 +596,10 @@ function getHubWorkspaces() {
   if (hasControlDraftCard) {
     workspaces.push({
       icon: '🔧',
-      label: 'Controls',
+      label: 'Control objectives',
       desc: implementedControls > 0
-        ? 'Design controls · ' + implementedControls + ' live'
-        : 'Design and attest controls',
+        ? 'Design objectives · ' + implementedControls + ' live'
+        : 'Design and attest control objectives',
       fn: 'goToControlWorkspace()',
       group: 'design'
     });
@@ -688,7 +688,7 @@ function renderHubActionsAndWorkspacesHtml(actions) {
   var programWorkspaces = workspaces.filter(function(w) { return w.group === 'program'; });
 
   var workspaceHtml = workspaces.length
-    ? renderHubWorkspaceGroupHtml('Policy & control design', designWorkspaces)
+    ? renderHubWorkspaceGroupHtml('Policies & control objectives', designWorkspaces)
       + renderHubWorkspaceGroupHtml('Asset & process compliance', complianceWorkspaces)
       + (programWorkspaces.length ? renderHubWorkspaceGroupHtml('Program', programWorkspaces) : '')
     : '<div class="hub-empty-actions">No workspaces with content for your role right now.</div>';
