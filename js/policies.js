@@ -2705,16 +2705,22 @@ function _migrateDomainPolicy(fam) {
     });
   }
   // Replace old boilerplate that pasted verbatim NIST legal text into domain requirements.
+  // Also repair CSF bug where generateDomainPolicyObjective(fam, cids) was overridden to
+  // treat the family id as a control id, leaving texts like "ID.AM".
   function domainReqLooksLikeVerbatimNIST(t) {
     if (!t || typeof t !== 'string') return false;
     if (/\[Assignment:|\[Selection:|\[FedRAMP Assignment:|\[Withdrawn:/i.test(t)) return true;
     if (/^\s*a\.\s/.test(t) && t.indexOf('\n') > 0 && t.length > 120) return true;
     return false;
   }
+  function domainReqLooksLikeBareUnitId(t, unit) {
+    if (!t || typeof t !== 'string' || !unit) return false;
+    return t.trim() === unit || t.trim() === String(unit).toUpperCase();
+  }
   if (dp.requirements && dp.requirements.length) {
     dp.requirements.forEach(function(r) {
       if (!r.controls || !r.controls.length) return;
-      if (domainReqLooksLikeVerbatimNIST(r.text)) {
+      if (domainReqLooksLikeVerbatimNIST(r.text) || domainReqLooksLikeBareUnitId(r.text, fam)) {
         r.text = generateDomainPolicyObjective(fam, r.controls);
       }
     });

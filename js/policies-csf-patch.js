@@ -53,8 +53,25 @@ function ctrlShortDesc(ctrlOrId) {
   return ctrlId;
 }
 
-function generateDomainPolicyObjective(ctrlId) {
-  return (CSF_SUBCATEGORY_TEXT && CSF_SUBCATEGORY_TEXT[ctrlId]) || ctrlShortDesc(ctrlId);
+function generateDomainPolicyObjective(fam, cids) {
+  var sorted = (cids || []).slice().filter(Boolean);
+  if (!sorted.length) {
+    return 'Write a short policy-level control objective in plain language. Map one or more CSF outcomes from this category using the tags above.';
+  }
+  // Prefer primary subcategory outcome statement from CSF 2.0 text
+  var primaryId = sorted[0];
+  var primaryText = (typeof CSF_SUBCATEGORY_TEXT !== 'undefined' && CSF_SUBCATEGORY_TEXT[primaryId]) || '';
+  if (!primaryText) {
+    var sub = typeof getSubcategoryById === 'function' ? getSubcategoryById(primaryId) : null;
+    primaryText = sub && sub.n ? sub.n : ctrlShortDesc(primaryId);
+  }
+  var out = primaryText.replace(/\s+$/, '');
+  if (out && !/[.!?]$/.test(out)) out += '.';
+  if (sorted.length > 1) {
+    out += ' Related outcomes ' + sorted.slice(1).join(', ')
+      + ' are mapped to the same objective and must still be satisfied in control design.';
+  }
+  return out || ('Achieve CSF outcomes for ' + (fam || 'this category') + ': ' + sorted.join(', ') + '.');
 }
 
 // Extend DOMAIN_DEFAULTS lookup for CSF units
