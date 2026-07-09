@@ -25,35 +25,6 @@ function getDefaultProgramOwnerTitle() {
   return DEFAULT_PROGRAM_OWNER_TITLE;
 }
 
-/** Short labels derived from CISO wizard Step 1 program owner title (e.g. CISO, CIO). */
-function getProgramOwnerTitleShortForms() {
-  var full = (state.programOwnerTitle || '').trim();
-  if (!full) return [];
-  var forms = [full];
-  var lower = full.toLowerCase();
-  if (lower.indexOf('security') !== -1 || lower === 'ciso') forms.push('CISO');
-  if ((lower.indexOf('information') !== -1 && lower.indexOf('security') === -1) || lower === 'cio') {
-    forms.push('CIO');
-  }
-  if (lower.indexOf('senior') !== -1 && lower.indexOf('security') !== -1) forms.push('SAISO');
-  return forms;
-}
-
-/** Match a roster user by job title / note for approver auto-fill. */
-function findRosterContactByApproverRole(title) {
-  var t = String(title || '').trim().toLowerCase();
-  if (!t) return null;
-  var users = state.users || [];
-  var exact = users.find(function(u) {
-    return String(u.note || '').trim().toLowerCase() === t;
-  });
-  if (exact) return exact;
-  return users.find(function(u) {
-    var note = String(u.note || '').trim().toLowerCase();
-    return note && (note.indexOf(t) !== -1 || t.indexOf(note) !== -1);
-  }) || null;
-}
-
 // ============================================================
 // APP STATE
 // ============================================================

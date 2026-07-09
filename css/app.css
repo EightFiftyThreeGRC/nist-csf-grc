@@ -742,14 +742,16 @@
       width: auto !important;
       font-size: 12px;
     }
-    .review-cycle-approver-row .review-cycle-role-select {
-      flex: 1 1 160px;
-      min-width: 0;
+    .review-cycle-person-select {
+      width: 100%;
       font-size: 12px;
       padding: 8px 10px;
     }
-    .review-cycle-approver-row .review-cycle-role-custom {
-      flex: 1 1 100%;
+    .review-cycle-approver-summary {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
     }
 
     @media (max-width: 1280px) {
