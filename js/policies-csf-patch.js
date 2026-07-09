@@ -40,11 +40,17 @@ function getPolicyMergedTitle(fam) {
   return policyUnitDefaultTitle(fam);
 }
 
-function ctrlShortDesc(ctrlId) {
+function ctrlShortDesc(ctrlOrId) {
+  var ctrlId = typeof ctrlOrId === 'string'
+    ? ctrlOrId
+    : (ctrlOrId && ctrlOrId.id ? ctrlOrId.id : '');
+  if (!ctrlId) return '';
   var t = (typeof CSF_SUBCATEGORY_TEXT !== 'undefined' && CSF_SUBCATEGORY_TEXT[ctrlId]) || '';
   if (t) return t.length > 200 ? t.slice(0, 197) + '…' : t;
   var sub = typeof getSubcategoryById === 'function' ? getSubcategoryById(ctrlId) : null;
-  return sub ? sub.n : ctrlId;
+  if (sub && sub.n) return sub.n;
+  if (ctrlOrId && typeof ctrlOrId === 'object' && ctrlOrId.n) return ctrlOrId.n;
+  return ctrlId;
 }
 
 function generateDomainPolicyObjective(ctrlId) {
