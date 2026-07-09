@@ -579,20 +579,30 @@ function getHubWorkspaces() {
   var implementedControls = countImplementedControls();
   var controlDraft = userHasControlDraftWork(user);
 
-  if (publishedPolicies > 0 || policyDraft) {
-    var policyFn = (policyDraft && tabs.indexOf('policy') !== -1) ? 'goToPoliciesHome()' : 'goToPolicyLibrary()';
-    var policyDesc = policyDraft && tabs.indexOf('policy') !== -1
-      ? (publishedPolicies > 0 ? 'Your drafts & approved catalog' : 'Domain policy drafts & ISP')
-      : (publishedPolicies > 0 ? publishedPolicies + ' approved polic' + (publishedPolicies === 1 ? 'y' : 'ies') + ' in catalog' : 'Policy catalog');
-    workspaces.push({ icon: '📋', label: 'Policies', desc: policyDesc, fn: policyFn, group: 'design' });
+  // Draft workspaces — one card per area. Published catalog lives under Reports
+  // (sidebar) and only appears here when the viewer has no draft workspace.
+  var hasPolicyDraftCard = policyDraft && tabs.indexOf('policy') !== -1;
+  if (hasPolicyDraftCard) {
+    workspaces.push({
+      icon: '📋',
+      label: 'Policies',
+      desc: 'Draft and submit domain policies',
+      fn: 'goToPoliciesHome()',
+      group: 'design'
+    });
   }
 
-  if (implementedControls > 0 || controlDraft) {
-    var ctrlFn = (controlDraft && tabs.indexOf('control') !== -1) ? 'goToControlWorkspace()' : 'goToControlLibrary()';
-    var ctrlDesc = controlDraft && tabs.indexOf('control') !== -1
-      ? (implementedControls > 0 ? 'Draft designs & ' + implementedControls + ' live controls' : 'Control implementation drafts')
-      : (implementedControls > 0 ? implementedControls + ' implemented control' + (implementedControls === 1 ? '' : 's') + ' in catalog' : 'Control catalog');
-    workspaces.push({ icon: '🔧', label: 'Controls', desc: ctrlDesc, fn: ctrlFn, group: 'design' });
+  var hasControlDraftCard = controlDraft && tabs.indexOf('control') !== -1;
+  if (hasControlDraftCard) {
+    workspaces.push({
+      icon: '🔧',
+      label: 'Controls',
+      desc: implementedControls > 0
+        ? 'Design controls · ' + implementedControls + ' live'
+        : 'Design and attest controls',
+      fn: 'goToControlWorkspace()',
+      group: 'design'
+    });
   }
 
   if (userHasAssetWorkspaceContent(user)) {
@@ -601,11 +611,21 @@ function getHubWorkspaces() {
 
   if (tabs.indexOf('reports') !== -1) {
     workspaces.push({ icon: '📊', label: 'Reports', desc: 'Program dashboard', fn: "showTab('reports')", group: 'program' });
-    if (typeof userHasReportsLibraryAccess === 'function' && userHasReportsLibraryAccess(user)) {
+    // Read-only published catalog — only when this viewer cannot open Policies/Controls drafts
+    // (avoids two "policies" cards that look like the same thing).
+    var showPublishedCatalog = typeof userHasReportsLibraryAccess === 'function'
+      && userHasReportsLibraryAccess(user)
+      && !hasPolicyDraftCard
+      && !hasControlDraftCard
+      && (publishedPolicies > 0 || implementedControls > 0);
+    if (showPublishedCatalog) {
+      var catalogDesc = publishedPolicies > 0
+        ? publishedPolicies + ' approved polic' + (publishedPolicies === 1 ? 'y' : 'ies')
+        : implementedControls + ' implemented control' + (implementedControls === 1 ? '' : 's');
       workspaces.push({
         icon: '📚',
-        label: 'Program library',
-        desc: 'Published policies & control requirements',
+        label: 'Published catalog',
+        desc: catalogDesc,
         fn: "goToReportsLibrary('policies')",
         group: 'program'
       });
@@ -676,9 +696,11 @@ function renderHubActionsAndWorkspacesHtml(actions) {
   return ''
     + '<div class="hub-lower-grid">'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
-    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'
-    + workspaceHtml
-    + '</div></div>'
+    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3>'
+    + (workspaces.length
+      ? '<div class="hub-workspace-groups">' + workspaceHtml + '</div>'
+      : workspaceHtml)
+    + '</div>'
     + '</div>';
 }
 

@@ -2744,12 +2744,17 @@
     .hub-section { margin-bottom: 28px; }
     .hub-section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
     .hub-actions { display: flex; flex-direction: column; gap: 8px; }
+    .hub-workspace-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
     .hub-workspace-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
-    .hub-workspace-group + .hub-workspace-group { margin-top: 18px; }
+    .hub-workspace-group + .hub-workspace-group { margin-top: 0; }
     .hub-workspace-group-label {
       font-size: 11px;
       font-weight: 600;
