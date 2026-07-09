@@ -185,6 +185,8 @@ function updateDomainPolicySubmitButton(fam) {
 // POLICY OWNER TAB
 // ============================================================
 
+var POLICY_SETUP_REQUIRED_HTML = '<div class="empty-state"><div class="es-icon">\uD83C\uDFDB\uFE0F</div><div class="es-title">Program setup required</div><p>Complete all six program setup steps\u2014category scope, governance policy, consolidate, and owner assignments\u2014before building domain policies.</p></div>';
+
 function canDraftDomainPoliciesFromList() {
   if (state.currentUserId) return true;
   if (typeof isCloudOwnerSession === 'function' && isCloudOwnerSession()) return true;
@@ -321,7 +323,7 @@ function renderCustodianWorkspace(user) {
     + '<h1>My Policy Library</h1>'
     + '<p>Policies assigned to you for maintenance and annual review. Only approved policies appear here.</p>';
 
-  if (!state.baseline) {
+  if (!isPolicyWorkspaceReady()) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">🏗️</div><div class="es-title">Program Not Ready Yet</div><p>The CISO is still setting up the security program. You\'ll see your assigned policies here once setup is complete.</p></div>';
     return;
   }
@@ -333,12 +335,12 @@ function renderCustodianWorkspace(user) {
 
   // Resolve which domain families this custodian is responsible for
   var merges = state.policyMerges || {};
-  var masterFams = getActiveFamilies().filter(function(f){ return f !== 'PM' && !merges[f]; });
+  var masterFams = getPolicyTabUnits().filter(function(f){ return !merges[f]; });
   var assignedFams = [];
   // 1) From user.families (excluding synthetic 'ISP' key)
   if (user.families && user.families.length) {
     masterFams.forEach(function(mf) {
-      var slavesOf = getActiveFamilies().filter(function(f){ return (state.policyMerges||{})[f] === mf; });
+      var slavesOf = getPolicyTabUnits().filter(function(f){ return (state.policyMerges||{})[f] === mf; });
       var group = [mf].concat(slavesOf);
       if (group.some(function(f){ return user.families.includes(f); })) assignedFams.push(mf);
     });
@@ -353,7 +355,7 @@ function renderCustodianWorkspace(user) {
 
   var today = new Date().toISOString().slice(0,10);
   var slavesOf = {};
-  getActiveFamilies().forEach(function(f){ if ((state.policyMerges||{})[f]) { var m=(state.policyMerges||{})[f]; if (!slavesOf[m]) slavesOf[m]=[]; slavesOf[m].push(f); } });
+  getPolicyTabUnits().forEach(function(f){ if ((state.policyMerges||{})[f]) { var m=(state.policyMerges||{})[f]; if (!slavesOf[m]) slavesOf[m]=[]; slavesOf[m].push(f); } });
 
   // Split assigned fams into approved (visible in library) vs pending (not yet approved)
   var approvedFams = assignedFams.filter(function(f){ return ((state.policyStatus[f]||{}).status||'') === 'Approved'; });
@@ -508,14 +510,14 @@ function renderISSMWorkspace(user) {
     + '<h1>Your Policy Domains</h1>'
     + '<p>Build and manage the domain-level security policies assigned to you.</p>';
 
-  if (!state.baseline) {
+  if (!isPolicyWorkspaceReady()) {
     body.innerHTML = '<div class="empty-state"><div class="es-icon">🏗️</div><div class="es-title">Program Not Ready Yet</div><p>The CISO is still setting up the security program. You\'ll see your assigned policy domains here once setup is complete.</p></div>';
     return;
   }
 
   // Resolve families: prefer user.families (populated by syncUsersFromState), then match by name in domainOwners
   var merges = state.policyMerges || {};
-  var allFamilies = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  var allFamilies = getPolicyTabUnits();
   var masterFams = allFamilies.filter(function(f){ return !merges[f]; });
   var slavesOf = {};
   allFamilies.forEach(function(f){ if (merges[f]) { if (!slavesOf[merges[f]]) slavesOf[merges[f]] = []; slavesOf[merges[f]].push(f); } });
@@ -749,11 +751,11 @@ function renderPolicyLibraryCatalog() {
     hdr.innerHTML = '<h1>Policy Library</h1>'
       + '<p>Global policy catalog with governance ownership and status tracking.</p>';
   }
-  if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">🏛️</div><div class="es-title">CISO Setup Required</div><p>Complete program setup to initialize policy library content.</p></div>';
+  if (!isPolicyWorkspaceReady()) {
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">🏛️</div><div class="es-title">Program setup required</div><p>Complete program setup to initialize policy library content.</p></div>';
     return;
   }
-  const families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  const families = getPolicyTabUnits();
   const merges = state.policyMerges || {};
   const masterFams = families.filter(function(f){ return !merges[f]; });
   const slavesOf = {};
@@ -824,11 +826,11 @@ function renderPolicyLibraryCatalog() {
 function renderPublishedPolicyLibrary(bodyEl) {
   var body = bodyEl || document.getElementById('reports-library-body');
   if (!body) return;
-  if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">🏛️</div><div class="es-title">CISO Setup Required</div></div>';
+  if (!isPolicyWorkspaceReady()) {
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">🏛️</div><div class="es-title">Program setup required</div></div>';
     return;
   }
-  var families = getActiveFamilies().filter(function(f) { return f !== 'PM'; });
+  var families = getPolicyTabUnits();
   var merges = state.policyMerges || {};
   var masterFams = families.filter(function(f) { return !merges[f]; });
   var slavesOf = {};
@@ -914,12 +916,12 @@ function renderPolicyList(bodyEl) {
   if (wizPanel) wizPanel.style.display = 'none';
   const body = bodyEl || document.getElementById('policy-list-body');
   if (!body) return;
-  if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">\uD83C\uDFDB\uFE0F</div><div class="es-title">CISO Setup Required</div><p>The CISO must complete all 7 steps of program setup before policy owners can begin. Ask your CISO to finish baseline selection, PM controls, security policy, and role assignments.</p></div>';
+  if (!isPolicyWorkspaceReady()) {
+    body.innerHTML = POLICY_SETUP_REQUIRED_HTML;
     return;
   }
 
-  const families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  const families = getPolicyTabUnits();
   const merges = state.policyMerges || {};
   const allControls = getActiveControls();
 
@@ -1014,9 +1016,12 @@ function renderPolicyList(bodyEl) {
       const slaves = slavesOf[masterFam] || [];
       const status = (state.policyStatus[masterFam]||{}).status || 'Not Started';
       // combined control count across master + all merged slaves
-      const ctrlCount = allControls.filter(function(c){
-        return (c.f === masterFam || slaves.includes(c.f)) && !isPolicyAndProceduresControl(c.id);
-      }).length;
+      const unitFams = [masterFam].concat(slaves);
+      const ctrlCount = typeof getDomainPolicySelectableControls === 'function'
+        ? getDomainPolicySelectableControls(unitFams).length
+        : allControls.filter(function(c){
+          return (c.f === masterFam || slaves.includes(c.f) || (c.cat && unitFams.indexOf(c.cat) !== -1)) && !isPolicyAndProceduresControl(c.id);
+        }).length;
       const custodian = getCustodian(masterFam).name;
       const dd = DOMAIN_DEFAULTS[masterFam] || DOMAIN_DEFAULT_GENERIC;
       const primary = getDomainPolicyPrimaryAction(masterFam, status);
@@ -1049,7 +1054,7 @@ function renderPolicyList(bodyEl) {
           + '</div>'
           : '')
         + '<div style="font-weight:700; font-size:14px; color:var(--navy); margin-bottom:2px;">' + escapeHTML(mergedTitle) + '</div>'
-        + '<div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">' + ctrlCount + ' controls in baseline'
+        + '<div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">' + (typeof policyScopeCountLabel === 'function' ? policyScopeCountLabel(ctrlCount) : (ctrlCount + ' in scope'))
         + (custodian ? ' \u00B7 Custodian: ' + escapeHTML(custodian) : '') + '</div>'
         + actionBtn
         + '</div>';
@@ -1747,7 +1752,7 @@ function getPolicyMergedTitle(fam) {
   // Custom name takes priority
   if (state.domainCustomNames && state.domainCustomNames[fam]) return state.domainCustomNames[fam];
   var merges = state.policyMerges || {};
-  var families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  var families = getPolicyTabUnits();
   var slaves = families.filter(function(f){ return merges[f] === fam; });
   if (slaves.length) {
     var allFamsStr = [fam].concat(slaves).sort().join(',');
@@ -1775,7 +1780,7 @@ function setDomainCustomName(fam, val) {
 
 function getPolicyAllFamilies(fam) {
   var merges = state.policyMerges || {};
-  var families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  var families = getPolicyTabUnits();
   var slaves = families.filter(function(f){ return merges[f] === fam; });
   return [fam].concat(slaves);
 }
@@ -1947,8 +1952,8 @@ function renderPolicyStep1() {
   const fam = state._policyDomain;
   const helpEl = document.getElementById('policy-step-1-help');
   const body = document.getElementById('policy-step-1-body');
-  if (!fam || !state.baseline) {
-    if (body) body.innerHTML = '<div class="empty-state"><div class="es-icon">\uD83C\uDFDB\uFE0F</div><div class="es-title">CISO Setup Required</div><p>The CISO must complete all 7 steps of program setup before policy owners can begin. Ask your CISO to finish baseline selection, PM controls, security policy, and role assignments.</p></div>';
+  if (!fam || !isPolicyWorkspaceReady()) {
+    if (body) body.innerHTML = POLICY_SETUP_REQUIRED_HTML;
     return;
   }
   const owner = state.domainOwners[fam] || {};
@@ -1985,7 +1990,7 @@ function renderPolicyStep1() {
     <div style="background:rgba(13,148,136,0.05); border:1px solid rgba(13,148,136,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
       <div style="font-size:13px; font-weight:700; color:var(--navy); margin-bottom:4px;">${escapeHTML(mergedTitle)}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">${allBadgesHtml}</div>
-      <div style="font-size:12px; color:var(--text-muted);">${ctrls} controls &middot; ${state.baseline==='L'?'Low':state.baseline==='M'?'Moderate':'High'} baseline</div>
+      <div style="font-size:12px; color:var(--text-muted);">${typeof policyScopeMetaLine === 'function' ? policyScopeMetaLine(ctrls) : (ctrls + ' in scope')}</div>
       <div style="margin-top:8px;">${chipHTML(status)}</div>
     </div>
     <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">The Policy Custodian is responsible for ongoing maintenance and annual review of this policy document.</div>
@@ -2143,7 +2148,7 @@ function confirmReturnToCISO(fam) {
   // If this owner had a filter set, clear it since their assignment is gone
   if (state._policyOwnerFilter) {
     // Re-check if the owner still has other domains; if not, clear filter
-    const stillAssigned = getActiveFamilies().filter(function(f){
+    const stillAssigned = getPolicyTabUnits().filter(function(f){
       return f !== 'PM' && (state.domainOwners[f]||{}).name === state._policyOwnerFilter;
     });
     if (!stillAssigned.length) state._policyOwnerFilter = '';
@@ -2177,11 +2182,11 @@ function sanitizeDomainPolicySelection(fam) {
 function renderPolicyStep2() {
   const helpEl = document.getElementById('policy-step-2-help');
   const body = document.getElementById('policy-step-2-body');
-  if (!state.baseline) {
-    if (body) body.innerHTML = '<div class="empty-state"><div class="es-icon">\uD83C\uDFDB\uFE0F</div><div class="es-title">CISO Setup Required</div><p>The CISO must complete all 7 setup steps first, including baseline selection and control assignment.</p></div>';
+  if (!isPolicyWorkspaceReady()) {
+    if (body) body.innerHTML = POLICY_SETUP_REQUIRED_HTML;
     return;
   }
-  const families = getActiveFamilies().filter(function(f){ return f !== 'PM'; });
+  const families = getPolicyTabUnits();
   if (!state._policyDomain) state._policyDomain = families[0] || null;
   const fam = state._policyDomain;
   if (!state.policySelectedControls) state.policySelectedControls = {};
@@ -2192,10 +2197,13 @@ function renderPolicyStep2() {
 
   // ALL controls across all merged families (excluding XX-1 — those live in the ISP)
   const allFamControls = getDomainPolicySelectableControls(allFams);
-  // Controls required by the program's baseline (pre-selected by default)
-  const baselineControls = allFamControls.filter(function(c){
-    return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
-  });
+  // Subcategories / controls in scope for this policy unit (CSF: all active; 800-53: baseline-filtered)
+  const baselineControls = typeof getPolicyDefaultSelectedControls === 'function'
+    ? getPolicyDefaultSelectedControls(allFamControls)
+    : allFamControls.filter(function(c){
+      if (!state.baseline || !c.bl || !c.bl.length) return true;
+      return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+    });
 
   // Seed selection with ALL baseline controls across all merged families,
   // EXCLUDING XX-1 "Policy and Procedures" controls — those belong only in the ISP (Tier 1).
@@ -2268,7 +2276,9 @@ function renderPolicyStep2() {
         </thead>
         <tbody id="tbod-${Math.random().toString(36).slice(2,8)}">
           ${allFamControls.map(c=>{
-            const inProgramBaseline = c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+            const inProgramBaseline = typeof isControlInProgramBaseline === 'function'
+              ? isControlInProgramBaseline(c)
+              : (c.bl && c.bl.includes(state.baseline));
             return `
           <tr data-id="${c.id}" data-required="${inProgramBaseline?'required':'optional'}" style="${!inProgramBaseline?'background:rgba(248,250,252,0.8);':''}">
             <td><input type="checkbox" class="domain-cb" data-id="${c.id}" ${selected.includes(c.id)?'checked':''}
@@ -2389,7 +2399,7 @@ function toggleDomainControl(fam, ctrlId, checked) {
   const sel = state.policySelectedControls[fam];
   const allFams = getPolicyAllFamilies(fam);
   const baselineCount = getDomainPolicySelectableControls(allFams).filter(function(c){
-    return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+    return typeof isControlInProgramBaseline === 'function' ? isControlInProgramBaseline(c) : (c.bl && c.bl.includes(state.baseline));
   }).length;
   const fc  = document.getElementById('policy-step-2-count');
   const fcs = document.getElementById('policy-step-2-count-side');
@@ -2405,7 +2415,7 @@ function selectAllDomainControls(fam, mode) {
   const allFams     = getPolicyAllFamilies(fam);
   const allFam      = getDomainPolicySelectableControls(allFams);
   const baselineFam = allFam.filter(function(c){
-    return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+    return typeof isControlInProgramBaseline === 'function' ? isControlInProgramBaseline(c) : (c.bl && c.bl.includes(state.baseline));
   });
   if (!state.policySelectedControls) state.policySelectedControls = {};
   if (mode === 'all')      state.policySelectedControls[fam] = allFam.map(function(c){ return c.id; });
@@ -3611,9 +3621,9 @@ function generatePolicyStatement(ctrl) {
 function renderPolicyStep3() {
   const body = document.getElementById('policy-step-3-body');
   if (!body) return;
-  const fam = state._policyDomain || getActiveFamilies().filter(function(f){ return f!=='PM'; })[0];
-  if (!state.baseline) {
-    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">Setup Required</div><p>Complete the CISO program setup (baseline, PM controls, policy, and owner assignments) and then select your controls before you can view details here.</p></div>';
+  const fam = state._policyDomain || getPolicyTabUnits()[0];
+  if (!isPolicyWorkspaceReady()) {
+    body.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">Setup Required</div><p>Complete program setup and select subcategories before editing policy content.</p></div>';
     return;
   }
   initDomainPolicy(fam);
@@ -3953,9 +3963,9 @@ function exportDomainPolicyWord(fam) {
 function renderPolicyStep4() {
   const body = document.getElementById('policy-step-4-body');
   if (!body) return;
-  const fam = state._policyDomain || getActiveFamilies().filter(f=>f!=='PM')[0];
-  if (!state.baseline) {
-    body.innerHTML = `<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">Setup Required</div><p>The CISO must complete all program setup steps first, including baseline selection, PM controls, and policy creation.</p></div>`;
+  const fam = state._policyDomain || getPolicyTabUnits()[0];
+  if (!isPolicyWorkspaceReady()) {
+    body.innerHTML = `<div class="empty-state"><div class="es-icon">⚠️</div><div class="es-title">Setup Required</div><p>Complete program setup before assigning subcategory owners.</p></div>`;
     return;
   }
   const selected = (state.policySelectedControls||{})[fam]||[];
@@ -4407,7 +4417,7 @@ function showSubmitModal() {
 function confirmSubmitDomainPolicy() {
   if (blockActionIfDemoPlaceholders()) return;
   clearScopedUndoStack('policy submit');
-  const fam = state._policyDomain || getActiveFamilies().filter(f=>f!=='PM')[0];
+  const fam = state._policyDomain || getPolicyTabUnits()[0];
   if (!state.policyStatus) state.policyStatus = {};
   if (!state.policyStatus[fam]) state.policyStatus[fam] = {};
   if (!state.policyReviewCycle) state.policyReviewCycle = {};

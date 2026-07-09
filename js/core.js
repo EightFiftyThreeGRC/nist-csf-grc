@@ -1109,6 +1109,20 @@ function getProgramScopeReady() {
   return !!(state.selectedCategories && Object.keys(state.selectedCategories).some(function(k) { return state.selectedCategories[k]; }));
 }
 
+/** True when program setup is done and policy workspaces may open (CSF uses cisoComplete, not baseline). */
+function isPolicyWorkspaceReady() {
+  if (!state.cisoComplete) return false;
+  if (typeof getProgramScopeReady === 'function') return getProgramScopeReady();
+  return !!state.baseline;
+}
+
+/** Policy units for domain policy tabs — CSF category IDs (excludes Govern), not legacy family codes. */
+function getPolicyTabUnits() {
+  if (typeof getOwnerAssignmentUnits === 'function') return getOwnerAssignmentUnits();
+  if (typeof getActivePolicyUnits === 'function') return getActivePolicyUnits();
+  return getActiveFamilies().filter(function(f) { return f !== 'PM'; });
+}
+
 function resolveCatalogSubcategoryId(input) {
   if (input == null || typeof input !== 'string') return null;
   var t = input.trim();

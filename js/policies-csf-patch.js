@@ -67,6 +67,38 @@ function getDomainDefaultsForUnit(fam) {
   };
 }
 
+function isControlInProgramBaseline(c) {
+  if (!c) return false;
+  if (!state.baseline || !c.bl || !c.bl.length) return true;
+  return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+}
+
+function getPolicyDefaultSelectedControls(allFamControls) {
+  if (!allFamControls || !allFamControls.length) return [];
+  if (state.baseline && allFamControls[0].bl && allFamControls[0].bl.length) {
+    return allFamControls.filter(function(c) {
+      return c.bl.includes(state.baseline) || (state.privacyOverlay && c.bl.includes('P'));
+    });
+  }
+  return allFamControls;
+}
+
+function policyScopeCountLabel(count) {
+  if (state.baseline) return count + ' control' + (count === 1 ? '' : 's') + ' in baseline';
+  return count + ' subcategor' + (count === 1 ? 'y' : 'ies') + ' in scope';
+}
+
+function policyScopeMetaLine(count) {
+  if (state.baseline) {
+    var bl = state.baseline === 'L' ? 'Low' : (state.baseline === 'M' ? 'Moderate' : 'High');
+    return count + ' controls \u00b7 ' + bl + ' baseline';
+  }
+  if (typeof getProgramBaselineLabel === 'function' && typeof getProgramScopeReady === 'function' && getProgramScopeReady()) {
+    return count + ' subcategories \u00b7 ' + getProgramBaselineLabel();
+  }
+  return count + ' subcategories in scope';
+}
+
 // Patch initDomainPolicy to use CSF defaults when DOMAIN_DEFAULTS lacks fam key
 if (typeof initDomainPolicy === 'function') {
   var _origInitDomainPolicy = initDomainPolicy;
