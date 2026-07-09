@@ -696,7 +696,7 @@ function renderHubActionsAndWorkspacesHtml(actions) {
   return ''
     + '<div class="hub-lower-grid">'
     + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
-    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3>'
+    + '<div class="hub-section hub-section-card">'
     + (workspaces.length
       ? '<div class="hub-workspace-groups">' + workspaceHtml + '</div>'
       : workspaceHtml)
