@@ -129,6 +129,145 @@ function renderOnboardingHome() {
     + '</div>';
 }
 
+/** Policy master units for hub counts — aligned with Assign owners step (CSF category IDs). */
+function getHubPolicyMasters() {
+  var units = typeof getOwnerAssignmentUnits === 'function'
+    ? getOwnerAssignmentUnits()
+    : (typeof getMasterPolicyFamilies === 'function' ? getMasterPolicyFamilies() : []);
+  var merges = state.policyMerges || {};
+  return units.filter(function(u) { return !merges[u]; });
+}
+
+function countHubAssignedPolicyDomains() {
+  return getHubPolicyMasters().filter(function(fam) {
+    return isValidOwnerEmail((state.domainOwners[fam] || {}).email);
+  }).length;
+}
+
+function hasMeaningfulImplementationProgress() {
+  if (countPublishedPolicyItems() > 0) return true;
+  if (countImplementedControls() > 0) return true;
+  if ((state.assets || []).length > 0) return true;
+  if (typeof getCombinedOpenRiskIssueCount === 'function' && getCombinedOpenRiskIssueCount() > 0) return true;
+  return false;
+}
+
+function isProgramLaunchPhase() {
+  return !!state.cisoComplete && !hasMeaningfulImplementationProgress();
+}
+
+function getLaunchFoundationSummary() {
+  var masters = getHubPolicyMasters();
+  var ispStatus = typeof getISPStatus === 'function' ? getISPStatus() : 'Not Started';
+  return {
+    org: (state.orgName || '').trim() || 'Your organization',
+    categoryCount: typeof getActiveCategories === 'function' ? getActiveCategories().length : 0,
+    subcategoryCount: typeof getActiveSubcategories === 'function' ? getActiveSubcategories().length : 0,
+    domainsAssigned: countHubAssignedPolicyDomains(),
+    domainTotal: masters.length,
+    ispStatus: ispStatus
+  };
+}
+
+function hubSortFamiliesByPriority(fams) {
+  var tierOrder = { now: 0, soon: 1, later: 2 };
+  return fams.slice().sort(function(a, b) {
+    var pa = typeof getPriority === 'function' ? getPriority(a) : 'soon';
+    var pb = typeof getPriority === 'function' ? getPriority(b) : 'soon';
+    return (tierOrder[pa] !== undefined ? tierOrder[pa] : 1) - (tierOrder[pb] !== undefined ? tierOrder[pb] : 1);
+  });
+}
+
+function getLaunchIspStatusLabel(status) {
+  if (status === 'Approved') return 'Approved';
+  if (status === 'Under Review') return 'Under review';
+  if (status === 'Draft') return 'Draft';
+  if (status === 'Returned') return 'Returned';
+  return 'Ready';
+}
+
+function getProgramLaunchActions() {
+  if (!isProgramLaunchPhase()) return [];
+  var actions = [];
+  var user = getHubSessionUser();
+  var tabs = getHubVisibleTabIds();
+  var isProgramOwner = typeof isSessionProgramOwnerActor === 'function' && isSessionProgramOwnerActor();
+  var roles = user ? getHubPersonRoles(user) : [];
+  var isCiso = !user || roles.indexOf('ciso') !== -1 || roles.indexOf('issm') !== -1 || isProgramOwner;
+
+  if (isCiso && typeof getISPStatus === 'function') {
+    var ispSt = getISPStatus();
+    if (ispSt !== 'Approved') {
+      var ispTitle = ((state.infoSecPolicy && state.infoSecPolicy.title) ? String(state.infoSecPolicy.title).trim() : '')
+        || (typeof getDefaultISPTitle === 'function' ? getDefaultISPTitle() : 'Governance policy');
+      actions.push({
+        priority: 1,
+        icon: '\ud83d\udcdc',
+        label: 'Finalize governance policy',
+        desc: 'Review and route ' + ispTitle + ' for approval.',
+        action: "typeof goToCISOPolicyEditor === 'function' ? goToCISOPolicyEditor() : showTab('reports');"
+      });
+    }
+  }
+
+  var masters = getHubPolicyMasters();
+  var sorted = hubSortFamiliesByPriority(masters);
+
+  if (isCiso) {
+    var firstUnstarted = null;
+    for (var i = 0; i < sorted.length; i++) {
+      var fam = sorted[i];
+      var st = ((state.policyStatus || {})[fam] || {}).status || 'Not Started';
+      if (st === 'Not Started') { firstUnstarted = fam; break; }
+    }
+    if (firstUnstarted) {
+      var policyTitle = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(firstUnstarted) : firstUnstarted;
+      var tier = typeof getPriority === 'function' ? getPriority(firstUnstarted) : 'now';
+      var tierLabel = tier === 'now' ? 'Now' : (tier === 'soon' ? 'Soon' : 'Later');
+      actions.push({
+        priority: 2,
+        icon: '\ud83d\udccb',
+        label: 'Start domain policy: ' + policyTitle,
+        desc: 'Highest-priority policy domain (' + tierLabel + ').',
+        action: "typeof enterPolicyWizard === 'function' ? enterPolicyWizard('" + firstUnstarted.replace(/'/g, "\\'") + "') : goToPoliciesHome();"
+      });
+    }
+  } else if (user) {
+    var families = [];
+    (state._currentPersonIds || [user.id]).forEach(function(pid) {
+      var rec = (state.users || []).find(function(u) { return u.id === pid; });
+      if (!rec) return;
+      (rec.families || []).forEach(function(f) {
+        if (families.indexOf(f) === -1) families.push(f);
+      });
+    });
+    hubSortFamiliesByPriority(families).slice(0, 2).forEach(function(fam) {
+      var pst = ((state.policyStatus || {})[fam] || {}).status || 'Not Started';
+      if (pst !== 'Not Started') return;
+      var pTitle = typeof getPolicyMergedTitle === 'function' ? getPolicyMergedTitle(fam) : fam;
+      actions.push({
+        priority: 2,
+        icon: '\ud83d\udccb',
+        label: 'Draft your policy: ' + pTitle,
+        desc: 'Begin the domain policy assigned to you.',
+        action: "typeof enterPolicyWizard === 'function' ? enterPolicyWizard('" + fam.replace(/'/g, "\\'") + "') : goToPoliciesHome();"
+      });
+    });
+  }
+
+  if (tabs.indexOf('reports') !== -1) {
+    actions.push({
+      priority: 3,
+      icon: '\ud83d\udcca',
+      label: 'Review program structure',
+      desc: 'See your scope, owners, and readiness on the dashboard.',
+      action: "showTab('reports');"
+    });
+  }
+
+  return actions.slice(0, 5);
+}
+
 function getNextActions() {
   var actions = [];
   var today = new Date().toISOString().slice(0, 10);
@@ -296,7 +435,11 @@ function getNextActions() {
   });
 
   actions.sort(function(a, b) { return a.priority - b.priority; });
-  return actions.slice(0, 8);
+  var result = actions.slice(0, 8);
+  if (!result.length && isProgramLaunchPhase()) {
+    return getProgramLaunchActions().slice(0, 8);
+  }
+  return result;
 }
 
 function getHubSessionUser() {
@@ -471,11 +614,80 @@ function shouldShowHubRiskStrip() {
 }
 
 function updateCommandCenterPageHeader() {
+  if (!state.cisoComplete) return;
+  var title = document.getElementById('home-page-title');
   var subtitle = document.getElementById('home-page-subtitle');
-  if (!subtitle || !state.cisoComplete) return;
+  if (!title && !subtitle) return;
   var org = (state.orgName || '').trim() || 'Your organization';
-  var baseline = getProgramScopeReady() ? getProgramBaselineLabel() : '—';
-  subtitle.textContent = org + ' · ' + baseline + ' baseline · posture and next actions';
+  var baseline = getProgramScopeReady() && typeof getProgramBaselineLabel === 'function'
+    ? getProgramBaselineLabel() : '\u2014';
+  if (isProgramLaunchPhase()) {
+    if (title) title.textContent = org !== 'Your organization' ? org + ' is live' : 'Program is live';
+    if (subtitle) subtitle.textContent = org + ' \u00b7 ' + baseline + ' \u00b7 your launch checklist';
+  } else {
+    if (title) title.textContent = 'Your program at a glance';
+    if (subtitle) subtitle.textContent = org + ' \u00b7 ' + baseline + ' \u00b7 posture and next actions';
+  }
+}
+
+function renderHubActionsAndWorkspacesHtml(actions) {
+  var actionHtml = actions.length
+    ? actions.map(function(a) { return renderHubActionCardHtml(a); }).join('')
+    : '<div class="hub-empty-actions">You\'re caught up \u2014 open a workspace from the sidebar or the cards below.</div>';
+
+  var workspaces = getHubWorkspaces();
+  var designWorkspaces = workspaces.filter(function(w) { return w.group === 'design'; });
+  var complianceWorkspaces = workspaces.filter(function(w) { return w.group === 'compliance'; });
+  var programWorkspaces = workspaces.filter(function(w) { return w.group === 'program'; });
+
+  var workspaceHtml = workspaces.length
+    ? renderHubWorkspaceGroupHtml('Policy & control design', designWorkspaces)
+      + renderHubWorkspaceGroupHtml('Asset & process compliance', complianceWorkspaces)
+      + (programWorkspaces.length ? renderHubWorkspaceGroupHtml('Program', programWorkspaces) : '')
+    : '<div class="hub-empty-actions">No workspaces with content for your role right now.</div>';
+
+  return ''
+    + '<div class="hub-lower-grid">'
+    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
+    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'
+    + workspaceHtml
+    + '</div></div>'
+    + '</div>';
+}
+
+function renderHubLaunchDashboardHtml(summary) {
+  var ispLabel = getLaunchIspStatusLabel(summary.ispStatus);
+  var domainVal = summary.domainsAssigned + '<span class="hub-kpi-val-fraction">/' + summary.domainTotal + '</span>';
+  return ''
+    + '<div class="hub-launch-hero">'
+    + '<div class="hub-launch-hero-icon" aria-hidden="true">\u2713</div>'
+    + '<div>'
+    + '<h2 class="hub-launch-hero-title">Program setup complete \u2014 you\'re ready to build</h2>'
+    + '<p class="hub-launch-hero-lead">Your governance structure, policy domains, and owners are in place. Start with your governance policy or your highest-priority domain policies.</p>'
+    + '</div>'
+    + '</div>'
+    + '<div class="hub-kpi-grid">'
+    + '<div class="hub-kpi hub-kpi--foundation"><div class="hub-kpi-val hub-kpi-val--check">\u2713</div><div class="hub-kpi-label">Phase 1 foundation</div><div class="hub-kpi-sub">Program structure ready</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + summary.categoryCount + '</div><div class="hub-kpi-label">Categories in scope</div><div class="hub-kpi-sub">CSF coverage selected</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + domainVal + '</div><div class="hub-kpi-label">Policy domains staffed</div><div class="hub-kpi-sub">Owners assigned</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val hub-kpi-val--text">' + escapeHTML(ispLabel) + '</div><div class="hub-kpi-label">Governance policy</div><div class="hub-kpi-sub">' + summary.subcategoryCount + ' subcategor' + (summary.subcategoryCount === 1 ? 'y' : 'ies') + ' ready</div></div>'
+    + '</div>';
+}
+
+function renderHubOperationalDashboardHtml() {
+  var ctrlTotal = typeof getActiveControls === 'function' ? getActiveControls().length : 0;
+  var implemented = countImplementedControls();
+  var implPct = ctrlTotal ? Math.round((implemented / ctrlTotal) * 100) : 0;
+  var ownerCount = countUniquePolicyOwnerEmails();
+  var domainsAssigned = countHubAssignedPolicyDomains();
+  var domainTotal = getHubPolicyMasters().length;
+  return ''
+    + '<div class="hub-kpi-grid">'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + implPct + '%</div><div class="hub-kpi-label">Controls implemented</div><div class="hub-kpi-sub">' + implemented + ' / ' + ctrlTotal + '</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + ownerCount + '</div><div class="hub-kpi-label">Policy owners</div><div class="hub-kpi-sub">' + domainsAssigned + ' / ' + domainTotal + ' domains rostered</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
+    + '<div class="hub-kpi"><div class="hub-kpi-val">' + (typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0) + '</div><div class="hub-kpi-label">Open risks &amp; issues</div></div>'
+    + '</div>';
 }
 
 function renderHomeTab() {
@@ -491,51 +703,17 @@ function renderHomeTab() {
   if (pageHeader) pageHeader.style.display = '';
   updateCommandCenterPageHeader();
 
-  var ctrlTotal = typeof getActiveControls === 'function' ? getActiveControls().length : 0;
-  var implemented = 0;
-  if (typeof getActiveControls === 'function') {
-    getActiveControls().forEach(function(c) {
-      var st = (state.controlStatus || {})[c.id];
-      if (st && (st.status === 'Implemented' || st.status === 'Inherited')) implemented++;
-    });
-  }
-  var implPct = ctrlTotal ? Math.round((implemented / ctrlTotal) * 100) : 0;
-  var ownerCount = countUniquePolicyOwnerEmails();
-  var domainsAssigned = countAssignedPolicyDomains();
-  var domainTotal = getMasterPolicyFamilies().length;
   var actions = getNextActions();
-
-  var actionHtml = actions.length
-    ? actions.map(function(a) { return renderHubActionCardHtml(a); }).join('')
-    : '<div class="hub-empty-actions">You\'re caught up — open a workspace from the sidebar or the cards below.</div>';
-
   ensureHubActionDelegation();
 
-  var workspaces = getHubWorkspaces();
-  var designWorkspaces = workspaces.filter(function(w) { return w.group === 'design'; });
-  var complianceWorkspaces = workspaces.filter(function(w) { return w.group === 'compliance'; });
-  var programWorkspaces = workspaces.filter(function(w) { return w.group === 'program'; });
-
-  var workspaceHtml = workspaces.length
-    ? renderHubWorkspaceGroupHtml('Policy & control design', designWorkspaces)
-      + renderHubWorkspaceGroupHtml('Asset & process compliance', complianceWorkspaces)
-      + (programWorkspaces.length ? renderHubWorkspaceGroupHtml('Program', programWorkspaces) : '')
-    : '<div class="hub-empty-actions">No workspaces with content for your role right now.</div>';
+  var topHtml = isProgramLaunchPhase()
+    ? renderHubLaunchDashboardHtml(getLaunchFoundationSummary())
+    : renderHubOperationalDashboardHtml();
 
   body.innerHTML = ''
     + '<div class="hub-dashboard">'
-    + '<div class="hub-kpi-grid">'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + implPct + '%</div><div class="hub-kpi-label">Controls implemented</div><div class="hub-kpi-sub">' + implemented + ' / ' + ctrlTotal + '</div></div>'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + ownerCount + '</div><div class="hub-kpi-label">Policy owners</div><div class="hub-kpi-sub">' + domainsAssigned + ' / ' + domainTotal + ' domains rostered</div></div>'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + (state.assets || []).length + '</div><div class="hub-kpi-label">Assets in inventory</div></div>'
-    + '<div class="hub-kpi"><div class="hub-kpi-val">' + (typeof getCombinedOpenRiskIssueCount === 'function' ? getCombinedOpenRiskIssueCount() : 0) + '</div><div class="hub-kpi-label">Open risks &amp; issues</div></div>'
-    + '</div>'
-    + '<div class="hub-lower-grid">'
-    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Your next actions</h3><div class="hub-actions">' + actionHtml + '</div></div>'
-    + '<div class="hub-section hub-section-card"><h3 class="hub-section-title">Workspaces</h3><div class="hub-workspace-grid">'
-    + workspaceHtml
-    + '</div></div>'
-    + '</div>'
+    + topHtml
+    + renderHubActionsAndWorkspacesHtml(actions)
     + (shouldShowHubRiskStrip() && typeof renderRiskSummaryHtml === 'function' ? renderRiskSummaryHtml() : '')
     + '</div>';
 }

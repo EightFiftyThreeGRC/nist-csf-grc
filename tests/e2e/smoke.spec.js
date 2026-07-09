@@ -44,7 +44,9 @@ test.describe('EightFiftyThree GRC smoke', function() {
       if (typeof window.renderHomeTab === 'function') window.renderHomeTab();
       else if (typeof window.showTab === 'function') window.showTab('home');
     });
-    await expect(page.locator('#home-body')).toContainText(/Command Center|Test Org|program/i, { timeout: 10000 });
+    await expect(page.locator('#home-body')).toContainText(/ready to build|Program setup complete|launch checklist/i, { timeout: 10000 });
+    await expect(page.locator('#home-body')).not.toContainText('0%');
+    await expect(page.locator('#home-page-title')).toContainText(/live|Test Org/i);
   });
 
   test('Risks & Issues tab renders and can add issue', async function({ page }) {

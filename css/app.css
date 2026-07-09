@@ -2658,6 +2658,50 @@
     }
     .hub-link { color: var(--accent); font-weight: 600; }
     .hub-empty-actions { color: var(--text-muted); font-size: 14px; padding: 8px 0; }
+    .hub-launch-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px 22px;
+      margin-bottom: 20px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(22, 101, 52, 0.06) 100%);
+      border: 1px solid rgba(13, 148, 136, 0.22);
+    }
+    .hub-launch-hero-icon {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal);
+      color: white;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .hub-launch-hero-title {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--navy);
+      letter-spacing: -0.02em;
+    }
+    .hub-launch-hero-lead {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .hub-kpi--foundation {
+      background: rgba(13, 148, 136, 0.04);
+      border-color: rgba(13, 148, 136, 0.18);
+    }
+    .hub-kpi-val--check { color: var(--teal); font-size: 36px; }
+    .hub-kpi-val--text { font-size: 22px; letter-spacing: -0.02em; }
+    .hub-kpi-val-fraction { font-size: 18px; font-weight: 600; color: #94a3b8; }
     @media (max-width: 1024px) {
       .hub-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .hub-lower-grid { grid-template-columns: 1fr; }
