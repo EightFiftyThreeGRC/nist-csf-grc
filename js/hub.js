@@ -52,6 +52,19 @@ function ensureHubActionDelegation() {
       var scopeId = btn.getAttribute('data-scope-id') || '';
       var isProcess = btn.getAttribute('data-is-process') === '1';
       hubOpenQueuedSsp(scopeId, isProcess);
+      return;
+    }
+    if (kind === 'start-policy') {
+      ev.preventDefault();
+      var policyUnit = btn.getAttribute('data-policy-unit') || '';
+      if (policyUnit && typeof enterPolicyWizard === 'function') enterPolicyWizard(policyUnit);
+      else if (typeof goToPoliciesHome === 'function') goToPoliciesHome();
+      return;
+    }
+    if (kind === 'launch-reports-review') {
+      ev.preventDefault();
+      hubMarkReportsLaunchReviewed();
+      if (typeof showTab === 'function') showTab('reports');
     }
   });
   window._hubActionDelegationBound = true;
@@ -66,10 +79,22 @@ function renderHubActionCardHtml(a) {
     return '<button type="button" class="hub-action-card" data-hub-action="ssp-review" data-scope-id="'
       + escapeHTML(a.scopeId || '') + '" data-is-process="' + (a.isProcess ? '1' : '0') + '">' + inner + '</button>';
   }
+  if (a.kind === 'start-policy') {
+    return '<button type="button" class="hub-action-card" data-hub-action="start-policy" data-policy-unit="'
+      + escapeHTML(a.policyUnit || '') + '">' + inner + '</button>';
+  }
+  if (a.kind === 'launch-reports-review') {
+    return '<button type="button" class="hub-action-card" data-hub-action="launch-reports-review">' + inner + '</button>';
+  }
   return '<button type="button" class="hub-action-card" onclick="' + a.action + '">' + inner + '</button>';
 }
 
 /** Command Center → Reports → Program library page. */
+function hubMarkReportsLaunchReviewed() {
+  state._hubReportsLaunchReviewed = true;
+  if (typeof markDirty === 'function') markDirty();
+}
+
 function hubOpenReportsLibrary(page) {
   if (typeof goToReportsLibrary === 'function') goToReportsLibrary(page === 'controls' ? 'controls' : 'policies');
   else if (typeof showTab === 'function') showTab('reports');
@@ -229,7 +254,8 @@ function getProgramLaunchActions() {
         icon: '\ud83d\udccb',
         label: 'Start domain policy: ' + policyTitle,
         desc: 'Highest-priority policy domain (' + tierLabel + ').',
-        action: "typeof enterPolicyWizard === 'function' ? enterPolicyWizard('" + firstUnstarted.replace(/'/g, "\\'") + "') : goToPoliciesHome();"
+        kind: 'start-policy',
+        policyUnit: firstUnstarted
       });
     }
   } else if (user) {
@@ -250,18 +276,19 @@ function getProgramLaunchActions() {
         icon: '\ud83d\udccb',
         label: 'Draft your policy: ' + pTitle,
         desc: 'Begin the domain policy assigned to you.',
-        action: "typeof enterPolicyWizard === 'function' ? enterPolicyWizard('" + fam.replace(/'/g, "\\'") + "') : goToPoliciesHome();"
+        kind: 'start-policy',
+        policyUnit: fam
       });
     });
   }
 
-  if (tabs.indexOf('reports') !== -1) {
+  if (tabs.indexOf('reports') !== -1 && !state._hubReportsLaunchReviewed) {
     actions.push({
       priority: 3,
       icon: '\ud83d\udcca',
       label: 'Review program structure',
       desc: 'See your scope, owners, and readiness on the dashboard.',
-      action: "showTab('reports');"
+      kind: 'launch-reports-review'
     });
   }
 

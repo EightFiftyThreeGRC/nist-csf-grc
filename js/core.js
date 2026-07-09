@@ -136,6 +136,7 @@ const state = {
   _changeLogDateFilter: '',      // field-change tab filter (substring on ISO date)
   _undoStack: [],                // scoped structural undo (max 20)
   _reportsProgramReadinessHidden: false, // true = collapse Program Readiness panel in Reports
+  _hubReportsLaunchReviewed: false, // true = hide Command Center "Review program structure" launch action
   _reportsMySummaryHidden: false, // true = collapse "My dashboard" summary card in Reports
   _reportsPhase1BannerHidden: false, // true = collapse Phase 1 completion banner in Reports
   _reportsLibraryView: null,     // null = dashboard; 'policies' | 'controls' = read-only library under Reports

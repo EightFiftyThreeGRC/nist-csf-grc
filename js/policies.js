@@ -1654,6 +1654,7 @@ function enterPolicyWizard(fam) {
   state._policyLibraryMode = false;
   state._policyDomain = fam;
   state._policyWizardMode = true;
+  if (typeof showTab === 'function') showTab('policy');
   const listPanel = document.getElementById('policy-list-panel');
   const wizPanel = document.getElementById('policy-wizard-panel');
   if (listPanel) listPanel.style.display = 'none';
