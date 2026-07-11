@@ -27,6 +27,41 @@ function policyUnitDefaultTitle(unit) {
   return cat ? cat.name + ' Policy' : unit + ' Policy';
 }
 
+function getCategoryLabel(unit) {
+  if (!unit) return '';
+  if (state.policyStructure === 'function') {
+    return (FUNCTIONS && FUNCTIONS[unit]) || unit;
+  }
+  var cat = typeof getCategoryById === 'function' ? getCategoryById(unit) : null;
+  return cat ? cat.name : unit;
+}
+
+function getPolicyUnitBadgeTitle(unit) {
+  var label = getCategoryLabel(unit);
+  var desc = (typeof CATEGORY_DESC !== 'undefined' && CATEGORY_DESC[unit]) || '';
+  if (label && desc) return label + ' — ' + desc;
+  return label || unit;
+}
+
+function getPolicyUnitScopeSummary(fam) {
+  fam = fam || state._policyDomain;
+  var units = typeof getPolicyAllFamilies === 'function' ? getPolicyAllFamilies(fam) : [fam];
+  return units.map(function(u) { return getCategoryLabel(u); }).filter(Boolean).join(' · ');
+}
+
+function getPolicyUnitScopeDescription(fam) {
+  fam = fam || state._policyDomain;
+  var units = typeof getPolicyAllFamilies === 'function' ? getPolicyAllFamilies(fam) : [fam];
+  var parts = units.map(function(u) {
+    var desc = (typeof CATEGORY_DESC !== 'undefined' && CATEGORY_DESC[u]) || '';
+    if (!desc) return '';
+    return desc.length > 140 ? desc.slice(0, 137) + '…' : desc;
+  }).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  return parts.join(' ');
+}
+
 function getPolicyMergedTitle(fam) {
   if (state.domainCustomNames && state.domainCustomNames[fam]) return state.domainCustomNames[fam];
   var merges = state.policyMerges || {};
@@ -35,7 +70,9 @@ function getPolicyMergedTitle(fam) {
     var preset = (typeof COMMON_CATEGORY_MERGES !== 'undefined' ? COMMON_CATEGORY_MERGES : []).find(function(m) {
       return m.master === fam && m.slaves && m.slaves.length === slaves.length && m.slaves.every(function(s) { return slaves.indexOf(s) !== -1; });
     });
-    if (preset) return preset.label;
+    if (preset) return preset.label.indexOf(' Policy') === preset.label.length - 7 ? preset.label : preset.label + ' Policy';
+    var names = [fam].concat(slaves).map(function(u) { return getCategoryLabel(u); }).filter(Boolean);
+    return names.join(' & ') + ' Policy';
   }
   return policyUnitDefaultTitle(fam);
 }

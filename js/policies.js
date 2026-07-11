@@ -1039,8 +1039,11 @@ function renderPolicyList(bodyEl) {
       const mergedTitle = getPolicyMergedTitle(masterFam);
       // family badges: master + slaves
       const allBadges = [masterFam].concat(slaves).map(function(f){
-        return '<span class="family-badge" style="font-size:12px;padding:3px 7px;">' + f + '</span>';
+        var badgeTitle = typeof getPolicyUnitBadgeTitle === 'function' ? getPolicyUnitBadgeTitle(f) : f;
+        return '<span class="family-badge" style="font-size:12px;padding:3px 7px;" title="' + escapeHTML(badgeTitle) + '">' + f + '</span>';
       }).join('');
+      var scopeSummary = typeof getPolicyUnitScopeSummary === 'function' ? getPolicyUnitScopeSummary(masterFam) : '';
+      var scopeDesc = typeof getPolicyUnitScopeDescription === 'function' ? getPolicyUnitScopeDescription(masterFam) : '';
 
       var cardDisabled = status === 'Not Started' && !canDraft;
       var cardCursor = cardDisabled ? 'default' : 'pointer';
@@ -1063,6 +1066,8 @@ function renderPolicyList(bodyEl) {
           + '</div>'
           : '')
         + '<div style="font-weight:700; font-size:14px; color:var(--navy); margin-bottom:2px;">' + escapeHTML(mergedTitle) + '</div>'
+        + (scopeSummary ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.45;">' + escapeHTML(scopeSummary) + '</div>' : '')
+        + (scopeDesc ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">' + escapeHTML(scopeDesc) + '</div>' : '')
         + '<div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">' + (typeof policyScopeCountLabel === 'function' ? policyScopeCountLabel(ctrlCount) : (ctrlCount + ' in scope'))
         + (custodian ? ' \u00B7 Custodian: ' + escapeHTML(custodian) : '') + '</div>'
         + actionBtn

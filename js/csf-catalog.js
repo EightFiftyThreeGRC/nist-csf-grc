@@ -872,14 +872,16 @@ const COMMON_CATEGORY_MERGES = [
       "PR.AT"
     ],
     "master": "PR.AA",
-    "label": "People & Access (PR.AA+PR.AT)"
+    "label": "People & Access",
+    "reason": "Awareness and training (PR.AT) supports access and identity practices (PR.AA) under one policy owner."
   },
   {
     "slaves": [
       "DE.AE"
     ],
     "master": "DE.CM",
-    "label": "Detection Operations (DE.CM+DE.AE)"
+    "label": "Detection Operations",
+    "reason": "Continuous monitoring (DE.CM) and adverse-event analysis (DE.AE) are operated together."
   },
   {
     "slaves": [
@@ -888,21 +890,24 @@ const COMMON_CATEGORY_MERGES = [
       "RS.MI"
     ],
     "master": "RS.MA",
-    "label": "Incident Response (RS.MA+RS.AN+RS.CO+RS.MI)"
+    "label": "Incident Response",
+    "reason": "Response management, analysis, coordination, and mitigation are one operational workflow."
   },
   {
     "slaves": [
       "RC.CO"
     ],
     "master": "RC.RP",
-    "label": "Recovery (RC.RP+RC.CO)"
+    "label": "Recovery",
+    "reason": "Restoration planning and recovery coordination belong under one recovery policy owner."
   },
   {
     "slaves": [
       "ID.IM"
     ],
     "master": "ID.RA",
-    "label": "Risk & Improvement (ID.RA+ID.IM)"
+    "label": "Risk Assessment & Continuous Improvement",
+    "reason": "Risk assessment (ID.RA) and improvement activities (ID.IM) are owned together in lean programs."
   }
 ];
 
