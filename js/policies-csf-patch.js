@@ -62,6 +62,20 @@ function getPolicyUnitScopeDescription(fam) {
   return parts.join(' ');
 }
 
+function getPolicyDefaultTitle(fam) {
+  var merges = state.policyMerges || {};
+  var slaves = Object.keys(merges).filter(function(k) { return merges[k] === fam; });
+  if (slaves.length) {
+    var preset = (typeof COMMON_CATEGORY_MERGES !== 'undefined' ? COMMON_CATEGORY_MERGES : []).find(function(m) {
+      return m.master === fam && m.slaves && m.slaves.length === slaves.length && m.slaves.every(function(s) { return slaves.indexOf(s) !== -1; });
+    });
+    if (preset) return preset.label.indexOf(' Policy') === preset.label.length - 7 ? preset.label : preset.label + ' Policy';
+    var names = [fam].concat(slaves).map(function(u) { return getCategoryLabel(u); }).filter(Boolean);
+    return names.join(' & ') + ' Policy';
+  }
+  return policyUnitDefaultTitle(fam);
+}
+
 function getPolicyMergedTitle(fam) {
   if (state.domainCustomNames && state.domainCustomNames[fam]) return state.domainCustomNames[fam];
   var merges = state.policyMerges || {};

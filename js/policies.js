@@ -1035,8 +1035,6 @@ function renderPolicyList(bodyEl) {
       const dd = DOMAIN_DEFAULTS[masterFam] || DOMAIN_DEFAULT_GENERIC;
       const primary = getDomainPolicyPrimaryAction(masterFam, status);
       const btnLabel = primary.label;
-      // title: use merge label if known, else default title
-      const mergedTitle = getPolicyMergedTitle(masterFam);
       // family badges: master + slaves
       const allBadges = [masterFam].concat(slaves).map(function(f){
         var badgeTitle = typeof getPolicyUnitBadgeTitle === 'function' ? getPolicyUnitBadgeTitle(f) : f;
@@ -1065,7 +1063,7 @@ function renderPolicyList(bodyEl) {
           + (((state.policyStatus[masterFam]||{}).submittedAt) ? '<span style="color:var(--text-muted);font-weight:500;"> · submitted ' + escapeHTML((state.policyStatus[masterFam]||{}).submittedAt) + '</span>' : '')
           + '</div>'
           : '')
-        + '<div style="font-weight:700; font-size:14px; color:var(--navy); margin-bottom:2px;">' + escapeHTML(mergedTitle) + '</div>'
+        + '<div style="margin-bottom:2px;">' + renderPolicyTitleField(masterFam, { stopPropagation: true, rerenderOnBlur: true, showDefaultHint: false }) + '</div>'
         + (scopeSummary ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.45;">' + escapeHTML(scopeSummary) + '</div>' : '')
         + (scopeDesc ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.45;">' + escapeHTML(scopeDesc) + '</div>' : '')
         + '<div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">' + (typeof policyScopeCountLabel === 'function' ? policyScopeCountLabel(ctrlCount) : (ctrlCount + ' in scope'))
@@ -1763,9 +1761,7 @@ function exitPolicyWizard() {
   renderPolicyList();
 }
 
-function getPolicyMergedTitle(fam) {
-  // Custom name takes priority
-  if (state.domainCustomNames && state.domainCustomNames[fam]) return state.domainCustomNames[fam];
+function getPolicyDefaultTitle(fam) {
   var merges = state.policyMerges || {};
   var families = getPolicyTabUnits();
   var slaves = families.filter(function(f){ return merges[f] === fam; });
@@ -1779,18 +1775,69 @@ function getPolicyMergedTitle(fam) {
   return dd.title || (FAMILIES[fam] + ' Policy');
 }
 
+function getPolicyMergedTitle(fam) {
+  if (state.domainCustomNames && state.domainCustomNames[fam]) return state.domainCustomNames[fam];
+  return getPolicyDefaultTitle(fam);
+}
+
+function canCustomizePolicyTitle(fam) {
+  if (!state.currentUserId) return true;
+  if (typeof isSessionProgramOwnerActor === 'function' && isSessionProgramOwnerActor()) return true;
+  if (typeof isSessionDomainPolicyOwnerActor === 'function' && isSessionDomainPolicyOwnerActor(fam)) return true;
+  return !isReadOnlyPolicyView(fam);
+}
+
 function setDomainCustomName(fam, val) {
   if (!state.domainCustomNames) state.domainCustomNames = {};
   val = (val || '').trim();
+  var defaultTitle = typeof getPolicyDefaultTitle === 'function' ? getPolicyDefaultTitle(fam) : getPolicyMergedTitle(fam);
+  if (val && val === defaultTitle) val = '';
   var prev = state.domainCustomNames[fam];
   if (val) state.domainCustomNames[fam] = val;
   else delete state.domainCustomNames[fam];
   logFieldChange('domainCustomNames.' + fam, prev, val || null);
-  // Also update the domain policy title if it exists
+  var displayTitle = val || defaultTitle;
   if (state.domainPolicies && state.domainPolicies[fam]) {
-    state.domainPolicies[fam].title = val || getPolicyMergedTitle(fam);
+    state.domainPolicies[fam].title = displayTitle;
   }
   markDirty();
+  if (state._policyWizardMode && state._policyDomain === fam) {
+    setTimeout(function() {
+      var titleInput = document.getElementById('policy-wizard-title-input');
+      if (titleInput) titleInput.value = displayTitle;
+      var step3Title = document.getElementById('policy-step3-title-input');
+      if (step3Title) step3Title.value = displayTitle;
+    }, 0);
+  }
+}
+
+function renderPolicyTitleField(fam, opts) {
+  opts = opts || {};
+  var escFam = fam.replace(/'/g, "\\'");
+  var title = getPolicyMergedTitle(fam);
+  var defaultTitle = typeof getPolicyDefaultTitle === 'function' ? getPolicyDefaultTitle(fam) : title;
+  var hasCustom = !!(state.domainCustomNames && state.domainCustomNames[fam]);
+  var canEdit = typeof canCustomizePolicyTitle === 'function' && canCustomizePolicyTitle(fam);
+  if (!canEdit) {
+    return '<span class="' + (opts.staticClass || '') + '" style="' + (opts.staticStyle || 'font-weight:700;color:var(--navy);') + '">' + escapeHTML(title) + '</span>';
+  }
+  var inputId = opts.inputId ? ' id="' + opts.inputId + '"' : '';
+  var inputStyle = opts.inputStyle || 'font-size:14px;font-weight:700;width:100%;padding:4px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--navy);outline:none;';
+  var hint = hasCustom
+    ? '<div style="font-size:10px;color:#6366f1;margin-top:2px;line-height:1.35;">Custom title · restore the suggested name to clear</div>'
+    : (opts.showDefaultHint !== false ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;line-height:1.35;">Suggested: ' + escapeHTML(defaultTitle) + '</div>' : '');
+  return '<div class="policy-title-field"' + (opts.stopPropagation ? ' onclick="event.stopPropagation();"' : '') + '>'
+    + '<input type="text" class="form-input policy-title-input"' + inputId
+    + ' style="' + inputStyle + '"'
+    + ' value="' + escapeHTML(title) + '"'
+    + ' placeholder="' + escapeHTML(defaultTitle) + '"'
+    + ' aria-label="Policy title"'
+    + ' onfocus="this.style.borderColor=\'var(--border)\';this.style.background=\'#fff\';"'
+    + ' onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\';' + (opts.rerenderOnBlur ? 'setTimeout(function(){ renderPolicyList(); }, 0);' : '') + '"'
+    + ' oninput="setDomainCustomName(\'' + escFam + '\', this.value)"'
+    + '>'
+    + hint
+    + '</div>';
 }
 
 function getPolicyAllFamilies(fam) {
@@ -1867,14 +1914,13 @@ function renderPolicyWizardChrome(step) {
   const el = document.getElementById('policy-wizard-header');
   if (!el) return;
   const fam = state._policyDomain;
-  const mergedTitle = escapeHTML(getPolicyMergedTitle(fam));
   const allFams = getPolicyAllFamilies(fam);
   const badgesHtml = allFams.map(function(f){
     return '<span class="family-badge" style="font-size:12px;">' + escapeHTML(f) + '</span>';
   }).join('');
   el.innerHTML = '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">'
     + '<button type="button" class="btn btn-secondary btn-sm" onclick="exitPolicyWizard()">\u2190 All Domains</button>'
-    + '<span style="font-size:15px; font-weight:700; color:var(--navy);">' + mergedTitle + '</span>'
+    + '<div style="min-width:200px;max-width:420px;flex:1;">' + renderPolicyTitleField(fam, { inputId: 'policy-wizard-title-input', inputStyle: 'font-size:15px;font-weight:700;width:100%;padding:4px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--navy);outline:none;', showDefaultHint: false }) + '</div>'
     + '<span style="display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center;">' + badgesHtml + '</span>'
     + '</div>';
 }
@@ -3747,7 +3793,7 @@ function renderPolicyStep3() {
 
       // Title bar
       '<div style="margin-bottom:20px;">' +
-        '<input style="font-size:22px;font-weight:800;color:var(--navy);border:none;border-bottom:2px solid var(--border);width:100%;padding:4px 0;background:transparent;outline:none;" value="'+escapeHTML(dp.title)+'" oninput="state.domainPolicies[\''+fam+'\'].title=this.value; window.markDirty();" placeholder="Policy Title">' +
+        '<input id="policy-step3-title-input" style="font-size:22px;font-weight:800;color:var(--navy);border:none;border-bottom:2px solid var(--border);width:100%;padding:4px 0;background:transparent;outline:none;" value="'+escapeHTML(getPolicyMergedTitle(fam))+'" oninput="setDomainCustomName(\''+fam.replace(/'/g, "\\'")+'\', this.value)" placeholder="Policy Title">' +
         '<div style="display:flex;gap:12px;margin-top:8px;align-items:center;">' +
           '<span class="chip chip-blue">Draft</span>' +
           '<span style="font-size:12px;color:var(--text-muted);">v'+escapeHTML(dp.version)+' · Effective '+dp.effectiveDate+' · '+dp.reviewCycle+' review</span>' +
